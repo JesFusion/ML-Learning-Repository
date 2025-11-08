@@ -1,0 +1,9 @@
+{
+    RULE:
+    - Use pd.merge() when joining on COLUMNS.
+    - Use df.join() when joining on INDICES.
+},
+
+{
+    
+}

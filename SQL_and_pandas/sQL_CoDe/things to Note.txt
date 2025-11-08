@@ -1,0 +1,31 @@
+{
+    The Best Practice (This is the rule you should follow) Your code is read 10x more than it is written. The goal of formatting is readability.
+
+    RULE 1: SQL Keywords are UPPERCASE
+
+    This includes SELECT, FROM, WHERE, GROUP BY, ORDER BY, AS, LIMIT, JOIN, ON.
+
+    RULE 2: Your Identifiers are lowercase or snake_case
+
+    This includes your table names (employees, sales) and your column names (first_name, salary).
+},
+
+{
+    The WHERE clause comes after FROM but before GROUP BY or ORDER BY.
+
+    Comparison Operators: These are the standard math operators.
+
+    = (Equal to)
+
+    != or <> (Not equal to)
+
+    > (Greater than)
+
+    < (Less than)
+
+    >= (Greater than or equal to)
+
+    <= (Less than or equal to)
+}
+
+

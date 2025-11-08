@@ -1,0 +1,64 @@
+Part 2: Your Git Lesson (Module 2.4: Writing Good Commit Messages)
+(This is the lesson part. You'll apply this to your 02_employee_analysis.py file in Part 3).
+
+This is a "soft skill" that will immediately make you look like a professional. When an ML hiring manager looks at your GitHub, this is one of the first things they see.
+
+Why do good commit messages matter? Your commit history is a story. When you run git log, it's like reading the chapter titles of your project.
+
+Bad history: "code", "fixed stuff", "lol", "one more try"
+
+Good history: "Fix: Prevent crash when user inputs zero", "Feat: Add user authentication with JWT", "Docs: Update README with setup instructions"
+
+A good history tells you why the code changed, making it 100x easier to find bugs or understand a project six months later.
+
+Here are the two golden rules:
+
+Rule 1: The Imperative Mood
+
+What it means: Write your commit message like you're giving a command or an instruction.
+
+Analogy: Think of a commit as a patch or a set of instructions to apply to the code. Your message is the title of that instruction set.
+
+This patch will... "Fix login bug"
+
+This patch will... "Add groupby analysis"
+
+This patch will... "Update employee data"
+
+The Test: Your commit message should complete this sentence: "If applied, this commit will..."
+
+Examples:
+
+YES: Fix: Correct the mean salary calculation
+
+YES: Feat: Add new employee analysis script
+
+NO: Fixed the calculation
+
+NO: Added a new script
+
+Rule 2: The "50/72" Rule (The Format) This rule governs the length of your commit message for maximum readability in terminals.
+
+The Subject Line (The 50):
+
+Keep your subject line (the part after -m "...") under 50 characters.
+
+This is because git log --oneline cuts off after ~50 characters. You want your entire message to be visible.
+
+It should be a short summary.
+
+(Pro-tip: Many pros start this with a "type" tag like Feat:, Fix:, Docs:, Style:, Refactor:)
+
+The Body (The 72):
+
+If your change is too complex for 50 characters, you can add a body.
+
+To do this, just type git commit (with no -m). This will open a terminal text editor (like Vim or Nano).
+
+You write your < 50 char subject>, then leave a blank line, then write a more detailed explanation, making sure to wrap each line at 72 characters.
+
+For now, just stick to the -m "..." and the 50-character rule. It's all you need.
+
+Bad Commit Message: git commit -m "wrote some code for the new assignment and also i used groupby" (Too long, not imperative, vague)
+
+Good Commit Message: git commit -m "Feat: Add employee analysis script with groupby" (Imperative, <50 chars, clear, has a "type" tag)
