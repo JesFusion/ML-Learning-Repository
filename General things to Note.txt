@@ -1,0 +1,47 @@
+{
+    how to change terminal location from view to editor:
+
+
+    If you always want your new terminals to open in the editor area instead of the bottom panel, you can change a setting:
+
+    Press Ctrl + , (comma) to open Settings.
+
+    In the search bar, type: "terminal.integrated.defaultLocation".
+
+    You'll see a setting called "Terminal > Integrated: Default Location".
+
+    Change the dropdown from view to editor.
+
+    Now, whenever you use the Ctrl + Shift + shortcut, new terminals will always open as a tab in your editor area.
+},
+
+
+{
+    Activating Virtual Environment:
+    .\.mainDog\Scripts\Activate.ps1
+},
+
+{
+    type tags for writing comments:
+ - Feat:
+ - Fix:
+ - Docs:
+ - Style:
+ - Refactor:
+},
+
+
+{
+    Code Formatting Shortcut:
+    Visual Studio Code: Shift + Alt + F
+},
+
+{
+    Common Pager Commands
+    While you're at that : prompt, here are the most common keys you can use:
+    1.	q: Quit (this is the one you need)
+    2.	Spacebar: Move down one full page.
+    3.	Enter: Move down one line.
+    4.	b: Move back (up) one full page.
+    5.	/ then type a word (e.g., /Feat): Search for that word. Press n for the next match or N for the previous one.
+}
