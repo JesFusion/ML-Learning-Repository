@@ -1,0 +1,5 @@
+{
+    1. np.random.rand() is for uniform distribution
+
+    2. np.random.randn() is for normal distribution
+}
