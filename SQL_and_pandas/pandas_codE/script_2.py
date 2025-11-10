@@ -3431,24 +3431,154 @@ print(f'''
 
 
 
+# ============================= setting up connection and extracting dataset  =============================
+
+connection = sqlite3.connect(d_path)
+
+emp_dset = pd.read_sql(
+    "SELECT * FROM Employees",
+
+    connection
+)
+
+con_dset = pd.read_sql(
+    "SELECT * FROM Contractors",
+
+    connection
+)
 
 
+dept_dset = pd.read_sql(
+    "SELECT * FROM Departments",
+
+    connection
+)
 
 
+bon_dset = pd.read_sql(
+    "SELECT * FROM Bonuses",
+
+    connection
+)
+
+wk_log_dset = pd.read_sql(
+    '''SELECT * FROM Work_Logs
+    WHERE status = 'High'
+    AND ((duration_hours BETWEEN 3.0 AND 6.0) OR (project_name LIKE 'Project_A_%'))
+    AND task_code NOT IN ('T-10', 'T-20')
+    AND task_code IS NOT NULL;''',
+    
+    connection
+)
+
+connection.close()
 
 
+# ============================= displaying Original DataFrames =============================
+
+print(f'''
+============================= Original DataFrames =============================
 
 
+============================= Employees DataFrame =============================
+
+{emp_dset.head()}
 
 
+============================= Contractors DataFrame =============================
+
+{con_dset.head()}
 
 
+============================= Departments DataFrame =============================
+
+{dept_dset.head()}
 
 
+============================= Bonuses DataFrame =============================
+
+{bon_dset.head()}
 
 
+============================= Work Logs DataFrame =============================
+
+{wk_log_dset.head()}
+''')
 
 
+# ============================= renaming column names so that concatenation can be successful =============================
+
+con_dset = con_dset.rename(
+    columns = {
+        'contractor_id': 'person_id',
+
+        'full_name': 'name'
+    }
+).assign(status = "Contractor") # a new column was created named status, and each row was filled with "Contractor", as per the assignment request
+
+emp_dset = emp_dset.rename(
+    columns = {
+        'emp_id': 'person_id'
+    }
+).assign(status = "Employee") # a new column was created named status, and each row was filled with "Employee", as per the assignment request
+
+
+# ============================= concatenating the dataframes and merging with other dataframes =============================
+
+master_personnel = pd.concat(
+    [emp_dset, con_dset],
+
+    ignore_index = True
+)
+
+master_personnel = pd.merge(
+    left = master_personnel,
+    right = dept_dset,
+
+    left_on = 'dept_code',
+
+    right_on = 'department_id',
+
+    how = 'left'
+).drop(["department_id"], axis = 1)
+
+
+master_personnel = pd.merge(
+    left = master_personnel,
+    right = bon_dset,
+
+    how = 'left',
+
+    left_on = 'person_id',
+
+    right_on = 'employee_id'
+).drop(["employee_id"], axis = 1)
+
+
+log_counts = wk_log_dset.groupby("person_id")["log_id"].count().reset_index() # log counts counts the number of high-priority logs an employee has gotten. it was a pandas object initially, but reset_index() converted it to a dataframe
+
+
+log_counts = log_counts.rename(columns={'log_id': 'priority_log_count'}) # here, we renamed the column name
+
+# here, we merge log counts to the master_personnel dataframe, as per the assignment request
+master_personnel = pd.merge(
+    master_personnel,
+    log_counts,
+    on='person_id',
+    how='left'
+)
+
+# ============================= printing output of processed master_personnel dataframe =============================
+
+print(f'''
+============================= Master Personnel =============================
+
+{master_personnel.sample(5)}
+
+
+============================= Master Personnel Info =============================
+''')
+master_personnel.info()
 
 
 
