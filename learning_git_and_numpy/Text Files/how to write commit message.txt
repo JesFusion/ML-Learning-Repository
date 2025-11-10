@@ -47,7 +47,12 @@ This is because git log --oneline cuts off after ~50 characters. You want your e
 
 It should be a short summary.
 
-(Pro-tip: Many pros start this with a "type" tag like Feat:, Fix:, Docs:, Style:, Refactor:)
+Pro-tip: Many pros start this with a "type" tag like:
+- Feat:
+- Fix:
+- Docs:
+- Style:
+- Refactor:
 
 The Body (The 72):
 
