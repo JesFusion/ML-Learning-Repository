@@ -1327,6 +1327,86 @@ print(f'''
 
 
 
+np.random.seed(19)
+
+array_a = np.random.randint(32, 54, size = (3, 4))
+
+broadcast_scalar = 0.41
+
+array_b = array_a + broadcast_scalar # the scalar is broadcasted across the matrix, like spraying paint on a wall
+
+print(f'''
+============================= BroadCasting a Scalar =============================
+
+      
+============================= Original Array (array_a) =============================
+      
+{array_a}
+
+Shape: {array_a.shape}
+
+
+============================= BroadCasting 0.41 to array_a =============================
+
+{array_b}
+
+Shape: {array_b.shape}
+''')
+
+
+# ============================= Broadcasting 1D array to 2D array =============================
+
+array_c = np.linspace(3, 4, 9).reshape(3, 3).round(2)
+
+array_d = np.linspace(4, 8, 3)
+
+print(f'''
+============================= BroadCasting a 1D Row Vector on a Matrix =============================
+
+============================= Original Matrix (Shape: {array_c.shape}) =============================
+
+{array_c}
+
+
+============================= Original Vector (Shape: {array_d.shape}) =============================
+
+{array_d}
+
+
+============================= array_c + array_d (Shape: {(array_c + array_d).shape}) =============================
+
+{array_c + array_d} 
+''')
+
+# ============================= Broadcasting a 2D Column Vector to a 2d array =============================
+
+# np.arange() creates an array of vales from a start to a stop
+array_e = np.arange(1, 4).reshape(3, 1)
+
+
+# np.linspace() creates an array with a number of specified elements between a start and a stop
+
+array_f = np.linspace(1, 9, 9).reshape(3, 3)
+
+print(f'''
+============================= Broadcasting a 2d column vector (Matrix + Vector) =============================
+
+============================= Original Vector (Shape: {array_e.shape}) =============================
+
+{array_e}
+
+
+============================= Original Matrix (Shape: {array_f.shape}) =============================
+
+{array_f}
+
+
+============================= array_e + array_f =============================
+
+{array_e + array_f}
+
+Shape: {(array_e + array_f).shape}
+''')
 
 
 
@@ -1367,6 +1447,92 @@ print(f'''
 
 
 
+
+
+
+
+
+
+
+
+np.random.seed(19) # jesse is 19 years old
+
+array_a = np.random.rand(3, 5).round(2)
+
+print(f'''
+============================= Original array_a =============================
+
+{array_a}
+
+============================= array_a * 5.1 =============================
+
+{(array_a * 5.1).round(2)}
+
+
+============================= array_a / 0.119 =============================
+
+{(array_a / 0.119).round(2)}
+
+
+============================= array_a + 3.9 =============================
+
+{(array_a + 3.9)}
+
+
+============================= array_a - 0.14 =============================
+
+{array_a - 0.14}
+
+
+============================= Square Root of array_a =============================
+
+{np.sqrt(array_a)}
+
+
+============================= Exponential of array_a =============================
+
+{np.exp(array_a)}
+
+
+============================= Natural Log of array_a =============================
+
+{np.log(array_a)}
+
+
+============================= Ceil of array_a =============================
+
+{np.ceil(array_a * 10.5134)}
+
+
+============================= Floor of array_a =============================
+
+{np.floor(array_a * 15.2571)}
+''')
+
+
+# ============================= BroadCasting =============================
+
+d1_array = np.linspace(3, 4, 5)
+
+d2_array = np.random.randint(1, 25, size = (5, 5))
+
+print(f'''
+============================= BroadCasting =============================
+      
+
+d1_array: {d1_array}
+
+Shape: {d1_array.shape}
+
+d2_array:
+{d2_array}
+
+Shape: {d2_array.shape}
+
+BroadCasting d1_array to d2_array, we have:
+
+{d2_array + d1_array}
+''')
 
 
 
