@@ -33,4 +33,66 @@
     
     np.random.choice(a, size) generates a random sample from a given 1-D array or sequence a.
     sample_array = np.random.choice(['apple', 'banana', 'cherry'], size=3)
+},
+
+{
+    "Text Styling:"
+
+    - Bold: **text** or __text__
+
+    - Italic: *text* or _text_
+    
+    - Strikethrough: ~~text~~
+
+    - Bold and Italic (nested): **_text_** or ***text***
+
+    - Subscript: <sub>text</sub> (using inline HTML)
+
+    - Superscript: <sup>text</sup> (using inline HTML)
+    
+    - Underline: <ins>text</ins> (using inline HTML) 
+    
+    
+    "Headings and Structure:"
+    - Headings: Use # symbols (H1 to H6)
+    # Heading 1
+    ## Heading 2
+    
+    - Paragraphs: Separate text with a blank line.
+    
+    - Line Breaks: In an .md file, use two trailing spaces or a backslash at the end of a line, or a blank line for a new paragraph.
+
+    - Horizontal Rule: Three or more hyphens (---), asterisks (***), or underscores (___) on a line by themselves.
+
+
+    "Lists:"
+    - Unordered List: Start a line with *, -, or +.
+
+    - Ordered List: Start a line with a number followed by a period (e.g., 1.).
+
+    - Nested Lists: Indent list items with spaces (typically 2 or 4, depending on context).
+
+    - Task Lists (GFM extension): Add checkboxes to list items.
+    - [x] Completed task
+    - [ ] Incomplete task
+
+
+    "Links and Images:"
+    - Links: [Link text](URL) or automatic linking for raw URLs (<http://example.com>).
+    
+    - Images: ![Alt text](Image URL).
+
+    - Relative Links: Links to other files within the same repository automatically work. 
+
+    
+    "Code and Quoting:"
+    - Inline Code: Enclose text in single backticks (`code`).
+    
+    - Fenced Code Blocks: Enclose blocks of code in triple backticks (```).
+
+    - Syntax highlighting is supported by specifying the language after the opening backticks:
+    ```python.
+    Blockquotes: Preface text with >.
+    > Quoted text
+    ```
 }
