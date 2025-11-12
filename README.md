@@ -1,19 +1,19 @@
-Libraries
+# Welcome to my Repo: `ML-Learning-Repository`
 
-This folder is a personal collection of small learning projects, reference notes, and example code used while learning and practicing Python, NumPy, SQL, and pandas. The materials are organized loosely by topic and are intended as lightweight, runnable examples and notes you can read and adapt.
+This Repo is a personal collection of small learning projects, reference notes, and example code used while learning and practicing the langiages and tools needed to become a __*Machine Learning Enginner*__. The materials are organized loosely by topic and are intended as lightweight, runnable examples and notes you can read and adapt.
 
 ## Contents (high-level)
 
-- `General things to Note.txt` — Short notes and reminders about development or the collection.
-- `README.md` — (this file) overview of the folder and guidance.
+- `General things to Note.txt` — Short notes and reminders about ML python development in general.
+- `README.md` — (this file) overview of the repo and guidance.
 - `learning_git_and_numpy/` — Primary learning projects and example scripts for NumPy and related topics.
   - `numpy-learning-project/` — Series of short example scripts (01..17 and extras) that demonstrate NumPy array creation, indexing, broadcasting, ufuncs, and small image-processing examples. Each file is a self-contained script intended for exploration and learning.
     - Example files: `01_first_array.py`, `02_array_creation.py`, `07_array_indexing.py`, `09_image_processor.py`, `12_vectorization.py`, etc.
-  - `things to note.txt` — Misc notes related to the examples in this folder.
-- `Text Files/` — A small set of text documents and a CSV included for reference or toy data (`Dirty_Dataset_.csv`, `assignment.txt`).
+  - `things to note.txt` — Misc notes related to the examples in this folder and git markdown formatting procedure.
+- `Text Files/` — A small set of text documents (`how to write commit message.txt`, `assignment.txt`).
 - `SQL_and_pandas/` — Examples and small utilities showing simple database generation and pandas workflows.
   - `database_generator/` — Scripts to programmatically build example SQL files and demonstrate building a small test database.
-    - `build_database.py`, `run_database_build.py`, and helper modules. Generated SQL files are stored in `generated_sql_files/`.
+    - `build_database.py`, `run_database_build.py`, and helper modules. The database where the tables are generated in is located at [sQL_CoDe/my_database.db](https://github.com/JesFusion/ML-Learning-Repository/blob/main/SQL_and_pandas/sQL_CoDe/my_database.db).
   - `pandas_codE/` — Short pandas scripts and notes demonstrating data manipulation patterns (`Gemini_Code.py`, `script_1.py`, `script_2.py`).
   - `sQL_CoDe/` — SQL snippets and an example notebook (`learn_sql.ipynb`) containing basic SQL learning material.
 
@@ -32,8 +32,11 @@ Typical quick-start steps (assumes you have Python 3.8+ installed):
 3. Run an example script with `python 01_first_array.py` or open an example in VS Code.
 
 Notes:
-- These examples intentionally avoid heavy, pinned dependencies. If you need pandas or NumPy, install them in your environment: `pip install numpy pandas`.
-- Some files (the notebook `learn_sql.ipynb`) require Jupyter to view/run.
+- These examples intentionally avoid heavy, pinned dependencies. If you need pandas or NumPy, install them in your environment:
+```
+pip install numpy pandas
+```
+- Some files (the notebook `learn_sql.ipynb`) require [Jupyter](https://jupyter.org/install) to view/run.
 
 ## File highlights and short descriptions
 
