@@ -13,7 +13,7 @@ This Repo is a personal collection of small learning projects, reference notes, 
 - `Text Files/` — A small set of text documents (`how to write commit message.txt`, `assignment.txt`).
 - `SQL_and_pandas/` — Examples and small utilities showing simple database generation and pandas workflows.
   - `database_generator/` — Scripts to programmatically build example SQL files and demonstrate building a small test database.
-    - `build_database.py`, `run_database_build.py`, and helper modules. The database where the tables are generated in is located at [sQL_CoDe/my_database.db](https://github.com/JesFusion/ML-Learning-Repository/blob/main/SQL_and_pandas/sQL_CoDe/my_database.db).
+    - `build_database.py`, `run_database_build.py`, and helper modules. The database where the tables are generated in is located at [sQL_CoDe/my_database.db](SQL_and_pandas/sQL_CoDe/my_database.db).
   - `pandas_codE/` — Short pandas scripts and notes demonstrating data manipulation patterns (`Gemini_Code.py`, `script_1.py`, `script_2.py`).
   - `sQL_CoDe/` — SQL snippets and an example notebook (`learn_sql.ipynb`) containing basic SQL learning material.
 
