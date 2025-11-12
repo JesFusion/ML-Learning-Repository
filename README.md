@@ -34,7 +34,11 @@ Typical quick-start steps (assumes you have Python 3.8+ installed):
 Notes:
 - These examples intentionally avoid heavy, pinned dependencies. If you need pandas or NumPy, install them in your environment:
 ```
-pip install numpy pandas
+pip install numpy pandas jupyter
+```
+or use the `requirements.txt` file:
+```
+pip install -r requirements.txt
 ```
 - Some files (the notebook `learn_sql.ipynb`) require [Jupyter](https://jupyter.org/install) to view/run.
 
