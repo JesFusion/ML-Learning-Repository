@@ -5,5 +5,7 @@
 },
 
 {
-    
+    RULE:
+    - loc uses index to locate rows
+    - iloc uses number to locate rows
 }
