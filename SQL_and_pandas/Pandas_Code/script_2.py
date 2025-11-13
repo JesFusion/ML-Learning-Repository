@@ -4207,3 +4207,38 @@ I think .dt.weekday is good for training models (i'm not sure though, because th
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
