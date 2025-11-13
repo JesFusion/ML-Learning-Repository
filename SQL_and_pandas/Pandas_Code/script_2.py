@@ -3625,40 +3625,93 @@ master_personnel.info()
 
 
 
+# ============================= connecting to the database and extracting the table =============================
+
+print("Connecting to DataBase...")
+time.sleep(2)
 
 
+connection = sqlite3.connect(d_path)
+
+the_dataset = pd.read_sql(
+    "SELECT * FROM sales LIMIT 311",
+
+    connection
+)
+
+connection.close()
 
 
+the_dataset.set_index('Order ID', inplace = True)
+
+print(f'''
+============================= Original Dataset =============================
+
+{the_dataset.sample(6)}
+
+============================= Original Dataset Info =============================
+''')
+
+the_dataset.info()
 
 
+print(f'''
+============================= Original `Sale Date` Column =============================
+
+{the_dataset['Sale Date'].sample(6)}
 
 
+============================= Converted Dataset Info =============================
+''')
 
 
+# now we'll comvert the 'sale date' column to a datetime object
+
+the_dataset['Sale Date'] = pd.to_datetime(the_dataset['Sale Date'])
+
+the_dataset.info()
 
 
+print(f'''
+============================= Converted 'Sale Date' column (to DATETIME) =============================
+
+{the_dataset['Sale Date'].sample(6)}
+''')
 
 
+# ============================= exploring datetime features using .dt =============================
 
 
+# the lines of code below enable us to extract information from the "Sale Date" column and move them to new columns, using '.dt'
 
+the_dataset['sale_month'] = the_dataset['Sale Date'].dt.month
 
+the_dataset['sale_month_name'] = the_dataset['Sale Date'].dt.month_name()
 
+the_dataset['sale_weekday'] = the_dataset['Sale Date'].dt.weekday
 
+the_dataset['sale_day_name'] = the_dataset['Sale Date'].dt.day_name()
 
+the_dataset['sale_year'] = the_dataset['Sale Date'].dt.year
 
+# now, let's view the entire DataFrame
 
+print(f'''
+============================= Final DataFrame with new features (sale_month, sale_weekday, sale_day_name, sale_year) =============================
+      
+{the_dataset.sample(6)}
+''')
 
+'''
+.dt.weekday represents the day as a number:
+ - Monday = 0
+ - Tuesday = 1
+ - Wednesday = 2, and so on...
 
+.dt.day_name() gives you the actual name of that day
 
-
-
-
-
-
-
-
-
+I think .dt.weekday is good for training models (i'm not sure though, because these numbers are not meant for performing mathematical operations on), while .dt.day_name() is good for understanding your dataset
+'''
 
 
 
