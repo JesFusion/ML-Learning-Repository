@@ -8,4 +8,9 @@
     RULE:
     - loc uses index to locate rows
     - iloc uses number to locate rows
+},
+
+
+{
+    Rule: NEVER use f-strings or + to put user variables in a SQL query. ALWAYS use "params = "
 }

@@ -36,7 +36,3 @@
     The Fix: If you want to see Store and Product, you must tell the database to group by both: GROUP BY Store, Product. This will give you the SUM for (Store_A, Apples), (Store_A, Oranges), etc.
 },
 
-{
-    Rule: NEVER use f-strings or + to put user variables in a SQL query. ALWAYS use "params = "
-}
-
