@@ -4202,6 +4202,100 @@ print(f"Total Revenue (calculated in SQL): {total_revenue:.2f}")
 
 
 
+d_engine = create_engine(f"sqlite:///{d_path}")
+
+
+# pd.read_sql_table() is a very ineffient way because it simply loads the entire table and dumps it on your memory. It's probably meant for people with gangster computers
+
+dataset_table1 = pd.read_sql_table("sales", d_engine)
+
+print(f'''
+============================= Table after using pd.read_sql_table() =============================
+
+{dataset_table1.head().to_markdown(index = False)}
+''')
+
+
+# pd.read_sql_query() is much better. It let's you run a query so you won't have to extract everything. Built for broke but smart devs like us
+
+
+query_1 = """
+    SELECT Store, Product, SUM(Sales) AS t_revenue
+    FROM sales
+    GROUP BY Store, Product -- all non-aggregate columns must be grouped!
+    ORDER BY Store, t_revenue DESC;
+"""
+
+dataset_table2 = pd.read_sql_query(query_1, d_engine)
+
+
+print(f'''
+============================= Table after using pd.read_sql_query() =============================
+
+{dataset_table2.to_markdown()}
+''')
+
+
+# now, let's talk about the demon called "SQL INJECTION"
+
+"""
+What if you let a user type in the store they want to see?
+
+- The BAD Way (f-strings): You (the programmer) naively "glue" their input into your query. user_input = "Store_A" query = f"SELECT * FROM sales WHERE Store = '{user_input}'" This looks fine.
+
+The ATTACK: What if a malicious user types this into the search box? user_input = "Store_A'; DROP TABLE Employees; --"
+
+The RESULT: Your f-string builds this query and sends it to the database: SELECT * FROM sales WHERE Store = 'Store_A'; DROP TABLE Employees; --' Your database will run this. It will select from sales, and then it will PERMANENTLY DELETE YOUR ENTIRE Employees TABLE. This is a company-killing mistake.
+
+
+
+The Solution: params= (The "Safe")
+
+The GOOD Way: You never glue strings. You use a placeholder (?) and the params argument. query = "SELECT * FROM sales WHERE Store = ?" df = pd.read_sql_query(query, engine, params=[user_input])
+
+How it Works (The "Safe" Analogy): This method sends the "query template" (...WHERE Store = ?) and the "data" (Store_A'; DROP TABLE...) to the database in two separate, sealed boxes. The database knows the query is the command and the params are just data. It will literally search for a store named "Store_A'; DROP TABLE...". It won't find one, and it won't execute the command. The DROP TABLE command is never executed. It is treated as harmless text.
+
+NEVER use f-strings or + to put user variables in a SQL query. ALWAYS use params=.
+"""
+
+
+
+user_input = input("Enter a store to obtain it's sales: ")
+
+print("Processing...")
+time.sleep(3)
+
+# we'll use the place-holder "?" for the user's data. REMEMBER not to use an f-string
+
+query_2 = """
+    SELECT Store, Product, Sales
+    FROM sales
+    WHERE Store = ?
+    ORDER BY Sales DESC
+    LIMIT 50
+"""
+
+
+# let's use params...
+
+dataset_table3 = pd.read_sql_query(
+    query_2,
+
+    d_engine,
+
+    params = (user_input,) # the database is expected to search for the inputed store, not add it to the query which can be dangerous. Notice the trailing comma after the user input. Omitting it would result to an error
+)
+
+
+# let's print the output for the user
+
+print(f'''
+============================= Safely Loaded top 5 sales for "{user_input}" =============================
+
+{dataset_table3.head().to_markdown(index = False)}
+''')
+
+
 
 
 
