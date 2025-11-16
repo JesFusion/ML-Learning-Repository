@@ -95,4 +95,10 @@
     Blockquotes: Preface text with >.
     > Quoted text
     ```
+},
+
+{
+    samples = rows
+
+    features = columns
 }
