@@ -92,7 +92,8 @@ print(f'''
 New Mean: {NM_dataset.mean(axis = 0).round(2)}
 ''')
 
-
+# let's create fake data for targets...
+# we'll use a random normal distribution creator to create the data
 
 targets = np.random.randn(6, 4)
 
