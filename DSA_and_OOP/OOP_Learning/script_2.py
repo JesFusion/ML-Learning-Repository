@@ -565,3 +565,81 @@ Question 3. In your own words, why is the OOP solution in Part 2 better and more
 Answer: Well for starters, i don't have to create a new dictionary manually each time i want to create a book, and i don't have to create a new library manually whenever i need a container for my books
 """
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# the "CLASS" keyword
+
+class HumanBody:
+
+    """
+    A simple Jesse Class
+
+    Currently it's set to doing absolutely nothing
+    """
+
+    pass # pass is like telling python to do nothing and just move along, but don't crash
+
+
+
+# INSTANTIATING A CLASS:
+# instantiating a class is like building something new using the class blueprint
+
+
+person_1 = HumanBody()
+
+person_2 = HumanBody()
+
+print(f'''
+Instantiated first person: {person_1}
+
+Instantiated second person: {person_2}
+
+Type: {type(person_1)}
+''') # notice that the memory address (0x...) for the two objects are different, meaning that they're different things in memory
+
+# let's verify if they are instances of the class...
+
+print(f"Is person_1 a person? {isinstance(person_1, HumanBody)}")
+
