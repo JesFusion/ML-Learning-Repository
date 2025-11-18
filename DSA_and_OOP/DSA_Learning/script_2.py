@@ -1,3 +1,6 @@
+
+import time
+
 print("\n============================= Practicing Python's Built-in Data Structures =============================\n")
 
 # let's practice the different data structures python provided us...
@@ -126,3 +129,148 @@ a_set.discard("Kano") # "discard" does nothing if the item to be removed doesn't
 print(f'''
 Final Set after adding and removing items: {a_set}
 ''')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ==> Big O Analysis
+
+
+# O(1) --> Constant Time
+def ac_first_item(a_list: list) -> str:
+
+    # This function returns the first item from a list
+
+    if not a_list:
+        return None
+    
+    return a_list[0] # this returns the first item of any list
+
+
+S_list = [True, "a", "f", 4.5]
+
+L_list = list(range(1000000))
+
+# it takes the same amount of time to get the first item from the small and large list
+
+print(f'''
+============================= O(1) --> Constant Time =============================
+First Item from small list: {ac_first_item(S_list)}
+
+First Item from large list: {ac_first_item(L_list)}
+''')
+
+
+# O(2) --> Linear Time
+
+# here the runtime grows linearly with the number of inputs. As input size increases, the run time increases
+
+def item_find_in_list(a_list: list, find_item):
+
+    """Searches a list for an item by checking one by one.
+    This is called a "Linear Search."
+    """
+
+    # go through each element of the list one by one. If you find the item, return True. If not, return False
+
+    # Notice we didn't use an else statement for returning False. This is because when the for loop returns True, it immediately exits the function 
+
+    for an_item in a_list:
+
+        if an_item == find_item:
+
+            return True
+
+    return False # return false if you didn't find anything
+
+s_t_s = time.time()
+
+print(f'''
+============================= O(n) --> Linear Time =============================
+
+Searching small list (n = {len(S_list)}): {item_find_in_list(S_list, 4.5)}
+''')
+
+s_t_e = time.time()
+
+print(f"Searching large list (n = {len(L_list)}): {item_find_in_list(L_list, -1)}")
+
+l_t_e = time.time()
+
+
+print(f'''
+Small list time duration: {s_t_e - s_t_s}
+
+Large list time duration: {l_t_e - s_t_e}
+''') # notice that the larger list took a longer time to go through it entirely. It may be a fraction of a second, but when handling large databases, it'll take longer than that
+
