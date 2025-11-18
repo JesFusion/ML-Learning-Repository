@@ -261,3 +261,307 @@ user_diana.deposit_money(-119)
 
 user_diana.deposit_money(13119)
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Procedural Programming
+
+
+book_shelf = []
+
+book = {
+    "title": None,
+
+    "author": None
+}
+
+def add_procedural_book(title, author):
+
+    global book, book_shelf
+
+    print(f'\nAdding book "{title}" to the book shelf...')
+
+    book["title"] = title
+
+    book["author"] = author
+
+    book_shelf.append(book)
+
+    return print(f"\nBook added successfully!\nHere's the shelf:\n{book_shelf}")
+
+
+
+
+
+
+def find_procedural_book(title):
+
+    global book_shelf
+
+    print(f'\nSearching for book "{title}"...')
+
+    for a_book in book_shelf:
+
+        if a_book["title"] == title:
+
+            return print(f'Book "{title}" has been found!\nHere it is\n{a_book}')
+
+
+        
+    return print(f"Book {title} not found. Please try another book")
+
+
+
+
+
+add_procedural_book("Kelly", "Lingah")
+
+add_procedural_book("Rango", "Miley")
+
+find_procedural_book("kaild")
+
+find_procedural_book("Rango")
+    
+
+
+
+
+
+
+
+
+# Object-Oriented Programming
+
+
+class Library:
+
+    def __init__(self):
+        self.book_shelf = []
+
+    
+    def add_book(self, the_book):
+
+        print(f'\nAdding book "{the_book["title"]}" to the book shelf...')
+
+        self.book_shelf.append(the_book)
+
+
+        print(f"\nBook added successfully!\nHere's the shelf:\n{self.book_shelf}")
+
+    def find_book(self, book_title):
+
+        print(f'\nSearching for book "{book_title}"...')
+
+        for a_book in self.book_shelf:
+
+            if a_book["title"] == book_title:
+               
+                return a_book
+
+
+        return None
+
+    def change_book_status(self, bkT,  procedure):
+
+        if procedure == "in":
+            
+            for TT_book in self.book_shelf:
+
+                if TT_book["title"] == bkT:
+                    
+                    TT_book["status"] = "available"
+
+                    return print(f'\nStatus of Book "{bkT}" changed to "available"')
+
+                else:
+
+                    continue
+
+
+        elif procedure == "out":
+
+            
+            for the_book in self.book_shelf:
+
+                if the_book["title"] == bkT:
+                    
+                    the_book["status"] = "checked out"
+
+                    return print(f'\nStatus of Book "{bkT}" changed to "checked out"')
+
+                else:
+                    
+                    continue
+            
+
+
+
+class Book:
+
+    the_library = Library()
+    
+    def __init__(self, book_title = None, book_author = None, book_status = "available", library = the_library):
+
+        # assigning variables to the object...
+
+        self.title = book_title
+
+        self.author = book_author
+
+        self.status = book_status
+
+        self.the_library = library
+
+        self.book = {
+            "title": self.title,
+
+            "author": self.author,
+
+            "status": self.status
+        }
+
+        if self.title is not None:
+            self.the_library.add_book(the_book = self.book)
+
+      
+
+
+    def check_out(self, Book_title):
+        self.the_library.change_book_status(bkT = Book_title, procedure = "out")
+    
+
+    def check_in(self, Book_title):
+
+        self.the_library.change_book_status(bkT = Book_title, procedure = "in")
+
+
+
+    def book_search(self, bk_title):
+
+        the_result = self.the_library.find_book(book_title = bk_title)
+
+        if the_result:
+
+            print(f'Book "{bk_title}" has been found!\nHere it is\n{the_result}')
+
+        else:
+            print(f"Book \"{bk_title}\" not found. Please try another book")
+
+
+
+
+
+
+oriley_book = Book("O-Pyhsics", "Oriley")
+
+disney_book = Book("Aladdin", "Disney")
+
+zv_book = Book("Lioness", "Zonder Van", book_status = "checked out")
+
+v_book = Book("Linak", "Zonn Lenn")
+
+Book().book_search("Lioness")
+
+Book().book_search("Mank")
+
+Book().check_out("Linak")
+
+Book().check_in("Lioness")
+
+
+kinka = Library()
+
+zv_book = Book("Bulonait", "Mandpqn", book_status = "checked out", library = kinka)
+
+alakan = Book("Pioneer", "Zodln", library = kinka)
+
+
+"""
+Question 1. Look at your find_procedural_book and your Library's "find a book" method. What is the Time Complexity (Big O notation) of this search?
+
+Answer: Linear Time
+
+Question 2. Why does it have this Big O notation? What is the "worst-case" scenario that you are measuring?
+
+Answer: The worst thing that could happen is having the book you're looking for at the end of a list of 10,000,000,000 elements, or not even there. I'll personally mourn your laptop
+
+Question 3. In your own words, why is the OOP solution in Part 2 better and more "maintainable" than the procedural solution in Part 1?
+
+Answer: Well for starters, i don't have to create a new dictionary manually each time i want to create a book, and i don't have to create a new library manually whenever i need a container for my books
+"""
+
