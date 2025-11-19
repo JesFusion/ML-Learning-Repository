@@ -130,8 +130,6 @@ a_set.discard("Kano") # "discard" does nothing if the item to be removed doesn't
 print(f'''
 Final Set after adding and removing items: {a_set}
 ''')
-<<<<<<<<< Temporary merge branch 1
-=========
 
 
 
