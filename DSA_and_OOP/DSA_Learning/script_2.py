@@ -200,11 +200,6 @@ Final Set after adding and removing items: {a_set}
 
 
 
-
-
-
-
-
 # ==> Big O Analysis
 
 
@@ -275,5 +270,182 @@ Small list time duration: {s_t_e - s_t_s}
 
 Large list time duration: {l_t_e - s_t_e}
 ''') # notice that the larger list took a longer time to go through it entirely. It may be a fraction of a second, but when handling large databases, it'll take longer than that
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Space Complexity Analysis
+
+
+# 1. O(1) Space - Constant Space
+
+def sum_calc(the_list: list) -> int:
+
+    total_num = 0
+
+    for a_number in the_list:
+
+        total_num += a_number
+
+    return int(total_num) # it just outputs one variable, which means  constant space
+
+
+# 2. O(n) Space --> Linear Space
+# memory usage grows linearly with input
+
+def l_element_double_list(the_list: list) -> list:
+
+    list_of_double = []
+
+    for number in the_list:
+
+        list_of_double.append(number * 2)
+
+    return list_of_double
+
+
+# ============================= example of space-time trade off =============================
+
+"""
+Note:
+- Low space, more time for algorithm to sun
+- High space, less time for algorithm to sun
+"""
+
+# let's test this out by building a slow and fast algorithm for look for an element in a list
+
+def s_check(the_list: list, the_element): # s_check means slow check
+
+    return the_element in the_list
+
+
+def f_check(the_list): # f_check means fast check. It'll cost more memory
+
+    set_search = set(the_list)
+
+    return set_search
+
+
+
+# now let's run the code...
+
+# ============================= Testing the algorithms =============================
+
+
+p_list = list(range(34))
+
+# O(1) Space check...
+
+values_sum = sum_calc(p_list)
+
+# O(n) space check...
+
+l_double = l_element_double_list(p_list)
+
+# time before slow search
+t_1 = time.time()
+
+# slow search with low memory
+s_search = s_check(p_list, 20)
+
+# time after slow search and before fast search
+t_2 = time.time()
+
+# fast search with high memory
+f_search = f_check(p_list)
+
+
+# time after fast search
+t_3 = time.time()
+
+
+print(f'''
+============================= Testing the algo's =============================
+      
+Input Data: {p_list}
+
+Sum (O(1)) Space: {values_sum}
+
+Double List (O(n)) Space: {l_double}
+
+Slow search result: {s_search}
+Time: {t_2 - t_1}
+
+Fast search result: {f_search}
+Time: {t_3 - t_2}
+
+Is 29 in set? {29 in f_search}
+''') # f_search is now O(1) (Constant) Time
+
 
 
