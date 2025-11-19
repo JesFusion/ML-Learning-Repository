@@ -261,3 +261,154 @@ user_diana.deposit_money(-119)
 
 user_diana.deposit_money(13119)
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class Person:
+
+    """
+    ## A class to create a person object
+
+    ### Parameters:
+    - `name`: The name of the person being created
+    - `age`: The age of the person
+    - `gender`: The sex of the person (male or female)
+    - `height`: The height of the person
+    """
+
+    # the __init__ method is called whenever we instantiate a class
+
+    # self is always the first parameter and refers to the object being created
+
+    def __init__(self, name, age, gender, height):
+
+        print(f"Creating new body for {name}...")
+
+        self.na_me = name # interpreted as "attach the attribute 'na_me' to the object being created, it's value is gotten from the 'name' variable"
+        
+        self.a_ge = age
+        
+        self.gen_der = gender
+        
+        self.hei_ght = height
+
+        self.nationality = "Nigerian" # we can also set constant values in the class
+
+        # If we did NOT use 'self' (e.g., just 'nationality = Nigerian'), the variable
+        # would act like a normal local variable: it would vanish as soon 
+        # as the __init__ function finished running!
+
+        print(f'''
+Body successfully created!
+Name: {self.na_me}
+Age: {self.a_ge}
+Gender: {self.gen_der}
+Height: {self.hei_ght}
+        ''')
+
+
+    def grow_tall(self, increase):
+
+        # we use self.hei_ght to access the specific object's height
+
+        self.hei_ght = self.hei_ght + increase
+
+        print(f"{self.na_me} just grew by {increase}m. Total height is {self.hei_ght}m")
+
+
+# let's instantiate the class by creating objects
+
+print("\n============================= Instantiating Person Objects =============================\n")
+
+person_1 = Person("Jesse", 19, "male", 4.5)
+
+person_2 = Person("Favour", 23, 'female', 3.1)
+
+# each instance/object has it's own data...
+
+print(f'''
+============================= Person Objects and their data =============================
+
+person_1 Name: {person_1.na_me}
+person_1 Height: {person_1.hei_ght}
+
+person_2 Name: {person_2.na_me}
+person_2 Height: {person_2.hei_ght}
+''')
+
+
+# we modify object states using methods
+
+# calling a method only changes the data for that instance
+
+person_2.grow_tall(1.5)
+
+print(f'''
+person_1 Height: {person_1.hei_ght}
+
+person_2 Height: {person_2.hei_ght}
+''') # person_1's height remains unchanged, while that of person_2 has been modified
