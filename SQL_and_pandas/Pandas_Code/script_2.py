@@ -5,7 +5,7 @@ from jesse_custom_code.pandas_file import random_missing_fill as rmf
 import sqlite3
 from sqlalchemy import create_engine
 import time
-from jesse_custom_code.pandas_file import database_path as d_path
+from jesse_custom_code.pandas_file import database_path as d_path, brief_table
 
 
 a_series = pd.Series([-1, 3, 3.4, "erre", True, None, 6, 0])
@@ -4478,3 +4478,157 @@ print(f"""
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# creating engine that'll connect us to the database
+database_engine = create_engine(f"sqlite:///{d_path}")
+
+
+print(f'Connected to "{d_path[-14:]}"...')
+
+
+dataset = pd.read_sql_query(
+    "SELECT * FROM sales LIMIT 769", database_engine
+)
+
+total_product_sales = dataset.groupby("Product")["Sales"].sum().reset_index() # here, we group the daraframe by Products and find the total sales for each group. .reset_index() converts the result to a DataFrame
+
+# renaming the columns for total_product_sales...
+total_product_sales.columns = ["Product Name", "Total Profit"]
+
+print(f'''
+============================= Original Dataset =============================
+
+{brief_table(dataset, index = False)}
+
+============================= Total Sales per Product =============================
+
+{brief_table(total_product_sales, index = False)}
+''')
+
+# let's add the result to the sql database
+total_product_sales.to_sql(
+    name = "sum_products",
+    con = database_engine,
+    if_exists = "replace", # "replace" deletes the table if it already exists in the database and adds a new one
+    index = False
+)
+
+# the table has been successfully created on the database
+
+# let's verify it's existence
+
+sum_sales_extract = pd.read_sql(
+    "SELECT * FROM sum_products",
+
+    database_engine
+)
+
+
+print(f'''
+============================= Extracting the table we created on the database =============================
+
+{brief_table(sum_sales_extract)}
+''')
+
+# let's add new data to the created SQL table
+
+row = pd.DataFrame({
+    "Product Name": ["Soursop"],
+    "Total Profit": [65812.4]
+})
+
+# let's add to the table
+
+row.to_sql(
+    if_exists = "append", # add the row we created to the end of the existing table
+    name = "sum_products",
+    con = database_engine,
+    index = False
+)
+
+
+# extract the table again and check if it worked
+
+print(f'''
+============================= Extracting the Table Again =============================
+
+{
+    brief_table(
+        pd.read_sql(
+        "SELECT * FROM sum_products",
+        database_engine
+        ),
+
+        index = False
+    )
+}
+''')
