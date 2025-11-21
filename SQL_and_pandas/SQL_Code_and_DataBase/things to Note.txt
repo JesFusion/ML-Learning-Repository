@@ -36,3 +36,7 @@
     The Fix: If you want to see Store and Product, you must tell the database to group by both: GROUP BY Store, Product. This will give you the SUM for (Store_A, Apples), (Store_A, Oranges), etc.
 },
 
+{
+    If you are filtering on an aggregate function (like SUM(Sales) or COUNT(*)), you MUST use HAVING
+},
+
