@@ -194,3 +194,8 @@
 {
     NEVER, EVER, EVER use "git reset --hard" on a branch that you have pushed and shared with a team (like main). If you do, you're "burning" pages that your teammates might have!
 },
+
+
+{
+    NEVER rebase a public branch (like main). Only rebase your own local feature branches before you push them. Rewriting public history breaks everyone else's work.
+}
