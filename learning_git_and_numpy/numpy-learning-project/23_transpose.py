@@ -18,7 +18,33 @@ print(f'''
 ''')
 
 
+# we normally use transpose to make dot products work
 
 
+b_matrix = a_matrix.copy()
+
+dot_product = None
+
+try:
+
+    dot_product = np.dot(a_matrix, b_matrix) # here we use b_matrix normally
+
+    print(f'''
+Dot Product of Matrix A and B worked and we didn't need to transpose!
+          
+Result:
+{dot_product}
+    ''')
+
+except Exception:
+
+    dot_product = np.dot(a_matrix, b_matrix.T) # here we transpose b_matrix
+
+    print(f'''
+Dot Product of Matrix A and B didn't work and we needed to transpose!
+
+Result:
+{dot_product}
+    ''')
 
 
