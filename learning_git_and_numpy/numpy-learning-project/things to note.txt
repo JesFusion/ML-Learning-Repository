@@ -198,4 +198,40 @@
 
 {
     NEVER rebase a public branch (like main). Only rebase your own local feature branches before you push them. Rewriting public history breaks everyone else's work.
+},
+
+{
+    Git LFS (Large File Storage)
+
+    Git LFS is an extension that tricks Git.
+
+    When you git add huge_model.pt, LFS steps in.
+
+    It takes the actual 200MB file and uploads it to a separate, specialized server.
+
+    It replaces the file in your Git repo with a tiny pointer file (text) that says: "The real file is over there at this address."
+
+    Git tracks the tiny pointer (fast/small). LFS manages the big blob.
+
+    The Workflow (One-Time Setup per Repo):
+
+    Install (Once per computer): git lfs install
+
+    Track (Once per file type): Tell LFS which files to handle.
+
+    git lfs track "*.h5" (Tracks all HDF5 model files)
+
+    git lfs track "*.csv" (Tracks all CSVs)
+
+    This creates a .gitattributes file (like .gitignore).
+
+    Commit & Push:
+
+    git add .gitattributes (Commit the tracking config)
+
+    git add my_huge_model.h5
+
+    git commit -m "Add model"
+
+    git push (LFS handles the upload automatically).
 }
