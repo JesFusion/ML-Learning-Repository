@@ -975,3 +975,295 @@ You're just creating a new instance attribute called "server_region" for that pa
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# create a Simple Linear Regression class 
+class SimLinReg:
+
+    """
+    ## SimpleLinearRegression
+    A `class` representing a basic linear regression model: y = mx + c
+    """
+
+    # methods are special functions inside a class that gives an instance of the class certain abilities. The __init__ method is automatically run whenever you instantiate a class
+
+    def __init__(self, l_rate):
+
+        self.learning_rate = l_rate
+
+        self.model_weights = 0.0
+
+        self.model_bias = 0.0
+
+        self.is_model_trained = False
+
+    
+    def train_model(self, iter):
+
+        """
+        ## Simulates the training process (The Behavior).
+        
+        Args:
+            - iterations (int): How many times to update the weights.
+        """
+
+        print(f"\nStarting training for {iter} iterations...")
+
+        # let's simulate a training loop
+
+        for x in range(1, iter + 1):
+
+            self.model_weights += (self.model_weights * 0.78)
+
+            self.model_bias += (self.model_bias * 0.53)
+
+        
+        self.is_model_trained = True
+
+        print("\nTraining Complete!")
+
+    # a method for the model to predict a value
+    def model_predict(self, val) -> float:
+
+        """
+        ### Makes a prediction using y = mx + c.
+        
+        Args:
+            input_value (float): The input 'x'.
+            
+        Returns:
+            float: The predicted 'y'.
+        """
+
+        if not self.is_model_trained:
+
+            print(f"Model is not yet trained. Status: {self.is_model_trained}")
+
+        model_pred = (self.model_weights * val) + self.model_bias
+
+        return model_pred
+
+
+# let's call the class, train and predict with a model
+ai_model = SimLinReg(l_rate = 0.01)
+
+ai_model.train_model(iter = 39)
+
+pred_result = ai_model.model_predict(val = 7.5)
+
+print(f"\nPrediction for input 7.5: {pred_result:.3f}")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class SecureModelLoad:
+
+    def __init__(self, m_name, API_key):
+        
+        # PUBLIC ATTRIBUTE
+        self.model_name = m_name # there was no underscore in front of this instance attribute. This means is public, meaning it can be accessed and altered by anyone
+
+
+        # PROTECTED ATTRIBUTE
+        self._model_status = "instantiating" # one underscore in front of an attribute protects that attribute, but it can still be accessed.
+        # Think of it as a way to tell others that this attribute isn't meant to be touched, but you can if you know what you're doing
+
+
+        # PRIVATE ATTRIBUTE
+        self.__api_key = API_key # two underscores in front of the attribute shows we seriously want to prevent others from accessing or altering the attribute. Python mangles the attribute name so nobody can touch it
+
+    
+    def connect_hub(self):
+
+        """
+        Uses the `private key` to 'connect' (simulate connection).
+        """
+
+        print(f"Connecting to Model Hub using key: {self.__api_key}...")
+
+        self._model_status = "connected"
+
+    
+    def check_its_status(self):
+
+        return self._model_status # we can create a method to make others only be able to view an attribute without being able to alter it
+    
+
+# let's instantiate the class
+
+model_loader = SecureModelLoad("Gemini-3/5", API_key = "efbu#**#24u!83t89q#$3hgnw4")
+
+print(f'''
+Loading Model: {model_loader.model_name}
+
+Current Status (accessing directly): {model_loader._model_status}
+''') # it's Possible to access protected attribues directly. But co-devs and some IDE's will warn you against it
+
+# let's try to access the private attribute
+
+try:
+
+    print(f"\n{model_loader.__api_key}")
+
+except AttributeError as an_error:
+
+    print(f"\nAn error occured due to a private attribute being accessed. Check it out --> {an_error}\n")
+
+
+# there's a secret way to access private attribues. When you create a private attribue, python mangles it to "_{class name}__{secret attribue}"
+
+# let's try to access __api_key this way...
+
+print(f"API key: {model_loader._SecureModelLoad__api_key}")
+
+
+
+
+
