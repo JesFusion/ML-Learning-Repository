@@ -1,5 +1,7 @@
 # Procedural Programming (a simple list of instructions) gets messy and hard to maintain ("spaghetti code") because data is global and separate from the functions that use it.
 import random
+from abc import ABC, abstractmethod
+import numpy as np
 
 the_name, the_balance = "Jesse", 1000
 
@@ -1262,6 +1264,396 @@ except AttributeError as an_error:
 # let's try to access __api_key this way...
 
 print(f"API key: {model_loader._SecureModelLoad__api_key}")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class TrainingConfiguration:
+
+    """
+    ## Configuration Management
+    Manages configuration for a training run.
+    Demonstrates Pythonic encapsulation using @property.
+    """
+
+    def __init__(self, l_rate, l_epochs):
+        
+        # we use a protected attribute to store the actual data, then use a public attribute to trigger validation and prevent check bypassing
+        self._learning_rate = None
+
+        self._learning_epochs = None
+
+        # let's use public attribute so we can't bypass checks
+        self.learning_rate = l_rate
+        self.learning_epochs = l_epochs
+
+        self._exp_ID = "experiment_000"
+
+    
+    # ============================= GETTER =============================
+
+    # the getter is called when you want to view the value of the attribute. Setting only the getter for a method makes the method read-only, meaning it's value can't be modified
+
+    @property
+    def the_learning_rate(self):
+
+        """
+        ### Learning Rate Retrieval
+        Retrieves the learning rate.
+        Usage: `config.learning_rate` (no parentheses!)
+        """
+
+        return self._learning_rate
+
+
+    # ============================= SETTER =============================
+
+    # the setter is called when you want to modify the value of the attribute. It's normally used to write complex logic, that verifies the authenticity and state of the new value before modifying the attribute
+
+    @the_learning_rate.setter
+    def the_learning_rate(self, the_value):
+
+        """
+        Sets the learning rate with strict validation (The Pre-commit Hook).
+        Usage: `config.learning_rate` = 0.01
+        """
+
+        print(f"Attempting to set learning_rate to {the_value}...")
+
+
+        if not isinstance(the_value, (int, float)):
+
+            raise TypeError("Error! Learning Rate must be a number!")
+
+        
+        if the_value <= 0 or the_value >= 1:
+
+            raise ValueError("Learning Rate must be between 0 and 1!")
+
+        
+        self._learning_rate = the_value
+
+        print("Learning rate successfully updated!")
+
+
+    @property
+    def epochs(self):
+
+        return self._learning_epochs
+
+    @epochs.setter
+    def epochs(self, value):
+
+        if not isinstance(value, int) or value <= 0:
+
+            raise ValueError("Epochs must be a positive integer.")
+
+        
+        self._learning_epochs = value
+
+    
+    @property
+    def experiment_ID(self): # experiment_ID will be set to a read-only, as we won't be creating it's setter
+
+        """
+        ## Read-Only
+
+        This property has NO setter\n
+        It is [*read-only*](https://www.merriam-webster.com/dictionary/read-only)
+        """
+
+        return self._exp_ID
+
+
+
+# ============================= instantiating and using the class =============================
+
+
+try:
+
+    configuration = TrainingConfiguration(l_rate = 0.02, l_epochs = 15)
+
+    print(f'''
+Current Learning Rate: {configuration.the_learning_rate}
+    ''')
+
+    configuration.the_learning_rate = 0.05
+
+    print(f'''
+Current Learning Rate: {configuration.the_learning_rate}
+    ''')
+
+except Exception as an_error:
+
+    print(f"\nError: {an_error}")
+    
+
+
+# try to change the value of a read-only method
+
+try:
+
+    configuration.experiment_ID = "experiment_001"
+
+except Exception as an_error:
+
+    print(f"Error occured: {an_error}")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class TheBaseModel(ABC):
+
+    """
+    ### TheBaseModel
+    The `Abstract Base` Class (The Contract).
+    Inherits from ABC (Abstract Base Class) module.
+    """
+
+    def __init__(self, the_name, the_config: TrainingConfiguration): # the_config is of type "TrainingConfiguration" meaning we can acess attributes under the TrainingConfiguration class
+
+        self.model_name = the_name
+
+        self.model_configuration = the_config
+
+        self._is_model_trained = False
+
+    @abstractmethod
+    def train_model(self, the_data):
+
+        """
+        @abstractmethod is used for defining a method that must be implemented whenever a subclass is created
+
+        This abstract method contains no implementation and must be overridden by child classes
+        """
+
+        pass
+
+
+    @abstractmethod
+    def predict_model(self, the_data):
+
+        """
+        Child classes MUST override this too.
+        """
+
+        pass
+
+    def save_the_model(self): # it's possible for abstract classes to have solid methods that are shared by all children
+
+        print(f"Saving {self.model_name} to disk...")
+
+
+
+class LRModel(TheBaseModel):
+
+    """
+    A concrete implementation of the blueprint.
+    """
+
+    def train_model(self, the_data):
+        print(f"Training {self.model_name} with Learning rate = {self.model_configuration.learning_rate}") # we accessed the "learning_rate" attribute in the TrainingConfiguration class because it was used as a type for the abstract class "TheBaseModel"
+
+        self._is_model_trained = True
+
+
+    def predict_model(self, the_data):
+
+        if not self._is_model_trained:
+
+            return "Model isn't trained!"
+        
+        return np.random.randn(3).round(2).tolist() # These are Fake predictions, just for testing
+
+
+setup_config = TrainingConfiguration(l_rate = 0.013, l_epochs = 73)
+
+
+# let's try to instantiate the abstract class "TheBaseModel" directly. It'll result in an error
+
+try:
+
+    base_model = TheBaseModel(the_name = "Gemini", the_config = setup_config)
+
+except TypeError as an_error:
+
+    print(f"Cannot instantiate Abstract Base Class: {an_error}")
+    
+
+# Instantiating a derived Class
+
+the_model = LRModel("Neural-Network-v1.2", setup_config)
+
+
+the_model.train_model(np.random.randint(0, 9, size = (3)).tolist())
+
+
+the_model.save_the_model()
+
+
+
+
 
 
 
