@@ -1,4 +1,5 @@
 # Procedural Programming (a simple list of instructions) gets messy and hard to maintain ("spaghetti code") because data is global and separate from the functions that use it.
+import random
 
 the_name, the_balance = "Jesse", 1000
 
@@ -794,3 +795,183 @@ person_1 Height: {person_1.hei_ght}
 
 person_2 Height: {person_2.hei_ght}
 ''') # person_1's height remains unchanged, while that of person_2 has been modified
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class Item:
+
+    def __init__(self, name, rarity):
+        
+        self.item_name = name
+
+        self.item_rarity = rarity
+
+        print(f'\nItem "{self.item_name}" created. Rarity: {self.item_rarity}')
+
+
+class Inventory:
+
+    server_region = "US-East"
+
+    def __init__(self, p_name):
+        
+        self.player_name = p_name
+
+        self.capacity = 2
+
+        self.items = []
+
+        self.items = list(self.items)
+
+        print(f'\nPlayer "{self.player_name}" created in region "{Inventory.server_region}".')
+
+    
+    def add_item(self, item_object):
+
+        new_capacity = self.capacity * 2
+
+        if len(self.items) == self.capacity:
+
+            print(f"Inventory full! Resizing from {self.capacity} to {new_capacity}...\n")
+
+            self.capacity = new_capacity
+
+        
+        self.items.append(item_object)
+
+        print(f"{self.player_name} picked up {item_object} (Capacity: {len(self.items)}/{self.capacity})")
+
+
+
+jesse = Inventory(p_name = "Jesse")
+
+
+for item_name in ["Sword", "Shield", "Potion", "Map", "Key"]:
+
+    the_rarity = random.choice(list(range(200)))
+
+    the_item = Item(item_name, the_rarity)
+
+    jesse.add_item(the_item)
+
+
+enemy = Inventory("Enemy")
+
+print(f'''
+Jesse server_region: {jesse.server_region}
+
+Enemy server_region: {enemy.server_region}
+''')
+
+Inventory.server_region = "EU-West"
+
+print(f'''
+Jesse server_region: {jesse.server_region}
+
+Enemy server_region: {enemy.server_region}
+''')
+
+"""
+What is the Big O when the inventory is NOT full?
+Answer: Constant Time (O(1)), because it takes the same time to add and item to the end of a list of 4 items as it does with a list of 200k items
+
+What is the Big O when the inventory IS full and has to resize?
+Answer: Linear Time (O(n)), because we first have to find the size of the list, then double it
+
+As you add more items, how does the memory usage of your self.items list grow relative to the number of items (N)? Is it O(1), O(N), or O(N^2)?
+Answer: O(N^2), because the memory size is the same when we double it, until it's full again. Memory usage is the square of input size
+
+If you change self.server_region = "Asia" inside the add_item method, will it change the region for all players? 
+Answer: False
+Explain why or why not:
+You're just creating a new instance attribute called "server_region" for that particular object. It doesn't change the Class attribute for all players
+"""
+
+
+
+
+
+
+
+
+
