@@ -4632,3 +4632,164 @@ print(f'''
     )
 }
 ''')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# extracting the dataset from our SQL database...
+d_engine = create_engine(f"sqlite:///{d_path}")
+
+
+dataset = pd.read_sql(
+    "SELECT * FROM Regional_Sales",
+    d_engine
+)
+
+# one of the common ways to create MultiIndex DataFrames is by using "Grouping" or "Pivoting" with multiple columns (previously we only learnt how to group with only one column. Now we'll use more than one)
+multi_index_dataset = dataset.groupby(["Region", "District", "Store"])["Sales"].sum()
+
+print(f'''
+============================= Original Dataset =============================
+
+{dataset.head().to_markdown()}
+
+
+============================= MultiIndex DataFrame =============================
+
+{multi_index_dataset.head(12).to_markdown()}
+''')
+
+# let's get all the sales for the "South" column
+
+south_sales = multi_index_dataset.loc['South']
+
+print(f'''
+============================= Selecting "South" Region (using .loc[]) =============================
+
+{south_sales.to_markdown()}
+''')
+
+# let's get the sales for District_3 in the east
+
+east_dt_3 = multi_index_dataset.loc[("East", "District_3")]
+
+print(f'''
+============================= Sales for District_3 in the East =============================
+
+{east_dt_3.to_markdown()}
+''')
+
+# let's get all Store_Gamma sales, irrespective of Region or District
+
+st_gamma = multi_index_dataset.xs(key = "Store_Gamma", level = 'Store')
+
+
+print(f'''
+============================= Cross-Section using .xs() to get sales for "Store_Gamma" everywhere =============================
+
+{st_gamma.head().to_markdown()}
+''')
+
+# .reset_index() is used to retun a MultiIndex DataFrame back to a normal 2D table
+
+original_dataset = multi_index_dataset.reset_index()
+
+
+print(f'''
+============================= Flattening MultiIndex DataFrame back to 2D DataFrame =============================
+
+{original_dataset.head(6).to_markdown()}
+''')
+
+
+
+
+
+
+
