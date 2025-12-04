@@ -4793,3 +4793,126 @@ print(f'''
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# establishing a connection with the database and extracting the dataset...
+
+database_engine = create_engine(f"sqlite:///{d_path}")
+
+dataset = pd.read_sql(
+    "SELECT txn_id, Product, Sales, Quantity FROM Regional_Sales LIMIT 50",
+
+    database_engine
+)
+
+print(f'''
+======================================== Original Dataset ========================================
+      
+{dataset.head().to_markdown()}
+''')
+
+# melting fuses columns together and moves their values to a seperate column
+
+"""
+Parameters:
+
+- id_vars: Columns we want to KEEP as vertical identifiers (Student).
+- value_vars: Columns what we want to fuse together
+- var_name: What should we call the column that holds the old headers? (Subject).
+- value_name: What should we call the column that holds the numbers? (Score).
+"""
+
+long_dataset = pd.melt(dataset, id_vars = ["Product"], value_vars = ["Sales", "Quantity"], var_name = "Sales/Quantity", value_name = "Value")
+
+print(f'''
+======================================== Melted DataFrame (Long) ========================================
+      
+{long_dataset.sample(15).to_markdown()}
+''')
+
+
+# stacking converts a "wide" DataFrame to a "long" one, but first you set your index
+idx_dataset = dataset.set_index("txn_id")
+
+idx_stacked = idx_dataset.stack() # stacking gives us a MultiIndex Series
+
+print(f'''
+======================================== Stacked Series ========================================
+      
+{idx_stacked.head(9).to_markdown()}
+''')
+
+
+# let's unstack the series...
+
+dset_unstacked = idx_stacked.unstack() # unstacking returns us back to our original wide dataset
+
+print(f'''
+======================================== Unstcked Dataset (Back to Wide) ========================================
+      
+{dset_unstacked.head(7).to_markdown()}
+''')
+
+
+
+
+
+
