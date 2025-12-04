@@ -4916,3 +4916,144 @@ print(f'''
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# establishing a connection to the database and extracting the dataset...
+
+database_engine = create_engine(f"sqlite:///{d_path}")
+
+dataset = pd.read_sql(
+    "SELECT Region, Store, Product, Sales FROM Regional_Sales WHERE Sales <= 500 LIMIT 200",
+
+    database_engine
+) # extracting the first 200 rows with from the Regional_Sales table with sales at $500 or less
+
+the_dataset = dataset.copy().drop(["Region"], axis = 1) # dataset will be used later. we're using the_dataset now
+
+print(f'''
+======================================== Original Dataset ========================================
+      
+{the_dataset.head().to_markdown()}
+''')
+
+def sale_grader(sale_price):
+
+    if sale_price < 300:
+        return f"$ {sale_price}"
+    
+    else:
+        return "$ 300+"
+
+# let's apply this custom function on the "Sales" column
+
+the_dataset['Sales_Grade'] = the_dataset['Sales'].apply(sale_grader)
+
+
+print(f'''
+======================================== Applied Sale Grader Function ========================================
+      
+{the_dataset.sample(6).to_markdown()}
+''')
+
+# let's do the same thing again, but this time use "lambda" instead of writing a full function
+
+the_dataset["Sales_Grade"] = the_dataset["Sales_Grade"].apply(lambda row: "Above $300" if row == "$ 300+" else row) # replace the row with Above $300" if the row is "$ 300+" else return same value
+
+
+print(f'''
+======================================== Applied Sale Grader Lambda Function ========================================
+      
+{the_dataset.sample(6).to_markdown()}
+''')
+
+# ===================================== using .apply() on the whole DataFrame =====================================
+
+# let's apply a custom function to an entire row
+
+dataset["Sale"] = dataset.apply(lambda the_row: f"{the_row["Product"]} was sold for ${the_row["Sales"]} at {the_row["Store"]}", axis = 1) # axis = 1 selects a row, not column
+
+# let's drop the rows we used in the function since we don't need them again
+
+dataset = dataset.drop(["Store", "Product", "Sales"], axis = 1)
+
+
+print(f'''
+======================================== Dataset with Custom Function Applied Row-Wise ========================================
+      
+{dataset.sample(9).to_markdown()}
+''')
+
+
+
+
+
+
