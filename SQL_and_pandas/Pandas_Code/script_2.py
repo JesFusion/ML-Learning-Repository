@@ -5057,3 +5057,225 @@ print(f'''
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+row_number = 100000
+
+dataset = pd.DataFrame({
+    "Name": ["Bluestack"] * row_number, # when we have object columns in a DataFrame (like this one), pandas stores both the obect and it's memory address
+
+    "Age": [13.25] * row_number
+})
+
+print('''
+================================ Standard Info - Incomplete Truth (only shows memory address size) ================================
+''')
+dataset.info() # using .info() like that method only shows us the memory usage of the addresses
+
+# we must specify memory_usage = "deep" to be able to see the total memory of both the objects and their addresses
+
+
+print('''
+=========================== Deep Info - Complete Truth (shows the memory of both object and address size) ===========================
+''')
+
+dataset.info(memory_usage = "deep")
+
+
+# we can also view the memory size of each Individual column to inspect which one takes more space
+# we do this by making use of the .memory_usage() method
+
+column_memory = dataset.memory_usage(deep = True)
+
+print(f'''
+======================================== Memory Usage of each individual column ========================================
+
+{column_memory}
+''')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+row_number = 100000
+
+dataset = pd.DataFrame({
+    "Name": ["Bluestack"] * row_number, # when we have object columns in a DataFrame (like this one), pandas stores both the obect and it's memory address
+
+    "Age": [13.25] * row_number
+})
+
+
+
+true_mem_size = dataset.memory_usage(deep = True).sum()
+
+print(f'''
+======================================== Original Memory Usage ========================================
+      
+{true_mem_size / 1024**2:.2f} MB
+''')
+
+dataset["name_category"] = dataset['Name'].astype("category")
+
+
+name_mem = dataset["Name"].memory_usage(deep = True)
+
+name_cat_mem = dataset["name_category"].memory_usage(deep = True)
+
+print(f'''
+======================================== Comparing memory size of Name vs. name_category ========================================
+      
+Name: {name_mem / 1024**2:.2f} MB
+
+Name Category: {name_cat_mem / 1024**2:.2f} MB
+
+Percentage Reduction: {100 - ((name_cat_mem / name_mem) * 100):.2f}%
+''')
+
+
+dataset["Age_32"] = dataset["Age"].astype("float32")
+
+
+print(f'''
+======================================== Memory Size of float32 vs. float64 ========================================
+      
+float64: {(dataset["Age"].memory_usage(deep = True)) / 1024**2:.2f} MB
+
+float32: {(dataset["Age_32"].memory_usage(deep = True)) / 1024**2:.2f} MB
+''')
+
+
+
+
+
