@@ -1,12 +1,12 @@
 import pandas as pd
 import io
 import numpy as np
+import sqlalchemy
 from jesse_custom_code.pandas_file import random_missing_fill as rmf
 import sqlite3
 from sqlalchemy import create_engine
 import time
-from jesse_custom_code.pandas_file import database_path as d_path, brief_table
-
+from jesse_custom_code.pandas_file import database_path as d_path, ord_series_mapping, dataset_save_path, brief_table
 
 a_series = pd.Series([-1, 3, 3.4, "erre", True, None, 6, 0])
 
@@ -5052,6 +5052,1168 @@ print(f'''
 {dataset.sample(9).to_markdown()}
 ''')
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+row_number = 100000
+
+dataset = pd.DataFrame({
+    "Name": ["Bluestack"] * row_number, # when we have object columns in a DataFrame (like this one), pandas stores both the obect and it's memory address
+
+    "Age": [13.25] * row_number
+})
+
+print('''
+''')
+dataset.info() # using .info() like that method only shows us the memory usage of the addresses
+
+# we must specify memory_usage = "deep" to be able to see the total memory of both the objects and their addresses
+
+
+print('''
+''')
+
+dataset.info(memory_usage = "deep")
+
+
+# we can also view the memory size of each Individual column to inspect which one takes more space
+# we do this by making use of the .memory_usage() method
+
+column_memory = dataset.memory_usage(deep = True)
+
+print(f'''
+
+{column_memory}
+''')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+row_number = 100000
+
+dataset = pd.DataFrame({
+    "Name": ["Bluestack"] * row_number, # when we have object columns in a DataFrame (like this one), pandas stores both the obect and it's memory address
+
+    "Age": [13.25] * row_number
+})
+
+
+
+true_mem_size = dataset.memory_usage(deep = True).sum()
+
+print(f'''
+      
+{true_mem_size / 1024**2:.2f} MB
+''')
+
+dataset["name_category"] = dataset['Name'].astype("category")
+
+
+name_mem = dataset["Name"].memory_usage(deep = True)
+
+name_cat_mem = dataset["name_category"].memory_usage(deep = True)
+
+print(f'''
+      
+Name: {name_mem / 1024**2:.2f} MB
+
+Name Category: {name_cat_mem / 1024**2:.2f} MB
+
+Percentage Reduction: {100 - ((name_cat_mem / name_mem) * 100):.2f}%
+''')
+
+
+dataset["Age_32"] = dataset["Age"].astype("float32")
+
+
+print(f'''
+      
+float64: {(dataset["Age"].memory_usage(deep = True)) / 1024**2:.2f} MB
+
+float32: {(dataset["Age_32"].memory_usage(deep = True)) / 1024**2:.2f} MB
+''')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# let's extract a table from an SQL databse and use it for this practice
+the_dataset = pd.read_sql(
+    "SELECT * FROM Regional_Sales",
+
+    create_engine(f"sqlite:///{d_path}")
+)
+
+# we set txn_id as the index
+the_dataset = the_dataset.set_index("txn_id")
+
+print(f'''
+
+{the_dataset.head(6).to_markdown()}
+''')
+
+the_dataset.info(memory_usage = "deep")
+
+
+
+# ===================================== Vectorization vs. Apply =====================================
+
+t_1 = time.time()
+
+the_dataset["unit_price"] = the_dataset.apply(lambda row: row["Sales"] / row["Quantity"], axis = 1) # using .apply(), we apply a custom function to each row (specified by setting axis to 1). Pandas will have to go through each row manually to perform this, making it slower when it comes to large datasets
+
+t_2 = time.time()
+
+the_dataset["unit_price (Vec.)"] = the_dataset["Sales"] / the_dataset["Quantity"] # here we just use a column to divide another column. Vectorization works here behind the scenes, making it faster than traditional .apply()
+
+t_3 = time.time()
+
+apply_time = t_2 - t_1
+
+vec_time = t_3 - t_2
+
+print(f'''
+      
+{the_dataset.sample(6).round(2).to_markdown()}
+
+using .apply() took {apply_time:.4f} seconds
+
+using vectorization took {vec_time:.4f} seconds
+
+Vectorization is {((apply_time - vec_time) / apply_time) * 100:.2f}% faster than .apply()
+''')
+
+
+# ===================================== using the .query() method =====================================
+
+old_filtering = the_dataset[(the_dataset["District"] == "District_1")& (the_dataset["Sales"] > 400)] # we're using boolean indexing here. It's traditionally slower beacuse it goes through every single row
+
+new_filtering = the_dataset.query("District == 'District_1' and Sales > 400") # the .query() method is faster than using Boolean Indexing because it lets you write SQL like strings
+
+
+print(f'''
+
+{old_filtering.head().to_markdown()}
+
+
+
+{new_filtering.head().to_markdown()}
+''')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# let's extract a table from an SQL databse and use it for this practice
+the_dataset = pd.read_sql(
+    "SELECT Region, Product, Sales, Quantity FROM Regional_Sales",
+
+    create_engine(f"sqlite:///{d_path}")
+)
+
+
+print(f'''
+
+{the_dataset.head(6).to_markdown()}
+''')
+
+# ===================================== One-Hot Encoding =====================================
+
+# we use pd.get_dummies() to perform One-Hot Encoding on nominal data (data with no order)
+
+# Example: Region (East, West, North, South)
+
+# Problem: If you number them 1, 2, 3, 4 the model thinks South (4) is "greater than" East (1).
+
+# Solution: Create 4 columns: reg_East, reg_West, reg_North, reg_South. Binary 0 or 1.
+
+
+reg_dummies = pd.get_dummies(the_dataset["Region"], prefix = "reg", dtype = int)#.drop(["Region"], axis = 1)
+
+print(f'''
+      
+{reg_dummies.sample(6).to_markdown()}
+''')
+
+
+# ===================================== ORDINAL ENCODING =====================================
+
+# we use .map() for ordinal data (data that has rank). we first create a dictionary showing the rank of each unique value and then we map using that dictionary
+
+reg_map_dict = ord_series_mapping(the_dataset["Region"]) # my custom function ord_series_mapping() creates the dictionary for us
+
+
+the_dataset["Region Level"] = the_dataset["Region"].map(reg_map_dict) # here we map using the dictionary and create a new column for the result
+
+
+print(f'''
+      
+{the_dataset.head().to_markdown()}
+''')
+
+
+# ===================================== BINNING =====================================
+
+# let's see the differnce between .cut() vs. .qcut() when binning
+
+# in binning we assign values in a column to various groups, usually of integer data-type
+
+"""
+For Example, when grouping sizes: 
+- Small -> 0 - 35
+- Medium -> 35 - 75
+- Large -> 75 - 100
+"""
+
+# in .cut(), we first create the bin (0, 35, 75, 100) and the label (Small, Medium, Large) and then create a new column that checks each value in a column that we assign, and then assign each value in that column to it's label
+
+sale_bins = [0, 350, 550, 1000]
+
+sale_label = ["Small Sale", "Medium Sale", "Large Sale"]
+
+the_dataset["Sale Level"] = pd.cut(the_dataset["Sales"], bins = sale_bins, labels = sale_label)
+
+
+# in .qcut(), we we can group an entire column into 2 or more groups. And give each group a label. We'll create a new column to display the group label of each value in the group
+
+the_dataset["Sale Tier"] = pd.qcut(the_dataset["Sales"], q = 2, labels = ["Sales below 500", "Sales above 500"])
+
+
+print(f'''
+      
+{the_dataset.sample(6).to_markdown()}
+''')
+
+
+# ===================================== Interaction features =====================================
+
+# sometimes a model learns best when you combine two features together to create a meaningful one
+
+the_dataset["Unit Price"] = the_dataset["Sales"] / the_dataset["Quantity"] # unit price gives us the price of each individual item you bought, which could be a meaningful feature
+
+print(f'''
+      
+{the_dataset.sample(6).to_markdown()}
+''')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+database_engine = create_engine(f"sqlite:///{d_path}")
+
+
+# ===================================== Ways to prepare dataset for Regression Models =====================================
+
+# let's extract the dataset from our database...
+
+hp_dset = pd.read_sql(
+    "SELECT * FROM House_Prices",
+
+    database_engine
+) # hp_dset == "House_Prices Dataset"
+
+
+print(f'''
+      
+{hp_dset.head().to_markdown()}
+''')
+
+# let's simulate dirty data by injecting nulls in the dataset
+
+hp_dset.loc[:56:3, "Bedrooms"] = np.nan
+
+print(f'''
+      
+{hp_dset.sample(5).to_markdown()}
+''')
+
+# filling the missing values with the median...
+
+hp_dset["Bedrooms"] = hp_dset["Bedrooms"].fillna(hp_dset["Bedrooms"].median())
+
+
+# ===================================== Feature-Engineering (Encoding) =====================================
+
+# we perform One-Hot encoding on the Neighborhood column since it's nominal data and is of object type
+
+neigh_dummies = pd.get_dummies(hp_dset["Neighborhood"], prefix = "hood", drop_first = True)
+
+# adding the dummies dataframe to the dataset...
+hp_dset = pd.concat([hp_dset, neigh_dummies], axis = 1).drop(["Neighborhood"], axis = 1)
+
+
+# splitting into features and targets...
+
+feature_x = hp_dset.drop(["Price", "HouseID"], axis = 1)
+
+label_y = hp_dset["Price"]
+
+print(f'''
+
+{feature_x.sample(5).to_markdown()}
+
+
+
+{label_y.sample(5).to_markdown()}
+''')
+
+
+
+# ===================================== Ways to prepare dataset for Classification Models =====================================
+
+
+# we need to load two Tables for this
+
+users_dataset = pd.read_sql(
+    "SELECT * FROM Users",
+
+    database_engine
+)
+
+transaction_dataset = pd.read_sql(
+    "SELECT * FROM Transactions",
+
+    database_engine
+)
+
+print(f'''
+      
+{users_dataset.sample(5).to_markdown()}
+
+
+
+{transaction_dataset.sample(5).to_markdown()}
+''')
+
+user_spend = transaction_dataset.groupby("UserID")["Amount"].sum().reset_index()
+
+# renaming "Amount" to a more appropriate and explanantory column
+user_spend.rename(
+    columns = {
+        "Amount": "User's Total Spend"
+    },
+
+    inplace = True
+)
+
+print(f'''
+      
+{user_spend.sample(6).to_markdown()}
+''')
+
+# the merge (Joining Features)
+
+merged_dataset = pd.merge(
+    left = users_dataset,
+    right = user_spend,
+    on = "UserID",
+    how = "left"
+)
+
+# filling NaN for non-spenders (NaN means $0 spend)
+
+merged_dataset["User's Total Spend"] = merged_dataset["User's Total Spend"].fillna(0)
+
+merged_dataset["is_VIP?"] = (merged_dataset["User's Total Spend"] > 250).astype(int) # we're creating a new column called "is_VIP?" for users with spend greater than $250
+
+
+print(f'''
+      
+{merged_dataset.sample(6).to_markdown()}
+''')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ===================================== creating a reusable fucntion =====================================
+
+def copy_dataframe(dataframe: pd.DataFrame) -> pd.DataFrame:
+
+    return dataframe.copy()
+
+# ===================================== Saving and Loading a Dataset =====================================
+
+
+the_dataset = pd.read_sql(
+    "SELECT * FROM Regional_Sales",
+
+    sqlalchemy.create_engine(f"sqlite:///{d_path}")
+)
+
+# ===================================== saving a dataset with pickle =====================================
+
+the_dataset.to_pickle(f"{dataset_save_path}reg_sales_dset_pickle.pkl")
+
+# loading the dataset...
+
+loaded_dataset_pickle = pd.read_pickle(f"{dataset_save_path}reg_sales_dset_pickle.pkl")
+
+print(f'''
+      
+{loaded_dataset_pickle.sample(6).to_markdown()}
+''')
+
+
+# ===================================== Saving with Parquet (recommended approach) =====================================
+
+# Parquet is the best method for saving your dataset as someone working with data
+
+# It is the industry standard, highly compressed, retains schema and readable by other languages.
+
+
+# saving the dataset...
+
+the_dataset.to_parquet(f"{dataset_save_path}reg_sales_dset_parquet.parquet")
+
+
+# loading the dataset...
+
+loaded_dataset_parquet = pd.read_parquet(f"{dataset_save_path}reg_sales_dset_parquet.parquet")
+
+
+print(f'''
+      
+{loaded_dataset_parquet.sample(6).to_markdown()}
+''')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ===================================== Task 1: The Reshape & Refine (Module 8) =====================================
+
+# loading the raw_user_logs dataset
+the_dataset = pd.read_csv(f"{dataset_save_path}raw_user_logs.csv").round(2) # dataset_save_path = "/home/jesfusion/Documents/ml/ML-Learning-Repository/Saved_Datasets_and_Models/Datasets/"
+
+
+print(f'''
+      
+{the_dataset.sample(6).to_markdown()}
+''')
+
+# extracting the column names of the_dataset and putting it in a list
+c_names = list(the_dataset.columns)
+
+melt_cnames = c_names[:3] # this is our id_vars when we melt the columns
+melt_cnames.append(c_names[-1])
+
+melt_vnames = c_names[3:-1] # this is our value_vars when we melt the columns
+
+
+# melting the specfied columns...
+the_dataset = pd.melt(the_dataset, id_vars = melt_cnames, value_vars = melt_vnames, var_name = "Month", value_name = "Clicks")
+
+
+print(f'''
+{the_dataset.head().to_markdown()}
+''')
+
+c_names = list(the_dataset.columns)
+
+# calculating the total clicks per Device per month
+click_count = the_dataset.groupby([c_names[1], c_names[-2]], observed = True)["Clicks"].count()
+
+# renaming the column name of the Resulting series to represent the data well
+click_count.name = "Total_Clicks"
+
+# creating a column called "Engagement" that specifies "High" for clicks greater than 50 and "Low" for clicks less
+the_dataset['Engagement'] = the_dataset["Clicks"].apply(lambda clicks: "High" if clicks > 50 else "Low")
+
+
+
+# ===================================== Task 2: The Memory Audit (Module 9) =====================================
+
+
+# obtaining dataset memory size...
+the_dataset.info(memory_usage = "deep") # memory usage: 85.1 MB
+
+# converting data-types
+the_dataset = the_dataset.astype({
+    'Device': 'category',
+    'Account_Status': 'category',
+    'Month': 'category',
+    'Session_Duration': 'float32',
+    'Clicks': 'int16'
+})
+
+# obtaining reduced memory usage
+the_dataset.info(memory_usage = "deep")
+# memory usage: 34.2 MB
+
+original_memory = 85.1
+new_memory = 34.2
+
+print(f'''
+Original Memory Before Converting Data Types: {original_memory}MB
+
+New Memory After Converting Data Types: {new_memory}MB
+
+Percentage Reduction was {((original_memory - new_memory) / original_memory) * 100:.2f}%
+''')
+
+
+# speed test:
+# here we multiply two columns manually using .apply() and then we use vectorization to perform the same task and compare the time spent for both
+
+time_1 = time.time()
+
+# using .apply()
+the_dataset["Score_Slow"] = the_dataset.apply(lambda row: row["Session_Duration"] * row["Clicks"], axis = 1)
+
+time_2 = time.time()
+
+# using vectorization
+the_dataset["Score_Fast"] = the_dataset["Session_Duration"] * the_dataset["Clicks"]
+
+time_3 = time.time()
+
+VIP_mobile_clicks = the_dataset.query("Device == 'Mobile' and Clicks > 80")
+
+the_dataset = the_dataset.set_index("User_ID")
+
+slow_time = time_2 - time_1
+
+fast_time = time_3 - time_2
+
+
+print(f'''
+      
+{the_dataset.sample(6).to_markdown()}
+
+Score_Slow Time: {slow_time}
+
+Score_Fast Time: {fast_time}
+
+Percentage Reduction was {((slow_time - fast_time) / slow_time) * 100:.2f}%
+''') # vectorization turned out to be faster (as always) because it works in C
+
+
+
+
+
+# ===================================== Task 3: The SQL Bridge & ML Prep (Module 10) =====================================
+
+# extracting users dataset from the database
+
+database_engine = sqlalchemy.create_engine(f"sqlite:///{d_path}")
+
+
+users_dataset = pd.read_sql(
+    "SELECT * FROM Users",
+    
+    database_engine
+).rename(columns = {"UserID": "User_ID"})
+
+
+print(f'''
+      
+{users_dataset.sample(6).to_markdown()}
+''')
+
+# merging the processed dataset in Task 2 to the users dataset 
+merged_dataset = pd.merge(the_dataset, users_dataset, on = "User_ID", how = "outer")
+
+# performing One-Hot Encoding on the "Device" column
+merged_dataset_dummies = pd.get_dummies(merged_dataset["Device"], prefix = "dev", dtype = int, drop_first = True)
+
+# joining the encoded column to the original dataset
+merged_dataset = pd.concat([merged_dataset, merged_dataset_dummies], axis = 1).drop(["Device"], axis = 1)
+
+
+# binning the "Session_Duration" column using pd.qcut() into equal "Short", "Medium" and "Long" sessions
+
+merged_dataset["Session_Bins"] = pd.qcut(merged_dataset["Session_Duration"], q = 3, labels = ["Short", "Medium", "Long"])
+
+
+# defining features and targets...
+features_x = merged_dataset[["Clicks", "dev_Mobile", "dev_Tablet", "Session_Bins"]]
+targets_y = merged_dataset["Engagement"]
+
+
+# exporting as a .parquet file
+features_x.to_parquet(f'{dataset_save_path}processed_features.parquet')
+
+
+print("Dataset Pre-processed and saved to processed_features.parquet!")
 
 
 

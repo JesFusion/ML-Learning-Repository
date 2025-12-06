@@ -9,5 +9,8 @@ DSA_and_OOP/OOP_Learning/__pycache__/
 
 test_things.py
 
+Saved_Datasets_and_Models/Datasets/raw_user_logs.csv
+
+Saved_Datasets_and_Models/Datasets/processed_features.parquet
 
 DSA_and_OOP/OOP_Learning/__pycache__/

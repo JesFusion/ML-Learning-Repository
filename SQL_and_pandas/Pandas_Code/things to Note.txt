@@ -25,5 +25,11 @@
     - 'replace': Drop the old table and create a new one. Good for "refreshing" a daily report.
 
     - 'append': Add your new rows to the bottom of the old table. Good for "logging" data over time.
+},
+
+{
+    nominal Data: Data that has no order/rank (e.g: East, West, North, South)
+
+    ordinal Data: Data that has order/rank (e.g: Big, Medium, Small)
 }
 
