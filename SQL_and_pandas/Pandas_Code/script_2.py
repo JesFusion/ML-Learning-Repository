@@ -6219,3 +6219,152 @@ print("Dataset Pre-processed and saved to processed_features.parquet!")
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+the_dataset = pd.read_csv(f"{dataset_save_path}messy_sales_data.csv")
+
+
+
+print(f'''
+======================================== Original Dataset ========================================
+      
+{the_dataset.sample(7).to_markdown()}
+''')
+
+
+# ===================================== obtaining info about Dataset =====================================
+
+the_dataset.info()
+
+
+# ===================================== Ensuring all dates are in the YYYY-MM-DD format =====================================
+
+the_dataset["Date"] = pd.to_datetime(the_dataset["Date"], format = "mixed") # we first of all tell Pandas that our dates are coming in different formats by specifying format = "mixed"
+
+the_dataset["Date"] = the_dataset["Date"].dt.strftime("%Y-%m-%d") # here we now convert it to the format we want
+
+
+# ===================================== Converting Values in "Price" column to proper numbers =====================================
+
+
+the_dataset["Price"] = the_dataset["Price"].replace("[\$,]", "", regex = True).astype(float)
+
+
+
+# ===================================== removing duplicate rows and Rows with missing values  =====================================
+
+
+the_dataset = the_dataset.drop_duplicates(keep = "first").dropna().round(2)
+
+
+# ===================================== Creating New Column =====================================
+
+the_dataset["Total"] = the_dataset["Price"] * the_dataset["Quantity"]
+
+
+# ===================================== Printing out processed Dataset =====================================
+
+
+print(f'''
+======================================== Processed Dataset ========================================
+      
+{the_dataset.to_markdown()}
+
+
+======================================== Dataset Info ========================================
+''')
+
+the_dataset.info()
+
+
+# ===================================== Saving to a new clean CSV =====================================
+
+the_dataset.to_csv(f"{dataset_save_path}cleaned_sales_data.csv")
+
+print("\n\nDataset Saved as CSV!")
+
+
+
+
+
