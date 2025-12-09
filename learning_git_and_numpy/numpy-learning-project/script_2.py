@@ -2777,26 +2777,6 @@ print("Saved Large Dataset! Git LFS should handle it.")
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 np.random.seed(19)
 
 salary_dataset = np.random.randint(60000, 195000, 13)
@@ -2914,22 +2894,6 @@ Std. Deviation of Dataset 2: {np.std(MS_dataset_2):.3f}
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # Assignment
 np.random.seed(19)
 
@@ -2970,6 +2934,122 @@ Mean of Cleaned Dataset: {np.mean(cleaned_dataset):.2f}
 
 Median of Cleaned Dataset: {np.median(cleaned_dataset)}
 ''')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+np.random.seed(19)
+
+# Rows = Different Users (User A, User B, User C)
+# Cols = Features (Age, Salary)
+
+the_dataset = np.random.randint(13, 45, size = (3, 2))
+
+
+the_dataset[:, 1] = the_dataset[:, 1] * 451
+
+print(f'''
+======================================== Original Dataset (Shape: {the_dataset.shape}) ========================================
+
+{the_dataset}
+''')
+
+# ===================================== Axis = 0 operation (down the colums) =====================================
+# specifying axis = 0 performs operations down the columns of a numpy array
+
+dset_mean = np.mean(the_dataset, axis = 0)
+
+dset_std = np.std(the_dataset, axis = 0)
+
+
+print(f'''
+==================================== Statistics of Each Feature at axis = 0 (down the columns) ====================================
+      
+Mean (Age, Salary): {dset_mean}
+
+Std. Dev. (Age, Salary): {dset_std}
+''')
+
+
+# ===================================== Axis = 1 operation (Across the rows) =====================================
+# specifying axis = 1 performs operations across the rows of a numpy array
+
+dset_sums = np.sum(the_dataset, axis = 1)
+
+print(f'''
+======================================== Sum per user ========================================
+      
+User Sums: {dset_sums}
+''')
+
+
+# let's standardize our data
+# standardization gives a column of a dataset a mean of 0 and an std of 1. Many models perform better when features are standardized
+
+standard_data = (the_dataset - dset_mean) / dset_std
+
+print(f'''
+======================================== Final Standardized Data ========================================
+      
+{standard_data}
+''')
+
+
 
 
 
