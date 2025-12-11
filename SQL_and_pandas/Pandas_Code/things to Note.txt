@@ -31,5 +31,28 @@
     nominal Data: Data that has no order/rank (e.g: East, West, North, South)
 
     ordinal Data: Data that has order/rank (e.g: Big, Medium, Small)
+},
+
+{
+    the .replace() method is used to remove unwanted characters from object datatypes in python. For Example:
+    "To remove the "$" and "," symbol from the values in a prices column (and convert to numbers), use:"
+
+    df['prices'] = df['prices'].replace('[\$,]', '', regex=True).astype(float)
+
+    Explanation:
+
+    1. `df['prices']`  
+    Accesses the `prices` column in your DataFrame.
+
+    2. `.replace('[\,]', ”, regex=True)`  
+    - This uses a regular expression (regex) to remove unwanted characters.
+    - `[$,]` means: match any `` or `,`.
+        - `$` → matches a literal dollar sign (``)
+        - `,` → matches a comma
+    - `”` → replaces the matched characters with nothing (i.e. removes them)
+    - `regex=True` tells Pandas to treat the pattern as a regex.
+
+    3. `.astype(float)`  
+    Converts the cleaned string values into actual floating-point numbers.
 }
 

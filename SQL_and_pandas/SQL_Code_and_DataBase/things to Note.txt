@@ -40,3 +40,12 @@
     If you are filtering on an aggregate function (like SUM(Sales) or COUNT(*)), you MUST use HAVING
 },
 
+
+{
+    How to stop and start postgreSQL server:
+    - Stop:
+    sudo systemctl stop postgresql
+
+    - Start:
+    sudo systemctl start postgresql
+}

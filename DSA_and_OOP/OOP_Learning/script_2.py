@@ -1659,3 +1659,155 @@ the_model.save_the_model()
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ABC = Abstract Based Class
+
+class ThePaymentProcessor(ABC):
+
+    def log_of_transactions(self, user_name):
+
+        print(f'\nLogging transactions for "{user_name}" to DataBase...')
+
+    @abstractmethod
+    def payment_processing(self, input_amount):
+
+        pass
+
+
+
+class Stripe(ThePaymentProcessor):
+
+    def payment_processing(self, input_amount):
+
+        print(f'Accepting ${input_amount} for processing...')
+
+
+# let's create another subclass that didn't implement the abstract method of ThePaymentProcessor
+class SomeStupidFintechApp(ThePaymentProcessor):
+
+    # Oh no! we didn't implement payment_processing()!
+
+    def move_person_money(input_amount):
+
+        print(f'Stealing $"{input_amount} and running away..."')
+
+
+
+# let's try using the two sublasses
+
+try:
+
+    some_random_user = Stripe()
+
+    some_random_user.log_of_transactions(user_name = "Jesse")
+
+    some_random_user.payment_processing(55712)
+
+    print("Payment processed successfully!\n")
+
+except Exception as an_error:
+
+    print(f"Yo! We got an error. Check it out --> {an_error}")
+
+
+
+# let's try using the other subclass that didn't implement the abstract method
+
+try:
+
+    fake_app = SomeStupidFintechApp()
+
+except Exception as an_error:
+
+    print(f"Error: {an_error}")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

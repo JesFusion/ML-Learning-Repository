@@ -1,3 +1,8 @@
 numpy
 pandas
 jupyter
+tabulate
+openpyxl
+scikit-learn
+sqlalchemy
+sqlite
