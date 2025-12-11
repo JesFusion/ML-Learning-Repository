@@ -94,9 +94,12 @@ class PSQLDataGenerator:
 
                 elif actual_type == 'rand_name':
                     mode = groups.get(col_name, 'full')
-                    if mode == 'f': val = names.get_first_name()
-                    elif mode == 'l': val = names.get_last_name()
-                    else: val = names.get_full_name()
+                    if mode == 'f':
+                        val = names.get_first_name()
+                    elif mode == 'l':
+                        val = names.get_last_name()
+                    else:
+                        val = names.get_full_name()
 
                 elif actual_type == 'rand_str':
                     val = self._random_string(amount if amount > 0 else 8)
