@@ -3180,3 +3180,153 @@ print(f'''
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+np.random.seed(19)
+
+an_array = np.random.randint(3, 17, size = (25,))
+
+print(f'''
+======================================== Original Array (Shape: {an_array.shape}) ========================================
+
+{an_array}
+''')
+
+array_matrix = an_array.reshape(5, 5)
+
+print(f'''
+======================================== Matrix View (Shape: {array_matrix.shape}) ========================================
+
+{array_matrix}
+''')
+
+# changing the top-left corner of the matrix to 666
+array_matrix[0, 0] = 666
+
+print(f'''
+================================== Original Array after changing shape of reshaped Matrix ==================================
+      
+{an_array}
+''') # the first value changes to 666. the arrays 'an_array' and 'array_matrix' share the same memory
+
+
+
+# ===================================== FLATTENING vs. RAVEL =====================================
+
+'''
+.ravel() flattens a matrix back to 1D. It returns a VIEW.
+.flatten() flattens a matrix. It returns a COPY.
+'''
+
+array_ravel = array_matrix.ravel()
+
+array_ravel[3] = 999
+
+print(f'''
+======================================== Original Dataset After .ravel() Modification ========================================
+      
+{array_matrix}
+''')
+
+
+array_flatten = array_matrix.flatten()
+
+array_flatten[4] = 777
+
+
+print(f'''
+======================================== Original Dataset After .flatten() Modification ========================================
+      
+{array_matrix}
+''')
+
+# notice that only the change made in the raveled matrix appeared in the original matrix
+
+'''
+Therefore:
+
+- Slicing = VIEW
+- Reshape = VIEW
+- Ravel = VIEW
+- Flatten = COPY
+- Masking/Fancy Indexing = COPY
+'''
+
+
+
+
+
+
