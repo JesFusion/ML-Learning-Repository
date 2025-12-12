@@ -3054,3 +3054,279 @@ print(f'''
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+np.random.seed(19)
+
+train_dataset = np.random.randint(0, 19, size = (3, 4))
+
+print(f'''
+======================================== Original Training Data ========================================
+      
+{train_dataset}
+''')
+
+# slicing creates a view (link to original array)
+
+sliced_array = train_dataset[0, :]
+
+sliced_array[1] = 789
+
+print(f'''
+======================================== Sliced Array ========================================
+      
+{sliced_array}
+
+
+======================================== Original Dataset ========================================
+
+{train_dataset}
+''') # notice that the 2nd column of the first row in the sliced and original array are the same
+
+
+train_dataset = np.random.randint(34, 99, size = (5, 6))
+
+safe_slice = train_dataset[0, :].copy()
+
+safe_slice[2] = 666
+
+print(f'''
+======================================== New Training Dataset ========================================
+      
+{train_dataset}
+
+
+======================================== Dataset Slice ========================================
+
+{safe_slice}
+
+
+======================================== Original Data (after safe .copy()) ========================================
+
+{train_dataset}
+''') # notice that the original dataset still remained the same, because we created a copy, not a view
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+np.random.seed(19)
+
+an_array = np.random.randint(3, 17, size = (25,))
+
+print(f'''
+======================================== Original Array (Shape: {an_array.shape}) ========================================
+
+{an_array}
+''')
+
+array_matrix = an_array.reshape(5, 5)
+
+print(f'''
+======================================== Matrix View (Shape: {array_matrix.shape}) ========================================
+
+{array_matrix}
+''')
+
+# changing the top-left corner of the matrix to 666
+array_matrix[0, 0] = 666
+
+print(f'''
+================================== Original Array after changing shape of reshaped Matrix ==================================
+      
+{an_array}
+''') # the first value changes to 666. the arrays 'an_array' and 'array_matrix' share the same memory
+
+
+
+# ===================================== FLATTENING vs. RAVEL =====================================
+
+'''
+.ravel() flattens a matrix back to 1D. It returns a VIEW.
+.flatten() flattens a matrix. It returns a COPY.
+'''
+
+array_ravel = array_matrix.ravel()
+
+array_ravel[3] = 999
+
+print(f'''
+======================================== Original Dataset After .ravel() Modification ========================================
+      
+{array_matrix}
+''')
+
+
+array_flatten = array_matrix.flatten()
+
+array_flatten[4] = 777
+
+
+print(f'''
+======================================== Original Dataset After .flatten() Modification ========================================
+      
+{array_matrix}
+''')
+
+# notice that only the change made in the raveled matrix appeared in the original matrix
+
+'''
+Therefore:
+
+- Slicing = VIEW
+- Reshape = VIEW
+- Ravel = VIEW
+- Flatten = COPY
+- Masking/Fancy Indexing = COPY
+'''
+
+
+
+
+
+
