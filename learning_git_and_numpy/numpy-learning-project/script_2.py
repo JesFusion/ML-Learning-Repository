@@ -3054,3 +3054,129 @@ print(f'''
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+np.random.seed(19)
+
+train_dataset = np.random.randint(0, 19, size = (3, 4))
+
+print(f'''
+======================================== Original Training Data ========================================
+      
+{train_dataset}
+''')
+
+# slicing creates a view (link to original array)
+
+sliced_array = train_dataset[0, :]
+
+sliced_array[1] = 789
+
+print(f'''
+======================================== Sliced Array ========================================
+      
+{sliced_array}
+
+
+======================================== Original Dataset ========================================
+
+{train_dataset}
+''') # notice that the 2nd column of the first row in the sliced and original array are the same
+
+
+train_dataset = np.random.randint(34, 99, size = (5, 6))
+
+safe_slice = train_dataset[0, :].copy()
+
+safe_slice[2] = 666
+
+print(f'''
+======================================== New Training Dataset ========================================
+      
+{train_dataset}
+
+
+======================================== Dataset Slice ========================================
+
+{safe_slice}
+
+
+======================================== Original Data (after safe .copy()) ========================================
+
+{train_dataset}
+''') # notice that the original dataset still remained the same, because we created a copy, not a view
+
+
+
+
+
+
+
+
