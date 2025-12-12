@@ -2,9 +2,9 @@ import numpy as np
 import pandas as pd
 from sqlalchemy import create_engine
 from sklearn.datasets import load_iris
-from jesse_custom_code.pandas_file import postgre_connect
+from jesse_custom_code.pandas_file import postgre_connect, PDataset_save_path as psp
 from sklearn.impute import SimpleImputer
-
+from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
 
 
 # ===================================== Sourcing Data =====================================
@@ -353,6 +353,171 @@ print(f'''
       
 {cleaned_dataset.head().to_markdown()}
 ''')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+cs_dataset = pd.read_sql(# cs = customer_surveys
+    "SELECT satisfaction, country, loyalty_years FROM customer_surveys",
+
+    create_engine(postgre_connect)
+)
+print(f'''
+======================================== Extracted Raw Dataset (Strings) ========================================
+      
+{cs_dataset.head().to_markdown()}
+''')
+
+# ===================================== ORDINAL ENCODING =====================================
+
+# oridinal encoding is used on ordinal data, which is data with order/rank, where values are sequentially greater than each other
+# For example, in the "satisfaction" column, we have Low < Medium < High
+# This column is perfect for performing ordinal encoding on
+
+
+# .
+cat_order = [["Low", "Medium", "High"]] # we must define the order manually
+
+cs_ord_enc = OrdinalEncoder(categories = cat_order) # instantiang the OrdinalEncoder class/model and passing parameters
+
+
+# We use "OrdinalEncoder" .fit_transform() method to learn the categories AND change the data at once
+cs_dataset["enc_satisfaction"] = cs_ord_enc.fit_transform(cs_dataset[['satisfaction']]) # notice we used cs_dataset[['satisfaction']] and not cs_dataset['satisfaction']
+# the .fit_transform() method expects a DataFrame, not a Series
+
+
+print(f'''
+======================================== After Ordinal Encoding (satisfaction) ========================================
+
+{cs_dataset.head().to_markdown()}
+''')
+
+
+# ===================================== ONE-HOT ENCODING =====================================
+
+'''
+One-Hot encoding is used on Nominal data, which is data with no rank/order. It creates a new "switch" (column) for every option. e.g: "is_usa", "is_france"
+
+We use Scikit-Learn's OneHotEncoder to perform One-Hot encoding:
+
+- sparse_output = False: forces it to return a numpy array we can see (not a compressed matrix)
+
+- handle_unknown = 'ignore': is CRITICAL for production. If a new country 'Belarus' appears later, the model won't crash; it will just produce all zeros.
+'''
+
+cs_oht_enc = OneHotEncoder(
+    sparse_output = False,
+    handle_unknown = "ignore"
+)
+
+enc_country_column = cs_oht_enc.fit_transform(cs_dataset[["country"]])
+
+# OneHotEncoder returns a numpy array with no column names. To retrieve the column names, we use the .get_feature_names_out() method
+
+con_ft_names = cs_oht_enc.get_feature_names_out(['country'])
+
+# converting the numpy array and column names to a new DataFrame...
+cy_dframe = pd.DataFrame(enc_country_column, columns = con_ft_names)
+
+# join it back to the original DataFrame
+
+oh_final_dset = pd.concat([cs_dataset, cy_dframe], axis = 1)
+
+print(f'''
+======================================== After One-Hot Encoding (country) ========================================
+      
+{oh_final_dset.head().to_markdown()}
+''')
+
+
+# let's drop the categorical columns and save our final processed dataset
+
+# dropping categorical columns...
+cs_dataset = oh_final_dset.drop(['satisfaction', 'country'], axis = 1)
+
+save_path = f"{psp}customer_survey_dataset.parquet"
+
+# saving as a parquet file...
+# cs_dataset.to_parquet(save_path, index = False)
+
+print("\nDataset saved as parquet file!\n")
+print(save_path)
+
+
 
 
 
