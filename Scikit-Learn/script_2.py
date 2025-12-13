@@ -3,6 +3,7 @@ import pandas as pd
 from sqlalchemy import create_engine
 from sklearn.datasets import load_iris
 from jesse_custom_code.pandas_file import postgre_connect, PDataset_save_path as psp
+from jesse_custom_code.build_database import PSQLDataGenerator
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
 
@@ -516,6 +517,208 @@ save_path = f"{psp}customer_survey_dataset.parquet"
 
 print("\nDataset saved as parquet file!\n")
 print(save_path)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# creating synthetic dataset
+
+subscription_logs = PSQLDataGenerator(connection_string = postgre_connect)
+
+subscription_logs.create_and_populate_table(
+    primary_key = 'user_id',
+    table_name = "subscription_logs",
+    column_config = {
+        "user_id": ["TEXT", "prefixed_id"],
+        "plan_tier": ['TEXT', "rand_ch"],
+        "region": ['TEXT', "rand_ch"],
+        "monthly_usage_hrs": ["INTEGER", "rand_intg"],
+        'support_calls': ["INTEGER", "rand_intg"]
+    },
+
+    groups = {
+        "user_id": 'log',
+        'plan_tier': ["Basic", "Premium", "Enterprise"],
+        'region': ['North America', 'Europe', 'Asia'],
+        'monthly_usage_hrs': [0, 500],
+        'support_calls': [0, 10]
+    },
+
+    num_entries = 15992 # mimics real dataset size
+)
+
+print("\nTable Uploaded to Database!\n")
+
+
+# ===================================== Extracting the Data =====================================
+Slogs_dset = pd.read_sql(
+    "SELECT * FROM subscription_logs LIMIT 9500",
+
+    create_engine(postgre_connect)
+)
+
+print(f'''
+======================================== Original Dataset ========================================
+      
+{Slogs_dset.head().to_markdown()}
+''')
+
+# injecting nan values into the monthly_usage_hrs column...
+def custom_nan_insertion(usage_hrs):
+
+    if (usage_hrs % 7) == 0:
+        return np.nan
+    
+    else:
+        return usage_hrs
+
+Slogs_dset["monthly_usage_hrs"] = Slogs_dset['monthly_usage_hrs'].apply(custom_nan_insertion)
+
+Slogs_dset.info(memory_usage = "deep") # we have 8079/9500 non-null under the monthly_usage_hrs column
+
+
+# imputing data and joining back to original DataFrame...
+
+Slogs_dset["monthly_usage_hrs"] = SimpleImputer(missing_values = np.nan, strategy = "mean").fit_transform(Slogs_dset[["monthly_usage_hrs"]]).flatten() # The .fit_transform() method of SimpleImputer enables it to create a numpy array that fills the missing values in the "monthly_usage_hrs" column of "Slogs_dset" with the mean (as we specified in the "strategy" attribute of SimpleImputer).
+# Notice that we passed a DataFrame to the .fit_transform() method using double square brackets instead of a single one, which would have returned a Series (inserting a Series would throw an error).
+# The .flatten() method converts the resulting array to a 1 Dimensional Array, which is what pd.Series expects
+
+
+print(f'''
+======================================== Dataset After Imputation ========================================
+      
+{Slogs_dset.head().to_markdown()}
+''')
+
+Slogs_dset.info(memory_usage = "deep")
+
+
+# ===================================== performing Ordinal Encoding =====================================
+
+Slogs_dset["plan_tier"] = OrdinalEncoder(categories = [['Basic', 'Premium', 'Enterprise']]).fit_transform(Slogs_dset[['plan_tier']]) # Just like SimpleImputer, OrdinalEncoder expects a DataFrame instead of a Series in it's .fit_transform() method, so we use double instead of single square brackets. The "categories" attribute in OridinalEncoder collects a list of lists (i'm not sure if i'm correct by identifying it as a "list of lists") that contains the order/rank of the Ordinal Data
+
+
+print(f'''
+======================================== Dataset After Performing Oridinal Encoding ========================================
+      
+{Slogs_dset.head().to_markdown()}
+''')
+
+# ===================================== performing One-Hot Encoding =====================================
+
+region_OH_encode = OneHotEncoder(
+    sparse_output = False,
+    handle_unknown = "ignore"
+)
+
+reg_encode_data = region_OH_encode.fit_transform(Slogs_dset[["region"]])
+
+Slogs_dset = pd.concat([
+    Slogs_dset,
+
+    pd.DataFrame(
+        data = reg_encode_data,
+
+        columns = region_OH_encode.get_feature_names_out(["region"]),
+    )
+],
+    axis = 1
+).drop(["region", "user_id"], axis = 1)
+
+
+print(f'''
+======================================== Final Dataset After Pre-Processing ========================================
+      
+{Slogs_dset.head().to_markdown()}
+''')
+
+
+# saving pre-processed dataset as parquet file for training later...
+# Slogs_dset.to_parquet(f"{PDataset_save_path}subscription_logs_dataset.parquet", index = False)
+print("\nPre-Processed Dataset Saved as parquet file!")
+
+
+
+
+
 
 
 
