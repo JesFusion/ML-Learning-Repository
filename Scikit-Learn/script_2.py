@@ -4,6 +4,7 @@ from sqlalchemy import create_engine
 from sklearn.datasets import load_iris
 from jesse_custom_code.pandas_file import postgre_connect, PDataset_save_path as psp
 from jesse_custom_code.build_database import PSQLDataGenerator
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
 
@@ -719,6 +720,128 @@ print("\nPre-Processed Dataset Saved as parquet file!")
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+the_dataset = pd.DataFrame({
+    'age': [25, 45, 30, 50],           # Range: 25 (Tiny)
+    'salary': [50000, 120000, 60000, 110000] # Range: 70,000 (HUGE)
+})
+
+print(f'''
+======================================== Original Dataset ========================================
+      
+{the_dataset.head().to_markdown()}
+''')
+
+c_names = list(the_dataset.columns)
+
+# StandardScaler centers data around 0 with a spread (std dev) of 1
+# it subtracts the mean of a column from each row, dividing the result by the Standard Deviation
+# ==> (Value - Mean) / StdDev
+std_dset = StandardScaler().fit_transform(the_dataset)
+
+
+std_dframe = pd.DataFrame(
+    std_dset,
+    columns = c_names
+).round(2)
+
+print(f'''
+=================================== Dataset Standardized with StandardScaler (Centered around 0) ===================================
+      
+{std_dframe.head().to_markdown()}
+''')
+
+# Normalization squashes the column values to numbers between a range of 0 - 1
+# Formula: (Value - Min) / (Max - Min)
+
+scd_dset = MinMaxScaler().fit_transform(the_dataset)
+
+scd_dframe = pd.DataFrame(scd_dset, columns = c_names).round(2)\
+# when a dataset is Squashed with MinMaxScaler, the lowest value in a column is always 0 and the highest is always 1
+
+
+print(f'''
+=============================== Dataset Normalized with MinMaxScaler (Squashed between 0 to 1) ===============================
+      
+{scd_dframe.head().to_markdown()}
+''')
 
 
 
