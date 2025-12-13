@@ -1,7 +1,7 @@
 import numpy as np
 import time
 import pandas as pd
-from jesse_custom_code.pandas_file import database_path as d_path
+from jesse_custom_code.pandas_file import database_path as d_path, postgre_connect
 from sqlalchemy import create_engine
 
 a_list = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
@@ -3324,6 +3324,122 @@ Therefore:
 - Flatten = COPY
 - Masking/Fancy Indexing = COPY
 '''
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Slogs_dset = pd.read_sql(
+    "SELECT * FROM subscription_logs LIMIT 9500",
+
+    create_engine(postgre_connect)
+)
+
+
+m_usg_hrs_array = Slogs_dset["monthly_usage_hrs"].to_numpy()
+
+hrs_std = np.std(m_usg_hrs_array, axis = 0)
+
+print(f'''
+Standard Deviation of Monthly Usage Hours: {hrs_std:.2f}
+''')
+
+# The assignent wants to test my knowledge copy and views in Numpy, but it wants me to perform on a DataFrame instead of a numpy array.
+# I chose to use an array instead of a DataFrame
+
+marketing_sample = Slogs_dset.head(10)
+
+original_array = m_usg_hrs_array[:20].round() # let's use the "monthly_usage_hrs" array
+
+sliced_array = original_array[:10].copy()
+
+print(f'''
+Original Array Before Mock Modification: {original_array}
+
+Sliced Array Before Mock Modification: {sliced_array}''')
+
+sliced_array[0] = 1125
+
+print(f'''
+Original Array After Mock Modification: {original_array}
+
+Sliced Array After Mock Modification: {sliced_array}
+''') # original array remained the same
+
 
 
 
