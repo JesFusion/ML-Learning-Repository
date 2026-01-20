@@ -10,7 +10,7 @@ import pandas as pd
 from enum import Enum # Enum is a class that enables us to create a restricted list of choices for a dynamic route
 from pydantic import BaseModel, Field, model_validator
 from fastapi import FastAPI, Depends, HTTPException, Header, Body
-from typing import List, Optional, Annotated # for creating optional parameters
+from typing import Union, List, Optional, Annotated # for creating optional parameters
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text # text is a safer method to write queries for a database than mere strings
 
@@ -1717,5 +1717,391 @@ OFFSET :log_skip
 
 
 
-# uvicorn main:fastapp --reload --port 2006
-# http://127.0.0.1:2006
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+the_data = pd.DataFrame({
+    "feature_name": ["sqft", "bedrooms", "age"],
+    "min_value": [100, 1, 0],
+    "max_value": [10000, 20, 150]
+})
+
+file = "/home/jesfusion/Documents/ml/ML-Learning-Repository/Saved_Datasets_and_Models/Datasets/model_feature_stats.parquet"
+
+if False: # we run this only once, and change it from True to False
+    the_data.to_parquet(file, index = False)
+
+
+if True:
+
+    model_feature_data = pd.read_parquet(path = file)
+
+
+
+# ===================================== DEFINING THE INPUT SCHEMA (THE REQUEST) =====================================
+
+# this places a strict format on the request to the API...
+
+class HouseFeaturesValidator(BaseModel):
+
+    square_feet: int = Field(
+        ..., #  The ellipsis (...) indicates that this field is required; the code will raise a validation error if this value is missing
+        
+        gt = 0, # Square Feet must be greater than 0
+        
+        description = "Square Feet Measurement of the Property" # This provides a human-readable explanation of the field, which is useful for automated API documentation
+    )
+
+    no_bedrooms: int = Field(
+        default = 1, # default value is 1
+
+        gt = 0, # must be greater than 0
+
+        le = 30, # must be less than or equal to 30 bedrooms
+
+        description = "Number of bedrooms in the Property"
+    )
+
+    loc_score: float # loc_score must come in as a float. If it's not, kick that fool out!
+
+
+
+# ===================================== DEFINING THE OUTPUT SCHEMA (THE RESPONSE) =====================================
+
+# this defines the format of the API's response to the User
+# This is to ensure we don't send things we dont want to to the user, like sensitive secrets
+
+class APIOutput(BaseModel):
+
+    predicted_price: float
+
+    currency: str = "USD"
+
+    confidence: float
+
+
+api = FastAPI()
+
+
+@api.post(
+    path = "/mod_pred/property",
+
+    response_model = APIOutput
+)
+
+async def house_prediction(
+    house_features: HouseFeaturesValidator
+):
+    
+    house_price = (house_features.square_feet * 233.12) + (house_features.no_bedrooms * 4911.34)
+
+    output = {
+        "predicted_price": f"{house_price:.2f}",
+
+        "currency": "GBR",
+
+        "confidence": 0.83,
+
+        'random_output': 'Will be Removed' # This won't appear in the outputted JSON Response
+    }
+
+    return output
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+d_engine = create_engine(os.environ.get("POSTGRE_CONNECT"))
+
+
+# Initializing an empty table in the database...
+
+if False:
+
+    pd.DataFrame({
+        'id': [],
+        'current_status': []
+    }).to_sql(
+        name = 'work_log',
+
+        con = d_engine,
+
+        if_exists = 'replace',
+
+        index = False
+    )
+
+
+
+
+
+class BoxLine(BaseModel):
+
+    """
+    Coordinates for an object detection box.
+    
+    We need strict integers to draw rectangles on the image.
+    """
+
+    min_of_x: int
+    min_of_y: int
+    max_of_x: int
+    max_of_y: int
+
+    img_label: str
+
+
+class MetadataOfImage(BaseModel):
+
+    image_id: Union[int, str] # works same as:
+    # image_id: int | str
+
+    name_of_file: str
+
+    # a list of BoundingBox models...
+    model_detections: List[BoxLine] = [] # defaults to an empty list, because a model can turn up with 0 detected objects
+
+
+
+class RequestForBatchInference(BaseModel):
+
+    name_of_batch: str
+
+    batch_images: List[MetadataOfImage]
+
+
+class Output(BaseModel):
+
+    name_of_batch: str
+
+    processed: int | float | str
+
+    process_status: str = 'successful'
+
+
+# ===================================== ENDPOINT =====================================
+
+the_api = FastAPI()
+
+@the_api.post(
+    path = '/analysis/img_batch',
+
+    response_model = Output
+)
+
+async def batch_processing(
+    input: RequestForBatchInference
+):
+    count_of_processed = 0
+
+    for image in input.batch_images:
+
+        print(f"\nProcessing {image.name_of_file}...\n(ID: {image.image_id})")
+
+        for bbox in image.model_detections:
+
+            print(f"    Found {bbox.img_label}. Co-ordinates: [{bbox.min_of_x}, {bbox.min_of_y}]")
+
+        count_of_processed += 1
+
+    log = pd.DataFrame({
+        'id': [input.name_of_batch],
+
+        'current_status': ["Completed"]
+    })
+
+    log.to_sql(
+        name = 'work_log',
+
+        if_exists = 'append',
+
+        con = d_engine,
+
+        index = False
+    )
+
+    output = {
+        
+        "name_of_batch": input.name_of_batch,
+
+        "processed": count_of_processed,
+
+        "process_status": 'successful'
+    }
+
+    return output
+
+
+
+
+
+
+
+
+
+
+
+
