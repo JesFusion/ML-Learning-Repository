@@ -1468,3 +1468,213 @@ echo "Segment 4.4 Complete. You are safe from breaking the OS."
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#!/bin/bash
+
+
+# Create a directory in the current user's home folder named sensitive_data
+cd ~ && mkdir -p sensitive_data # -p means parent. A safety that prevents errors if the folder already exists
+
+# Set the permissions of sensitive_data so that only the owner can Read, Write, and Execute. No one else (group or public) should have ANY access
+chmod 700 sensitive_data # Read (4), Write (2), Execute (1), No Permission (0). We granted the user (4 + 2 + 1) while giving groups and others (0)
+
+
+# Explicitly set the ownership of this folder to the current user (use $USER) and the current user's group
+sudo chown $USER:$USER sensitive_data
+
+
+# Ensure the package list is up to date
+sudo apt update
+
+
+# Kevin needs Python 3.12, but the server defaults to 3.10. Add the deadsnakes PPA programmatically
+
+sudo apt install -y software-properties-common # -y automatically answers yes during a process, which makes the process faster and enables automation
+sudo add-apt-repository ppa:deadsnakes/ppa -y
+
+
+# Install python3.12, python3.12-venv, and the utility tool jq (JSON processor) using apt
+
+# Ensure the script assumes "Yes" to prompts so it doesn't hang waiting for input
+sudo apt install -y python3.12 python3.12-venv jq
+
+
+
+# Create a temporary directory named temp_build.
+mkdir -p temp_build && cd "./temp_build/"
+
+
+sudo apt install -y build-essential libncurses5-dev libncursesw5-dev
+
+
+
+# Download the htop version 3.2.2 source code (URL: https://github.com/htop-dev/htop/releases/download/3.2.2/htop-3.2.2.tar.gz)
+
+# the link "https://github.com/htop-dev/htop/releases/download/3.2.2/htop-3.2.2.tar.gz" is no longer valid and returns a 404. I scrambled the net to get this one
+
+URL=https://github.com/htop-dev/htop/releases/download/3.2.2/htop-3.2.2.tar.xz
+
+wget $URL
+
+
+# the following was done with AI help, since I couldn't download the .tar.gz file
+
+# ===================================== Start of AI help =====================================
+tar -xf htop-3.2.2.tar.xz # -xf is for Extract & File. Extract pulls out the contents, and File ensures that the filename mentioned next is the one acted on
+
+
+cd "./htop-3.2.2/"
+
+# Prepare the build
+
+./configure
+
+# Compile the source code
+make
+
+# Install the software (requires sudo)
+
+sudo make install
+
+
+# ===================================== End of AI help =====================================
+
+
+# Critical Step: Clean up after yourself. Remove the temp_build directory after the installation is done
+
+rm -rf temp_build # -rf is for recursive & force, enabling us to delete a folder recursively and by force
+
+
+# Create a directory named project_kevin
+mkdir -p project_kevin && cd project_kevin
+
+# Inside it, create a virtual environment named .venv using the Python 3.12 executable you installed in Section 2
+python3.12 -m venv .venv # -m ensures that the library module is run as a script
+
+
+# Activate the environment
+source .venv/bin/activate
+
+# Install numpy (safety check: ensure it installs inside the venv)
+pip install numpy
+
+
+# Generate a requirements.txt file inside project_kevin
+pip freeze > requirements.txt
+
+# Deactivate the environment
+deactivate
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
