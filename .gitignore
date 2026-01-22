@@ -16,6 +16,9 @@ Saved_Datasets_and_Models/Datasets/
 # __pycache__ folder in FastAPI
 FastAPI/__pycache__/
 
+# __pycache__ in main folder (ML-Learning-Repository)
+__pycache__/
+
 # folder for pasting coding assignment
 assignment.txt
 
