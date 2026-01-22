@@ -89,4 +89,79 @@
     > and >> are redirection operators
     
     They tell the computer: "Don't print the results of this command to the screen; send them to a file instead"
+},
+
+{
+    htop mappings:
+
+    Memorize these mappings:
+
+    - Instead of F3 (Search): Press / (Forward Slash).
+
+    Why: This is the universal search key in Linux (vim, less, man pages).
+
+
+    - Instead of F4 (Filter): Press \ (Backslash).
+
+    Why: It allows you to only see processes matching a string (e.g., "python").
+
+    
+    - Instead of F5 (Tree View): Press t.
+
+    Why: Toggles between a flat list and a parent-child tree (essential for seeing which process spawned which).
+
+    
+    - Instead of F6 (Sort): Press > or ..
+
+    Why: This lets you pick what to sort by (CPU, MEM, etc.).
+
+    
+    - Instead of F9 (Kill): Press k.
+
+    Why: Opens the kill menu. Use this to terminate runaway Python scripts.
+
+    
+    - Instead of F10 (Quit): Press q.
+
+    Why: Universal quit command.
+},
+
+{
+    Commonly used process signals in Linux:
+
+
+    1. SIGTERM (Termination Signal):
+
+    Tells the program to stop, but gives it a chance to clean up (close database connections, save logs) before it dies.
+
+    When to use it: ALWAYS try this first. It is the default in htop.
+
+    
+    
+    2. SIGKILL (Kill Signal):
+
+    The Kernel instantly removes the process from memory. The process has zero chance to save data or close files.
+
+    When to use it: Only when a process is "hung" or "zombie" and refuses to listen to SIGTERM.
+
+    Warning: If you use this on a database (like Postgres) or a training run, you will corrupt your data.
+
+
+    3. SIGINT (Interrupt):
+
+    This is exactly what happens when you press Ctrl+C in your terminal. It usually kills the script, but a smart Python script can "catch" this signal and do something else (like print "Exiting..." first).
+
+
+
+    4. SIGHUP (Hang Up):
+
+    Originally used when a phone line hung up. Today, we use it to tell background services (like Nginx or Docker) to reload their configuration files without actually stopping the server.
+
+    Pro Tip: If you change a config file, don't restart the server; send it a SIGHUP.
+
+
+
+    5. SIGSEGV (Segmentation Violation):
+
+    This is the specific signal that caused your onboard keyboard to crash earlier. It means the program tried to access memory it wasn't allowed to touch.
 }
