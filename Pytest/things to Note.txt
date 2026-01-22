@@ -1,0 +1,9 @@
+{
+    - You start Pytest by typing 'pytest' in your terminal
+
+    - When Pytest runs, it looks for files starting with 'test_' or ending in '_test.py'
+
+    - Pytest scans for functions starting with 'test_'. If you miss the prefix, the test is invisible
+
+    - You can group tests in classes. The Class MUST start with 'Test' (capital T). The class must NOT have an __init__ method.
+}
