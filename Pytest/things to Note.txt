@@ -6,4 +6,48 @@
     - Pytest scans for functions starting with 'test_'. If you miss the prefix, the test is invisible
 
     - You can group tests in classes. The Class MUST start with 'Test' (capital T). The class must NOT have an __init__ method.
+},
+
+{
+
+    PYTEST FLAGS:
+
+
+    1. Output & Verbosity:
+
+    -v / --verbose: Increases output detail.
+    -vv: Even higher verbosity; essential for seeing full differences in large NumPy array mismatches.
+    -q / --quiet: Decreases output detail to show only essential results.
+    -s / --capture=no: Disables output capture, allowing print() statements and debugger prompts to appear in real-time.
+    -r<chars>: Shows a short summary info for specific results (e.g., -rP for passed tests with output, -rf for failures). 
+
+
+    2. Test Selection & Filtering:
+
+    -k <expression>: Runs only tests with names matching the given keyword or substring (e.g., pytest -k "linear_regression").
+    -m <marker>: Runs tests marked with a specific decorator (e.g., @pytest.mark.slow).
+    --lf / --last-failed: Re-runs only the tests that failed in the previous run.
+    --ff / --failed-first: Runs all tests, but prioritizes the ones that failed last time. 
+
+    
+    3. Execution Control
+
+    -x / --exitfirst: Stops the entire test session immediately after the first failure.
+    --maxfail=<num>: Stops the test session after a specific number of failures.
+    --sw / --stepwise: Stops at the first failure and resumes from that exact spot in the next run.
+    --collect-only: Lists all tests that would be run without actually executing them. 
+
+    
+    4. Debugging & Profiling
+
+    --pdb: Starts the Python Debugger (PDB) automatically at the exact point of a test failure.
+    -l / --showlocals: Shows the values of local variables in the traceback for failed tests.
+    --tb=<style>: Customizes traceback style (long, short, line, native, or no).
+    --durations=<N>: Identifies bottlenecks by listing the N slowest tests. 
+
+    
+    5. ML-Specific Extensions (Required Plugins)
+
+    --cov: Measures code coverage to see which parts of your model code aren't being tested (requires pytest-cov).
+    -n <num>: Runs tests in parallel across multiple CPU cores (requires pytest-xdist). 
 }
