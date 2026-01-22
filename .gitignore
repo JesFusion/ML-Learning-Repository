@@ -1,0 +1,39 @@
+# file for testing code before putting into production
+test_things.py
+
+# file to practice freelancing projects
+dataset_cleaning_freelancer.py
+
+# __pycache__ folder in SQL_and_pandas
+SQL_and_pandas/database_generator/__pycache__/
+
+# vscode unique settings for this repo
+.vscode/
+
+# folder for keeping datasets for practice
+Saved_Datasets_and_Models/Datasets/
+
+# __pycache__ folder in FastAPI
+FastAPI/__pycache__/
+
+# folder for pasting coding assignment
+assignment.txt
+
+# env file where important variables are stored
+.env
+
+
+# file to see both code and terminal
+z_code.ipynb
+
+# folder containing folders where docker images and other necessary files are stored
+Docker/Docker_Folders/
+
+# shebang script for automating processes
+build.sh
+
+# saved Matplotlib/Seaborn images
+Matplotlib_and_Seaborn/images/
+
+# __pycache__ folder in Pytest
+Pytest/__pycache__/
