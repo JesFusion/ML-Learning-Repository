@@ -1,4 +1,5 @@
 import time
+import pytest
 import numpy as np
 np.random.seed(10)
 
@@ -244,6 +245,381 @@ def test_intrsopection_on_lists():
 
     assert list_a == list_b
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ===================================== MAIN CODE =====================================
+
+
+
+type_err_message = "Input shape must be a Tuple."
+
+def image_shape_validation(tuple_shape: tuple):
+
+    """
+    Ensures image is 3-dimensional (Height, Width, Channels).
+    Raises ValueError if dimensions are wrong.
+    """
+
+    if not isinstance(tuple_shape, tuple): # enforcing type strictness
+
+        raise TypeError(type_err_message)
+    
+    if len(tuple_shape) != 3: # enforcing dimension strictness
+
+        raise ValueError(f"Expected 3 dimensions, got {len(tuple_shape)} dimensions.")
+
+    return True
+
+
+
+
+# ===================================== TEST CODE =====================================
+
+
+
+
+def test_image_shape_validation_bad_shape():
+
+    # testing with right type but wrong shape
+    err_shape = (21, 23)
+
+    with pytest.raises(ValueError): # the following is meant to fail and return a ValueError. If it doesn't, FAIL THE TEST!
+
+        image_shape_validation(tuple_shape = err_shape)
+
+
+
+def test_image_shape_validation_bad_type():
+    
+    # testing with right shape but wrong type
+    err_type = [12, 12, 12]
+
+    with pytest.raises(TypeError):
+
+        image_shape_validation(tuple_shape = err_type)
+
+
+
+def test_image_shape_validation_check_shape_error_message():
+
+    err_shape = (2, 1, 2, 2)
+
+
+    with pytest.raises(
+        expected_exception = ValueError,
+        
+        # We are checking if the string "Expected 3 dimensions" appears in the error.
+        match = rf"Expected 3 dimensions, got {len(err_shape)} dimensions." # match=r"..." takes a Regular Expression (Regex).
+    ):
+        
+        image_shape_validation(tuple_shape = err_shape)
+
+
+
+def test_image_shape_validation_check_type_error_message():
+
+    err_type = [1, 2, 3]
+
+    with pytest.raises(
+        expected_exception = TypeError, # checking for TypeError, not ValueError
+
+        match = rf"{type_err_message}"
+    ):
+        
+        image_shape_validation(tuple_shape = err_type)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# INTRO TO FIXTURES
+
+# ===================================== OLD METHOD =====================================
+
+
+def test_validation_old_method():
+
+    """
+    We're manually creating a dictionary for every single test
+    
+    While it's easy to pull out the dictionary from a function and let all functions use it, the point is that there are sometimes that we're forced to create the same thing over and over again in all our test functions, but pytest has a solution to this
+    """
+
+    dataset = {
+
+    "id": 1,
+    
+    "username": "jesse_billionaire",
+    
+    "role": "admin"
+    }
+
+
+    assert dataset['role'] == 'admin'
+
+
+
+
+def test_id_old_method():
+
+    """
+    We're duplicating the dataset dictionary again!
+
+
+    If we change the structure of dataset later, we have to fix it in 50 places.
+    """
+
+    dataset = {
+
+    "id": 1,
+    
+    "username": "jesse_billionaire",
+    
+    "role": "admin"
+    }
+
+
+    assert dataset['id'] > 0.3
+
+
+
+
+
+# ===================================== NEW METHOD (PYTEST SOLUTION) =====================================
+
+
+@pytest.fixture
+def a_single_user(): # this is a FIXTURE function
+    # It acts as a 'factory' that delivers data to any test that asks for it.
+    
+    """
+    Returns:
+        dict: A standard user dictionary.
+    """
+
+    # we'll define the data in one place, and use it in other functions
+
+    the_data = {
+
+    "id": 1,
+    
+    "username": "jesse_billionaire",
+    
+    "role": "admin"
+    }
+
+    return the_data
+
+
+
+def test_validation_new_method(a_single_user): # We pass 'a_single_user' as an argument    
+    # Pytest sees the argument name, finds the fixture with the matching name, runs it, and injects the return value into 'a_single_user' as a variable
+
+    assert a_single_user['role'] == 'admin'
+
+
+
+def test_id_new_method(a_single_user): # we're reusing the same FIXTURE
+
+    assert a_single_user['id'] < 2
 
 
 

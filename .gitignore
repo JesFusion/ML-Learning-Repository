@@ -40,3 +40,8 @@ Matplotlib_and_Seaborn/images/
 
 # __pycache__ folder in Pytest
 Pytest/__pycache__/
+
+
+# file for writing pytest code 
+Pytest/test_file.py
+
