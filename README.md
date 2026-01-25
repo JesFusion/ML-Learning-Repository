@@ -2,7 +2,7 @@
 
 This Repo is a personal collection of small learning projects, reference notes, and example code used while learning and practicing the langiages and tools needed to become a __*Machine Learning Enginner*__. The materials are organized loosely by topic and are intended as lightweight, runnable examples and notes you can read and adapt.
 
-## Repo Structure
+## Repo Tree Structure
 ```
 .
 ├── assignment.txt
