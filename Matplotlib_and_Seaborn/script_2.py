@@ -2679,3 +2679,225 @@ plt.show()
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+sns.set_theme(style = 'darkgrid')
+sns.set_context(context = 'talk')
+
+dataset = pd.DataFrame({
+
+    'Group': ['A', 'B', 'C'],
+
+    'Mean_Score': [85, 92, 78],
+
+    'Std_Dev': [5, 3, 8] # This represents the variability/uncertainty
+})
+
+
+figure, axes = plt.subplots(figsize = (10, 6))
+
+
+"""
+
+.bar() parameters:
+
+- x: The categories
+
+- height: The bar height (Mean)
+
+- yerr: The error bars (Standard Deviation). This draws the "whiskers".
+
+- capsize: The width of the horizontal line at the top of the whisker.
+
+- color: Custom hex codes for professional look
+
+"""
+
+bar_chart = axes.bar(
+    x = dataset['Group'],
+
+    height = dataset['Mean_Score'],
+
+    yerr = dataset['Std_Dev'], # this adds the vertical error-lines
+
+    capsize = 8, # this adds the T-shape top to the error-lines
+
+    color = ["#e01111", "#fc2fda", "#1cd34a"],
+
+    alpha = 0.9,
+
+    edgecolor = "#140C0C",
+
+    linewidth = 1.2,
+
+    # width = 0.4, # 0.8 is the default Value
+)
+
+# placing text at the top of each bar...
+for bbr in bar_chart:
+
+    b_height = bbr.get_height()
+
+    axes.text(
+        x = bbr.get_x() + (bbr.get_width() / 1.534), # Center x
+
+        y = b_height + 1,
+
+        s = f" h: {b_height}", # The text to be placed
+
+        ha = 'center', # ha = Horizontal Align
+        
+        va = 'bottom', # va = Vertical Align
+
+        fontsize = 12,
+
+        color = "#222021",
+
+        fontweight = 'bold'
+    )
+
+
+
+
+# ===================================== styling the Chart =====================================
+
+axes.set_title('Team Performance: Means with Standard Deviation Error Bars')
+
+axes.yaxis.grid(
+    visible = True,
+
+    linestyle = '--',
+
+    alpha = 0.7
+)
+
+# we set a label on only the y-axis for readability
+axes.set_ylabel('Performance Score')
+
+axes.set_axisbelow(b = True) # this puts Gridlines behind the bars
+
+
+plt.show()
+
+
+
+
+
+
+
+
+
+
