@@ -164,4 +164,17 @@
     5. SIGSEGV (Segmentation Violation):
 
     This is the specific signal that caused your onboard keyboard to crash earlier. It means the program tried to access memory it wasn't allowed to touch.
+},
+
+{
+
+    htop Navigation F-keys:
+
+    F2 – Setup (customize columns and colors)
+    F3 – Search for a process by name (type "python" to find all Python processes)
+    F4 – Filter (only show processes matching a pattern)
+    F5 – Tree view (see which processes spawned which child processes)
+    F6 – Sort by (choose MEM%, CPU%, TIME+, etc.)
+    F9 – Kill (select a process and send a kill signal)
+    F10 – Quit
 }
