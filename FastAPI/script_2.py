@@ -8,6 +8,7 @@ import requests
 import numpy as np
 import pandas as pd
 from enum import Enum # Enum is a class that enables us to create a restricted list of choices for a dynamic route
+from datetime import datetime
 from pydantic import BaseModel, Field, model_validator
 from fastapi import FastAPI, Depends, HTTPException, Header, Body
 from typing import Union, List, Optional, Annotated # for creating optional parameters
@@ -2093,6 +2094,287 @@ async def batch_processing(
     }
 
     return output
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ===================================== Defining input schema =====================================
+class HouseInfo(BaseModel):
+
+    """
+    Schema for house features that our ML model needs for prediction.
+    This is what the user sends in their POST request.
+    """
+
+    # Field is a function from pydantic that enables you to add metadata and constraints to your parameters
+    house_square_feet: float = Field(        
+        gt = 0, 
+
+        le = 10000000,
+
+        description = "Total square footage of the house. Must be positive."
+    )
+
+    no_bedrooms: int = Field(
+        ge = 1,
+
+        le = 30,
+
+        description = "Number of bedrooms. Must be between 1 and 20."
+    )
+
+    no_bathrooms: float = Field( # bathrooms is a float (not int) because of half-bathrooms
+    # Real estate uses 1.5, 2.5 bathrooms (half-bath = toilet + sink, no shower)
+
+        ge = 1,
+
+        lt = 31,
+
+        description = "Number of bathrooms. Can include half-baths (e.g., 2.5)."
+    )
+
+    house_age: int = Field(
+        ge = 0,
+
+        le = 200,
+
+        description = "Age of the house in years."
+    )
+
+    zp_cd: str = Field(
+        min_length = 6, max_length = 6, # zip codes in Nigeria are exactly 6 digits
+
+        description = "6-digit Nigerian zip code as a string (e.g., '400013')."
+    )
+
+    garage: bool = Field(
+        description = "Whether the house has a garage."
+    )
+
+    other_notes: Optional[str] = Field( # without Optional, you'll be forced to provide additional notes
+        default = None,
+
+        max_length = 1000,
+
+        description = "Optional notes about the house. Max 1000 characters."
+    )
+
+
+
+# ===================================== Defining output schema =====================================
+
+
+# here, we define the output format of out API
+
+class PredictionOfHousePrice(BaseModel):
+
+    """
+    Schema for the house price prediction response.
+    This is what our API sends back after making a prediction.
+    """
+
+    price_predicted: float = Field(
+        gt = 0,
+
+        description = "The predicted house price in USD."
+    )
+
+    model_confidence: float = Field(
+        ge = 0.0,
+
+        lt = 1.0, # we use lt insted of le, because a model should never be 100% confident
+
+        description = "Model confidence score between 0 and 1."
+    )
+
+    m_version: str = Field(
+        max_length = 80,
+
+        description = "Version of the ML model used for this prediction (e.g., 'v2.3.1')."
+    )
+
+    time_of_prediction: datetime = Field(
+        default_factory = datetime.now,
+
+        description = "Timestamp when the prediction was made."
+    )
+
+    model_warning: Optional[str] = Field( # this is optional since not all models will want to warn the user about predictions they make
+        default = None,
+
+        description = "Optional warning message if the prediction might be unreliable."
+    )
+
+
+
+# ===================================== testing the schema =====================================
+
+
+
+if __name__ == '__main__':
+
+    # Creating a valid HouseInfo object
+
+    valid_house_info = HouseInfo(
+        house_square_feet = 5000.45,
+        # house_square_feet = -5000.45 would throw an error because we enforced that an incoming value must be greater than 0
+
+        no_bedrooms = 9, # setting no_bedrooms to 0 would throw an error as it was specified that an incoming value must be greater or equal to 1
+        # no_bedrooms = "95" will work as pydantic does automatic type conversion
+
+        no_bathrooms = 3.5,
+
+        house_age = 11,
+
+        zp_cd = '400125',
+
+        garage = True,
+
+        other_notes = "Nice House!" # you can comment other_notes. Since it's optional no error will occur
+        # text inputted in 'other_notes' must be less than 1000 characters as a violation would result to an error
+    )
+
+    # converting pydantic model to a dictionary
+    valid_house_info_as_dict = valid_house_info.model_dump()
+
+
+    # converting pydantic model to dictionary
+    """
+    this is becuase APIs communicate with JSON, and it's preferred to use that doing a manual json.dumps(), which is prone to errors
+    """
+    valid_house_info_as_json = valid_house_info.model_dump_json()
+
+
+
+    model_pred = PredictionOfHousePrice(
+        price_predicted = 100002.452,
+
+        model_confidence = 0.79,
+
+        m_version = "v1.5.1",
+
+        # time_of_prediction is auto-generated by default_factor = datetime.now
+
+        model_warning = None # no warning for this prediction
+    )
+
+    # creating HouseInfo object
 
 
 
