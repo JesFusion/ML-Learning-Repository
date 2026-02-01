@@ -47,4 +47,19 @@
 
     - 5xx (Server Error Responses):
     These codes, including 500 Internal Server Error and 503 Service Unavailable, point to issues on the server side preventing the fulfillment of a valid request. 
+},
+
+{
+    Common Field parameters:
+
+    - gt (greater than): Field(gt=0) means "value must be > 0"
+    - ge (greater than or equal): Field(ge=0) means "value must be >= 0"
+    - lt (less than): Field(lt=100) means "value must be < 100"
+    - le (less than or equal): Field(le=100) means "value must be <= 100"
+    - min_length / max_length: For strings - Field(min_length=3, max_length=50)
+    - description: Human-readable explanation - shows up in FastAPI's auto-generated docs
+    - default: Default value if not provided
+    - default_factory: A function to generate the default (useful for timestamps)
+    - alias: Allow the field to accept a different name in the JSON (e.g., firstName becomes first_name)
+    
 }

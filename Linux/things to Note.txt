@@ -164,4 +164,44 @@
     5. SIGSEGV (Segmentation Violation):
 
     This is the specific signal that caused your onboard keyboard to crash earlier. It means the program tried to access memory it wasn't allowed to touch.
+},
+
+{
+
+    htop Navigation F-keys:
+
+    F2 – Setup (customize columns and colors)
+    F3 – Search for a process by name (type "python" to find all Python processes)
+    F4 – Filter (only show processes matching a pattern)
+    F5 – Tree view (see which processes spawned which child processes)
+    F6 – Sort by (choose MEM%, CPU%, TIME+, etc.)
+    F9 – Kill (select a process and send a kill signal)
+    F10 – Quit
+},
+
+{
+    ps aux column Breakdown:
+
+    - USER – Who owns this process (root, jesse, postgres)
+    - PID – Process ID (the unique identifier)
+    - %CPU – Percentage of CPU being used
+    - %MEM – Percentage of RAM being used
+    - VSZ – Virtual memory size (total memory allocated, including swapped)
+    - RSS – Resident Set Size (actual physical RAM being used right now)
+    - TTY – Which terminal launched this (? means no terminal, it's a background service)
+    - STAT – Process state: {
+        R = Running
+        S = Sleeping (waiting for something)
+        D = Uninterruptible sleep (waiting for disk I/O, can't be killed)
+        Z = Zombie (dead but not cleaned up, creepy)
+        T = Stopped (paused)
+        + = In foreground process group
+    }
+    - START – When this process started
+    - TIME – Total CPU time consumed
+    - COMMAND – The actual command that's running
+},
+
+{
+    ps aux | grep [Command] is used to find all processes running a particular [Command]
 }

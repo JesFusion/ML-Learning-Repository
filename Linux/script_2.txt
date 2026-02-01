@@ -1678,3 +1678,512 @@ deactivate
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#!/bin/bash
+# ==============================================================================
+# SEGMENT 5.1: MONITORING - Process Surveillance Tools
+# ==============================================================================
+# Author: Jesse Nwachukwu
+# Purpose: Demonstrate how to monitor system processes, CPU, and memory usage
+# MLOps Context: Essential for identifying resource bottlenecks during model training
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# SECTION 1: The `top` Command - Real-Time Process Monitoring
+# ------------------------------------------------------------------------------
+
+echo "=========================================="
+echo "DEMONSTRATION 1: Using 'top' Command"
+echo "=========================================="
+echo ""
+
+# What: Display information about the `top` command
+# Why: Before running an interactive command, we explain what the user will see
+# How: Using echo to provide context
+echo "The 'top' command provides a REAL-TIME view of system processes."
+echo "It continuously updates (default: every 3 seconds)."
+echo ""
+echo "When you run 'top', you'll see:"
+echo "  - CPU usage breakdown (user, system, idle)"
+echo "  - Memory (RAM) usage"
+echo "  - Swap usage (virtual memory on disk)"
+echo "  - List of processes sorted by resource consumption"
+echo ""
+
+# What: Explanation of top's key columns
+# Why: Users need to understand what each column means when they see it
+echo "Key Columns in 'top':"
+echo "  PID    = Process ID (unique identifier for each process)"
+echo "  USER   = Who owns this process"
+echo "  %CPU   = Percentage of CPU being used by this process"
+echo "  %MEM   = Percentage of RAM being used by this process"
+echo "  TIME+  = Total CPU time consumed (format: minutes:seconds.centiseconds)"
+echo "  COMMAND= The actual program running"
+echo ""
+
+# What: Interactive commands available inside top
+# Why: Users need to know how to control top once it's running
+echo "Interactive Commands (press these keys while 'top' is running):"
+echo "  M = Sort by memory usage (find RAM hogs)"
+echo "  P = Sort by CPU usage (find CPU hogs)"
+echo "  k = Kill a process (you'll be prompted for PID)"
+echo "  q = Quit top"
+echo "  h = Show help menu"
+echo ""
+
+# What: Run top in batch mode for demonstration
+# Why: We use batch mode (-b) to capture one snapshot without entering interactive mode
+# Parameter -b: Batch mode (non-interactive, outputs to stdout)
+# Parameter -n 1: Number of iterations (we only want 1 update, not continuous)
+# Why -n 1: Captures a single snapshot so we can display it in this script
+# What happens if we don't use -n 1: top would run forever, blocking the script
+echo "Running 'top' in batch mode (1 iteration) to show current snapshot:"
+echo ""
+top -b -n 1 | head -n 20  # Only show first 20 lines for readability
+# What: | head -n 20 does
+# Why: top's output can be 100+ lines, we truncate to keep the demo clean
+# Parameter -n 20: Show only the first 20 lines
+
+echo ""
+echo "Press Enter to continue to htop demonstration..."
+read -r  # Pause for user to review the output
+# What: read -r does
+# Why: Waits for user input before continuing (interactive learning)
+# Parameter -r: Raw input mode (doesn't interpret backslashes as escape characters)
+
+# ------------------------------------------------------------------------------
+# SECTION 2: The `htop` Command - Enhanced Process Monitoring
+# ------------------------------------------------------------------------------
+
+echo ""
+echo "=========================================="
+echo "DEMONSTRATION 2: Using 'htop' Command"
+echo "=========================================="
+echo ""
+
+# What: Check if htop is installed before trying to use it
+# Why: htop is not installed by default on Ubuntu, we need to verify first
+# How: Using the 'command -v' built-in to check if a command exists
+if ! command -v htop &> /dev/null; then
+    # What: &> /dev/null does
+    # Why: Redirects both stdout and stderr to /dev/null (the void)
+    # Why we need this: command -v outputs text if found, we only care about exit code
+    
+    echo "WARNING: htop is not installed on this system."
+    echo ""
+    echo "htop is an improved version of top with:"
+    echo "  - Color-coded output (green, blue, red for different resource types)"
+    echo "  - Visual CPU/Memory bars for each core"
+    echo "  - Mouse support (click on processes!)"
+    echo "  - Tree view (see parent-child process relationships)"
+    echo "  - F-key shortcuts for common actions"
+    echo ""
+    
+    # What: Provide installation instructions
+    # Why: htop must be installed via apt package manager
+    echo "To install htop, run:"
+    echo "  sudo apt update"
+    echo "  sudo apt install htop"
+    # Why sudo: Installing system packages requires root privileges
+    # What apt update does: Refreshes the list of available packages
+    # What apt install does: Downloads and installs the specified package
+    echo ""
+else
+    # What: htop is installed, explain its features
+    # Why: Prepare the user for what they'll see when they run it
+    echo "htop is installed! Here's what makes it better than top:"
+    echo ""
+    echo "VISUAL FEATURES:"
+    echo "  - Each CPU core gets its own bar graph"
+    echo "  - Memory and Swap shown as visual bars"
+    echo "  - Color coding: Green=Used, Blue=Buffers, Yellow=Cache"
+    echo ""
+    echo "NAVIGATION:"
+    echo "  F1 = Help screen"
+    echo "  F2 = Setup (customize display)"
+    echo "  F3 = Search for a process by name"
+    echo "  F4 = Filter (show only processes matching a pattern)"
+    echo "  F5 = Tree view (show process hierarchy)"
+    echo "  F6 = Sort by (CPU%, MEM%, TIME, etc.)"
+    echo "  F9 = Kill a process"
+    echo "  F10 = Quit"
+    echo ""
+    echo "MOUSE SUPPORT:"
+    echo "  - Click on a process to select it"
+    echo "  - Click on column headers to sort"
+    echo "  - Scroll with mouse wheel"
+    echo ""
+    
+    # What: Explain why we're not running htop in this script
+    # Why: htop is fully interactive and can't be demonstrated in batch mode
+    echo "NOTE: htop is a fully interactive tool (no batch mode)."
+    echo "To use it, simply type: htop"
+    echo ""
+    
+    # What: Provide a use-case example
+    # Why: Students learn better with concrete scenarios
+    echo "MLOps Use Case:"
+    echo "You're training 4 models in parallel. Open htop and:"
+    echo "  1. Press F5 (tree view) to see if your launcher script spawned 4 children"
+    echo "  2. Press F6, select 'MEM%' to see which model is using most RAM"
+    echo "  3. If one model is stuck at 100% CPU on core 1 while others are idle,"
+    echo "     you know your parallelization isn't working correctly."
+    echo ""
+fi
+
+echo "Press Enter to continue to ps command demonstration..."
+read -r
+
+# ------------------------------------------------------------------------------
+# SECTION 3: The `ps` Command - Process Snapshot
+# ------------------------------------------------------------------------------
+
+echo ""
+echo "=========================================="
+echo "DEMONSTRATION 3: Using 'ps' Command"
+echo "=========================================="
+echo ""
+
+# What: Explain the difference between ps and top/htop
+# Why: Students need to understand when to use each tool
+echo "'ps' gives a ONE-TIME SNAPSHOT of processes (unlike top/htop which update continuously)."
+echo "Think of it as taking a Polaroid photo of the current system state."
+echo ""
+
+# DEMO 3A: Basic ps (shows only current user's processes in current terminal)
+echo "--- Demo 3A: Basic 'ps' (current terminal only) ---"
+# What: ps with no arguments
+# Why: Shows the most limited view (only processes attached to this terminal)
+# What this is useful for: Checking if you have background jobs in THIS specific terminal
+ps
+# Expected output: Usually just 2 lines (the bash shell and the ps command itself)
+
+echo ""
+echo "Notice: Only 2-3 processes shown (your shell and this script)."
+echo "This is because basic 'ps' only shows processes in the current terminal session."
+echo ""
+
+# DEMO 3B: ps aux (the power command)
+echo "--- Demo 3B: 'ps aux' (ALL processes, ALL users) ---"
+echo ""
+echo "Breaking down 'ps aux':"
+echo "  a = Show processes for ALL users (not just you)"
+echo "  u = Display USER-oriented format (show who owns each process)"
+echo "  x = Include processes WITHOUT a controlling terminal (daemons, background services)"
+echo ""
+
+# What: Run ps aux and display first 15 lines
+# Why: ps aux typically outputs 100+ lines, we truncate for demonstration
+ps aux | head -n 15
+# What: | head -n 15 does
+# Why: Pipes output to head, which shows only first 15 lines
+# Parameter -n 15: Specifies how many lines to display
+
+echo ""
+echo "Column Breakdown:"
+echo "  USER  = Process owner (root, jesse, postgres, etc.)"
+echo "  PID   = Process ID (the unique identifier)"
+echo "  %CPU  = Percentage of one CPU core being used"
+echo "  %MEM  = Percentage of total RAM being used"
+echo "  VSZ   = Virtual memory size (total allocated, including swap)"
+echo "  RSS   = Resident Set Size (actual physical RAM in use RIGHT NOW)"
+echo "  TTY   = Which terminal launched this (? = no terminal, it's a daemon)"
+echo "  STAT  = Process state:"
+echo "           R  = Running (actively using CPU)"
+echo "           S  = Sleeping (waiting for something)"
+echo "           D  = Uninterruptible sleep (usually disk I/O, can't be killed easily)"
+echo "           Z  = Zombie (dead but not cleaned up by parent)"
+echo "           T  = Stopped (paused with Ctrl+Z)"
+echo "           +  = In foreground process group"
+echo "  START = When this process started"
+echo "  TIME  = Total CPU time consumed"
+echo "  COMMAND = The actual command running"
+echo ""
+
+# DEMO 3C: Using ps aux with grep (finding specific processes)
+echo "--- Demo 3C: Finding Specific Processes with 'ps aux | grep' ---"
+echo ""
+
+# What: Search for all bash processes
+# Why: Demonstrates how to filter ps output to find specific programs
+echo "Finding all bash shell processes:"
+ps aux | grep bash | grep -v grep
+# What: First grep does
+# Why: Filters ps output to only lines containing "bash"
+# What: Second grep -v grep does
+# Why: Removes the grep command itself from results (the -v flag inverts the match)
+# What happens without "grep -v grep": You'd see the grep process itself in results
+
+echo ""
+echo "MLOps Use Case:"
+echo "  ps aux | grep python     # Find all Python processes"
+echo "  ps aux | grep postgres   # Find database processes"
+echo "  ps aux | grep 'train.py' # Find your specific training script"
+echo ""
+
+# DEMO 3D: Using ps with custom formatting
+echo "--- Demo 3D: Custom ps Format (showing only specific columns) ---"
+echo ""
+echo "Instead of seeing ALL columns, we can choose exactly what to display:"
+echo ""
+
+# What: Custom ps format showing only PID, user, memory, and command
+# Why: When diagnosing memory issues, we only care about these specific columns
+# Parameter -eo: -e shows all processes, -o specifies custom output format
+# Parameter pid,user,%mem,comm: The columns to display (comma-separated)
+echo "Showing only: PID, USER, %MEM, and COMMAND"
+ps -eo pid,user,%mem,comm | head -n 10
+# What: -eo does
+# Why: -e = show all processes, -o = use custom output format
+# Parameter pid,user,%mem,comm: Comma-separated list of columns to display
+# Why these columns: Perfect for memory leak investigations
+# What happens if we used different columns: ps -eo pid,%cpu,time,comm would show CPU-focused data
+
+echo ""
+echo "This format is perfect for scripting because you get ONLY the data you need."
+echo ""
+
+# DEMO 3E: Sorting ps output by memory usage
+echo "--- Demo 3E: Finding Top Memory Consumers ---"
+echo ""
+echo "Which processes are eating the most RAM?"
+echo ""
+
+# What: Sort all processes by memory usage (highest first) and show top 10
+# Why: Critical for diagnosing "out of memory" errors during model training
+# Parameter --sort=-%mem: Sort by memory percentage (- means descending order)
+ps aux --sort=-%mem | head -n 11  # 11 lines because first line is the header
+# What: --sort=-%mem does
+# Why: Sorts output by %MEM column in descending order (highest memory first)
+# Why the minus sign (-): Means descending order; without it, lowest memory would be first
+# Parameter head -n 11: Show 11 lines (1 header + 10 processes)
+
+ps -eo pid,%mem,comm --sort=-%mem | head -n 15
+
+echo ""
+echo "MLOps Scenario:"
+echo "Your training script crashed with 'OOMKilled' (Out Of Memory)."
+echo "Run: ps aux --sort=-%mem | head -n 20"
+echo "You discover a data loader is using 45% of RAM due to a bug."
+echo "You fix the memory leak and rerun successfully."
+echo ""
+
+# ------------------------------------------------------------------------------
+# SECTION 4: Real-World MLOps Process Monitoring Example
+# ------------------------------------------------------------------------------
+
+echo "Press Enter to see a simulated MLOps monitoring workflow..."
+read -r
+echo ""
+echo "=========================================="
+echo "REAL-WORLD SCENARIO: Debugging a Slow Training Server"
+echo "=========================================="
+echo ""
+
+# What: Simulate an MLOps engineer's troubleshooting workflow
+# Why: Show how these commands work together in practice
+echo "Scenario: Your model training is taking 3x longer than usual."
+echo "Your debugging workflow:"
+echo ""
+
+echo "Step 1: Check overall system load"
+# What: Use uptime to check load average
+# Why: Quick way to see if system is overloaded
+uptime
+# What: uptime shows
+# Why: Displays how long system has been running + load average (1min, 5min, 15min)
+# What load average means: Number of processes waiting for CPU time
+# Why it matters: If load > number of CPU cores, system is overloaded
+
+echo ""
+echo "Step 2: Identify CPU hogs"
+# What: Find top 5 CPU-consuming processes
+# Why: See if something unexpected is stealing CPU from your training
+ps aux --sort=-%cpu | head -n 6
+# What: --sort=-%cpu does
+# Why: Sorts by CPU usage (descending), helps find processes hogging CPU time
+# Parameter head -n 6: Show header + top 5 processes
+
+echo ""
+echo "Step 3: Identify memory hogs"
+# What: Find top 5 memory-consuming processes
+# Why: Maybe something is causing swapping (using disk as RAM), which is 1000x slower
+ps aux --sort=-%mem | head -n 6
+
+echo ""
+echo "Step 4: Check for zombie processes (dead processes not cleaned up)"
+# What: Search for zombie processes (state Z)
+# Why: Zombies can accumulate and eventually prevent new processes from spawning
+ps aux | grep defunct
+# What: "defunct" means
+# Why: Zombie processes show as "<defunct>" in the COMMAND column
+# What causes zombies: Parent process didn't wait() for child process to finish
+# Why this matters: If you have 1000+ zombies, you might hit the process limit
+
+echo ""
+echo "Analysis Complete!"
+echo ""
+echo "=============================================="
+echo "MONITORING SUMMARY - KEY TAKEAWAYS"
+echo "=============================================="
+echo ""
+echo "1. Use 'top' for quick, universal monitoring (works everywhere)"
+echo "2. Use 'htop' for interactive, visual debugging (install it first)"
+echo "3. Use 'ps aux' for scripting and automation (grep-able output)"
+echo "4. Use 'ps aux --sort=-%mem' to find memory leaks"
+echo "5. Use 'ps aux --sort=-%cpu' to find CPU bottlenecks"
+echo ""
+echo "Next Up: Segment 5.2 (Job Control) - Learning to multitask in the terminal!"
+echo ""
+
+
+
+
+
+
+
+
+
+
+
+

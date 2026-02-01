@@ -1350,3 +1350,234 @@ cd ..
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#!/bin/bash
+
+cd $HOME
+
+# declaring variable names
+ASSIGNMENT_PATH="$HOME/cycle_1_exam"
+
+FILENAME="processor.py"
+
+IMAGE_NAME="data-cruncher:v1"
+
+CONTAINER_NAME="crunchy_bot"
+
+LARGE_FILE="huge_model.bin"
+
+
+mkdir -p $ASSIGNMENT_PATH
+
+cd $ASSIGNMENT_PATH
+
+# creating python file...
+
+touch $FILENAME
+
+cat <<EOF > $FILENAME
+import os
+import sys
+import time
+
+# --- LEGACY SCRIPT BY SAM ---
+# This script simulates a data processing job.
+# It depends on 'pandas' but Sam never made a requirements.txt.
+
+try:
+    import pandas as pd
+except ImportError:
+    print("CRITICAL ERROR: Pandas is missing! Did you install it?")
+    sys.exit(1)
+
+def process_data():
+    # 1. Read Configuration from Environment
+    # Sam used to hardcode this. We need it to be dynamic.
+    target_env = os.environ.get('TARGET_ENV', 'DEVELOPMENT')
+
+    print(f"--- STARTING PROCESSOR ---")
+    print(f"Context: {target_env}")
+    print(f"Process ID (PID): {os.getpid()}")
+
+    # 2. Simulate heavy lifting
+    data = {
+        'id': range(1, 6),
+        'value': [x * 10 for x in range(1, 6)]
+    }
+    df = pd.DataFrame(data)
+
+    print(f"Processing {len(df)} records using Pandas v{pd.__version__}...")
+    time.sleep(2) # Fake processing time
+
+    print("--- COMPLETED SUCCESSFULLY ---")
+    print(df.to_string(index=False))
+
+if __name__ == "__main__":
+    process_data()
+
+time.sleep(1000) # keep the container alive for a while so we can exec inside it
+
+EOF
+
+
+# creating a dummy file...
+
+touch $LARGE_FILE
+
+cd / && tree > "$ASSIGNMENT_PATH/huge_model.bin"
+
+cd -
+
+echo "pandas==2.3.3" > requirements.txt
+
+
+# creating a Dockerfile
+
+cat <<EOF > Dockerfile
+FROM python:3.10-slim
+
+
+WORKDIR /project/app
+
+COPY requirements.txt .
+
+# pip install is at the top of the file, ensuring this layer does not re-run whenever we rebuild the image
+RUN pip install --no-cache-dir -r requirements.txt
+
+
+RUN echo "Pandas package finished installing..."
+
+ENV TARGET_ENV="PRODUCTION"
+
+COPY . .
+
+CMD ["python", "processor.py"]
+
+EOF
+
+
+# creating .dockerignore
+
+cat <<EOF > .dockerignore
+Dockerfile
+huge_model.bin
+.git
+EOF
+
+
+# building the image...
+# (.) tells docker to look for Dockerfile in the folder
+docker build -t $IMAGE_NAME .
+
+
+# firing up container with our image...
+docker run -d --name $CONTAINER_NAME $IMAGE_NAME
+
+
+
+
+
+
+
+
+
+

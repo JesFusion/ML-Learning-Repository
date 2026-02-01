@@ -330,3 +330,203 @@ SELECT * FROM normalized_experiments LIMIT 23;
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+DROP TABLE IF EXISTS model_info CASCADE;
+
+
+CREATE TABLE model_info (
+	id SERIAL PRIMARY KEY,
+	model VARCHAR(55) NOT NULL,
+	m_acc REAL,
+	cre_time TIMESTAMP DEFAULT NOW(),
+	params JSONB NOT NULL -- this uses JSONB, a no-SQL structure supported by postgres
+);
+
+
+
+
+
+/*
+
+In PostgreSQL, REAL and FLOAT are both inexact, floating-point numeric types, but they differ in how they map to storage size and precision.
+
+1. REAL:
+	This is a 4-byte (32-bit) single-precision floating-point number. It offers a precision of at least 6 decimal digits and is often used when storage space is a concern and slight inaccuracies are acceptable.
+
+2. FLOAT:
+		FLOAT is a generic alias that maps to either REAL or DOUBLE PRECISION based on a specified precision:
+        FLOAT(1) to FLOAT(24) maps to REAL (4 bytes).
+        FLOAT(25) to FLOAT(53) maps to DOUBLE PRECISION (8 bytes).
+        FLOAT (without specifying precision) defaults to DOUBLE PRECISION. 
+
+*/
+
+
+
+
+
+-- we create GIN (Generalized Inverted Index) on the params column to make it quickly-searchable for information O(1) when we run queries
+CREATE INDEX idx_params ON model_info USING GIN (params);
+
+
+
+INSERT INTO model_info (model, m_acc, params)
+VALUES (
+	'linear_regression_v1',
+	0.56,
+	-- we convert the string to JSON Binary to ensure Postgres validates it on insert
+	'{"alpha": 0.4, "solver": "dakls", "normalize": true}'::jsonb
+);
+
+
+INSERT INTO model_info (model, m_acc, params)
+VALUES (
+    'random_forest_v1',
+    0.92,
+    -- Note: No "alpha", instead we have "n_estimators" and "max_depth"
+    '{"n_estimators": 100, "max_depth": 10, "criterion": "gini"}'::jsonb
+);
+
+
+
+INSERT INTO model_info (model, m_acc, params)
+VALUES (
+    'cnn_resnet_v2',
+    0.98,
+    -- Complex nested structure. Standard SQL columns would fail here.
+    '{
+        "optimizer": "adam",
+        "epochs": 50,
+        "layers": {
+            "conv1": {"filters": 64, "kernel": 3},
+            "dense1": {"units": 128, "activation": "relu"}
+        },
+        "learning_rate": 0.001
+    }'::jsonb
+);
+
+
+
+INSERT INTO model_info (model, m_acc, params)
+VALUES (
+    'cnn_resnet_v3',
+    0.94,
+    '{"optimizer": "sgd", "epochs": 100, "learning_rate": 0.01}'::jsonb
+);
+
+
+
+
+-- we use ->> to extract the values of each row of a JSON key we specify
+-- If a model (like Random Forest) doesn't have it, Postgres returns NULL gracefully.
+SELECT model, (params ->> 'learning_rate')::REAL -- we must convert the value to float (::REAL) if we intend to do math with it
+AS lr
+FROM model_info;
+--WHERE id = 165;
+
+
+
+SELECT m_acc, (params ->> 'max_depth')::FLOAT AS max_depth
+FROM model_info
+WHERE id BETWEEN 100 AND 200;
+
+
+
+-- here, we're making use of the GIN index we created earlier
+SELECT COUNT(*) FROM model_info
+WHERE params @> '{"optimizer": "lars"}'; -- it's like asking postgres: show me all rows where the JSON blob on the left ("optimizer") matches that on the right ("adam")
+
+
+SELECT model, m_acc, params
+FROM model_info
+-- we use -> to keep entering inside the JSON, and ->> to extract a key's value
+WHERE (params -> 'layers' -> 'conv1' ->> 'filters')::INT >= 50; -- we convert the result to an integer, then check if it's greater then 50
+
+
+
+SELECT model, m_acc, params FROM model_info
+WHERE
+(params -> 'layers' -> 'conv1' ->> 'filters')::INT <= 50
+AND
+(params -> 'layers' -> 'dense1' ->> 'units')::INT >= 100;
+
+
+SELECT * FROM model_info
+WHERE (params ->> 'n_estimators')::INT > 50;
+
+
+
+
+
+
+
+
+
+
+
+
