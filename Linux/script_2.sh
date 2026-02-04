@@ -1,4 +1,8 @@
-echo $SHELL - Tekls you what shell you're using
+#!/bin/bash
+
+
+
+echo $SHELL - Tells you what shell you're using
 
 
 whoami - prints out your username
@@ -817,7 +821,7 @@ echo "Lab completed. Directory cleaned up."
 
 
 
-#!/bin/bash
+
 
 # FILE: 02_privilege_check.sh
 # SEGMENT: 3.4 Elevated Privileges
@@ -951,7 +955,7 @@ fi
 
 
 
-#!/bin/bash
+
 
 # FILE: 03_package_ops.sh
 # SEGMENT: 4.1 Debian Package Management
@@ -1095,7 +1099,7 @@ echo "Package operations complete."
 
 
 
-#!/bin/bash
+
 # -----------------------------------------------------------------------------
 # SEGMENT 4.2: MANAGING REPOSITORIES
 # GOAL: Install software from a "Boutique" store (PPA) instead of the main OS store.
@@ -1229,7 +1233,7 @@ echo "Segment 4.2 Complete."
 
 
 
-#!/bin/bash
+
 # -----------------------------------------------------------------------------
 # SEGMENT 4.3: COMPILING FROM SOURCE
 # GOAL: Build a tool (htop) from raw code because we pretend it's not in the app store.
@@ -1379,7 +1383,7 @@ echo "Segment 4.3 Complete."
 
 
 
-#!/bin/bash
+
 # -----------------------------------------------------------------------------
 # SEGMENT 4.4: PYTHON ENVIRONMENT MANAGEMENT
 # GOAL: Create a safe, isolated space for Python libraries.
@@ -1567,7 +1571,7 @@ echo "Segment 4.4 Complete. You are safe from breaking the OS."
 
 
 
-#!/bin/bash
+
 
 
 # Create a directory in the current user's home folder named sensitive_data
@@ -1819,7 +1823,7 @@ deactivate
 
 
 
-#!/bin/bash
+
 # ==============================================================================
 # SEGMENT 5.1: MONITORING - Process Surveillance Tools
 # ==============================================================================
@@ -2175,6 +2179,568 @@ echo "5. Use 'ps aux --sort=-%cpu' to find CPU bottlenecks"
 echo ""
 echo "Next Up: Segment 5.2 (Job Control) - Learning to multitask in the terminal!"
 echo ""
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+################################################################################
+# PROCESS MANAGEMENT & RESOURCE TRIAGE FOR MLOPS
+################################################################################
+# Author: The Architect (for Jesse @ FUTO)
+# Purpose: Demonstrate job control, process termination, and resource monitoring
+# Curriculum: Segments 5.2, 5.3, 5.4
+# Production Context: Managing multiple ML training jobs on a single server
+################################################################################
+
+################################################################################
+# THE ENTERPRISE INGESTION LAYER
+################################################################################
+# This section ensures the script runs safely in any environment.
+# It sets up strict error handling, logging, and cleanup procedures.
+################################################################################
+
+# WHAT: Enable "strict mode" - the script will exit immediately if any command fails
+# WHY: In production, silent failures are deadly. If data ingestion fails but training
+#      continues with stale data, you've just wasted hours of GPU time.
+# WHAT IF we remove this: A failed command might go unnoticed, causing cascading failures
+set -e
+
+# WHAT: Exit if we try to use an undefined variable
+# WHY: Typos in variable names ($MODLE_NAME instead of $MODEL_NAME) should crash the
+#      script immediately, not silently pass empty strings to commands.
+# WHAT IF we remove this: You might accidentally delete /data/$UNDEFINED_VAR/* which
+#      becomes /data/* - deleting your entire dataset.
+set -u
+
+# WHAT: Make pipelines fail if ANY command in the pipe fails (not just the last one)
+# WHY: Without this, "cat missing_file.txt | grep error" succeeds (because grep succeeds)
+#      even though cat failed. You'd miss the missing file error.
+# WHAT IF we remove this: Errors in the middle of data pipelines go unnoticed
+set -o pipefail
+
+################################################################################
+# LOGGING INFRASTRUCTURE
+################################################################################
+# Every production script needs timestamped, categorized logging.
+# This allows you to debug failures weeks later by reading logs.
+################################################################################
+
+# WHAT: Define the path where all script logs will be written
+# WHY: Logs scattered across /tmp get deleted on reboot. Centralized logs are auditable.
+# WHAT IF we change this: Make sure the directory exists and has write permissions
+LOG_FILE="/tmp/process_management_$(date +%Y%m%d_%H%M%S).log"
+
+# WHAT: Function to log informational messages with timestamps
+# WHY: When debugging a failed job at 3 AM, timestamps tell you exactly when things broke
+# WHAT IF we remove timestamps: You won't know if a process took 5 seconds or 5 hours
+log_info() {
+    # $1 refers to the first argument passed to this function
+    # "date +%Y-%m-%d %H:%M:%S" generates timestamps like: 2026-02-01 14:30:45
+    # We print to both the terminal (stdout) AND the log file using 'tee -a'
+    echo "[INFO][$(date +%Y-%m-%d\ %H:%M:%S)] $1" | tee -a "$LOG_FILE"
+}
+
+# WHAT: Function to log warning messages (non-fatal issues)
+# WHY: Warnings indicate something unusual but recoverable (e.g., "Disk 85% full")
+# WHAT IF we ignore warnings: Small issues snowball into production outages
+log_warn() {
+    # We use >&2 to print to stderr (standard error stream) instead of stdout
+    # This allows you to separate normal output from warnings/errors when redirecting
+    echo "[WARN][$(date +%Y-%m-%d\ %H:%M:%S)] $1" | tee -a "$LOG_FILE" >&2
+}
+
+# WHAT: Function to log error messages (fatal issues)
+# WHY: Errors should be loud and obvious. They indicate the script cannot continue safely.
+# WHAT IF we don't log errors: Future you (debugging a crash) has no idea what went wrong
+log_error() {
+    echo "[ERROR][$(date +%Y-%m-%d\ %H:%M:%S)] $1" | tee -a "$LOG_FILE" >&2
+}
+
+################################################################################
+# CLEANUP HANDLER (The Safety Net)
+################################################################################
+# This function runs when the script exits (normally OR abnormally).
+# It ensures temporary resources are cleaned up even if the script crashes.
+################################################################################
+
+# WHAT: Function that runs cleanup tasks before script termination
+# WHY: If your script creates temporary files or background processes, they should
+#      be cleaned up even if the script is killed with Ctrl+C or crashes
+# WHAT IF we don't clean up: Temp files fill the disk, zombie processes leak memory
+cleanup() {
+    log_info "Running cleanup procedures..."
+    
+    # WHAT: Kill all background jobs started by THIS script
+    # WHY: If we started training jobs in the background, they should die with the script
+    # WHAT IF we don't kill them: Orphaned processes keep running forever, wasting resources
+    # 'jobs -p' lists the PIDs of all background jobs in the current shell
+    # 'xargs kill -15' sends SIGTERM (polite exit) to each PID
+    # '2>/dev/null' suppresses error messages if there are no jobs to kill
+    jobs -p | xargs -r kill -15 2>/dev/null || true
+    
+    log_info "Cleanup complete. Exiting."
+}
+
+# WHAT: Register the cleanup function to run on script exit
+# WHY: 'trap' catches signals (EXIT, SIGINT, SIGTERM) and runs our cleanup function
+# WHAT IF we remove this: Ctrl+C leaves background processes and temp files behind
+# EXIT = normal script termination
+# SIGINT = Ctrl+C
+# SIGTERM = kill command (default signal)
+trap cleanup EXIT SIGINT SIGTERM
+
+################################################################################
+# SEGMENT 5.4: RESOURCE TRIAGE FUNCTIONS
+################################################################################
+# These functions check system health BEFORE starting resource-intensive tasks.
+# In production, you run these before launching training jobs to avoid OOM crashes.
+################################################################################
+
+# WHAT: Function to check available RAM and warn if low
+# WHY: Starting a training job when RAM is 95% full guarantees an OOM crash
+# WHAT IF we skip this check: Your 8-hour training job crashes at hour 7 due to OOM
+check_memory() {
+    log_info "Checking available memory..."
+    
+    # WHAT: Run 'free' command and extract the 'available' memory in MB
+    # WHY: 'free -m' outputs memory in megabytes (human-readable)
+    #      'awk' is a text processing tool - here it extracts the 7th column of the 2nd row
+    #      (which is the 'available' memory)
+    # WHAT IF we use 'free' instead of 'used': 'free' memory doesn't include reclaimable cache,
+    #      so it's misleading. 'available' is the real usable memory.
+    local available_mb=$(free -m | awk 'NR==2 {print $7}')
+    
+    log_info "Available memory: ${available_mb} MB"
+    
+    # WHAT: If available memory is less than 500 MB, log a warning
+    # WHY: 500 MB is arbitrary but reasonable for demo purposes. In production,
+    #      this threshold depends on your workload (training BERT needs 16GB+)
+    # WHAT IF we set this too low: We don't catch memory pressure until it's too late
+    if [ "$available_mb" -lt 500 ]; then
+        log_warn "Low memory detected! Available: ${available_mb} MB"
+        log_warn "Consider killing unused processes or reducing batch size"
+    else
+        log_info "Memory check passed: ${available_mb} MB available"
+    fi
+}
+
+# WHAT: Function to check available disk space and warn if low
+# WHY: Model checkpoints can be 10-50 GB each. Running out of disk mid-training
+#      means you lose ALL progress (checkpoint save fails = crash)
+# WHAT IF we skip this check: Your dataset download fails at 99% with "No space left"
+check_disk_space() {
+    log_info "Checking disk space..."
+    
+    # WHAT: Extract the disk usage percentage for the root filesystem (/)
+    # WHY: 'df -h /' shows disk usage for the root partition
+    #      'awk' extracts the 5th column (Use%) and 'tr -d %' removes the % symbol
+    # WHAT IF we check /home instead: Different filesystems might be on different disks
+    local disk_usage=$(df -h / | awk 'NR==2 {print $5}' | tr -d '%')
+    
+    log_info "Disk usage: ${disk_usage}%"
+    
+    # WHAT: If disk usage exceeds 80%, log a warning
+    # WHY: At 90%+ usage, performance degrades (especially on SSDs). At 100%, writes fail.
+    # WHAT IF we set this to 95%: By then, it's too late to prevent failures
+    if [ "$disk_usage" -gt 80 ]; then
+        log_warn "High disk usage detected: ${disk_usage}%"
+        log_warn "Consider cleaning up old datasets or logs"
+        
+        # WHAT: Show the top 5 largest files/directories in /tmp (common junk location)
+        # WHY: This gives actionable cleanup targets. Often, old logs or datasets live here.
+        # WHAT IF we skip this: You know disk is full but don't know WHAT to delete
+        log_info "Top 5 largest items in /tmp:"
+        du -sh /tmp/* 2>/dev/null | sort -rh | head -5 | tee -a "$LOG_FILE" || true
+    else
+        log_info "Disk space check passed: ${disk_usage}% used"
+    fi
+}
+
+################################################################################
+# SEGMENT 5.2: JOB CONTROL DEMONSTRATION
+################################################################################
+# These functions simulate real MLOps workflows with background processes.
+################################################################################
+
+# WHAT: Simulate a long-running data preprocessing job
+# WHY: In real MLOps, preprocessing (cleaning, augmentation, feature extraction) can
+#      take hours. We simulate this with a sleep loop that prints progress.
+# WHAT IF this was a real script: Replace this with actual data processing code
+simulate_preprocessing() {
+    log_info "Starting data preprocessing (simulated)..."
+    
+    # WHAT: Loop 10 times, sleeping 2 seconds each iteration
+    # WHY: Simulates a task that takes 20 seconds total. Real preprocessing is slower.
+    # WHAT IF we remove the loop: The function exits instantly (not realistic)
+    for i in {1..10}; do
+        # WHAT: Print progress to show the process is alive
+        # WHY: Long-running processes should log progress (for monitoring/debugging)
+        # WHAT IF we don't log: You can't tell if the process is stuck or just slow
+        echo "Preprocessing batch $i/10..."
+        
+        # WHAT: Sleep for 2 seconds
+        # WHY: Simulates CPU-intensive work. Real preprocessing uses actual compute.
+        # WHAT IF we reduce to 0.1 seconds: The demo finishes too fast to observe job control
+        sleep 2
+    done
+    
+    log_info "Preprocessing complete!"
+}
+
+# WHAT: Simulate a model training job
+# WHY: Training is the longest part of ML pipelines (hours to days). We simulate
+#      this to demonstrate how to manage long-running processes.
+# WHAT IF this was real: This would call PyTorch/TensorFlow training loops
+simulate_training() {
+    # WHAT: $1 is the first argument passed to this function (the model name)
+    # WHY: Functions should be reusable. Passing the model name allows us to
+    #      run multiple training jobs with different models.
+    # WHAT IF we hardcode the name: We can't run parallel experiments
+    local model_name=$1
+    
+    log_info "Starting training for model: $model_name (simulated)..."
+    
+    # WHAT: Loop 15 times, printing epoch progress
+    # WHY: Training happens in epochs. Real training logs loss/accuracy per epoch.
+    # WHAT IF we skip logging: You can't monitor training progress or detect divergence
+    for epoch in {1..15}; do
+        echo "[$model_name] Epoch $epoch/15 - Loss: $(echo "scale=4; 1/$epoch" | bc)"
+        sleep 2
+    done
+    
+    log_info "Training complete for model: $model_name"
+}
+
+################################################################################
+# SEGMENT 5.2: BACKGROUND JOB DEMONSTRATION
+################################################################################
+
+demonstrate_job_control() {
+    log_info "=== DEMONSTRATING JOB CONTROL ==="
+    
+    # WHAT: Start a preprocessing job in the BACKGROUND (using &)
+    # WHY: The & symbol runs the command in the background, returning control to the script
+    #      immediately. Without &, the script would BLOCK here for 20 seconds.
+    # WHAT IF we remove &: The script waits for preprocessing to finish before continuing
+    simulate_preprocessing &
+    
+    # WHAT: Capture the PID (Process ID) of the background job we just started
+    # WHY: $! is a special variable containing the PID of the most recent background process.
+    #      We need this PID to kill the process later.
+    # WHAT IF we don't save the PID: We can't target this specific process for termination
+    PREPROCESS_PID=$!
+    
+    log_info "Preprocessing started in background with PID: $PREPROCESS_PID"
+    
+    # WHAT: Start two training jobs in the background (for different models)
+    # WHY: In production, you often run multiple experiments in parallel (testing different hyperparameters or architectures)
+    # WHAT IF we run them in foreground: We'd have to wait for model1 to finish
+    #      before model2 even starts (serial execution = slower)
+    simulate_training "bert_v1" &
+    TRAIN1_PID=$!
+    
+    simulate_training "gpt_v2" &
+    TRAIN2_PID=$!
+    
+    log_info "Training jobs started:"
+    log_info "  - bert_v1: PID $TRAIN1_PID"
+    log_info "  - gpt_v2: PID $TRAIN2_PID"
+    
+    # WHAT: Wait 5 seconds before listing jobs
+    # WHY: Gives the background processes time to start and produce output
+    # WHAT IF we skip this: 'jobs' might show empty if we call it too quickly
+    sleep 5
+    
+    log_info "Listing active jobs..."
+    # WHAT: The 'jobs' command shows all background processes started by THIS shell
+    # WHY: In production, you might have dozens of jobs. 'jobs' is your dashboard.
+    # WHAT IF we use 'ps' instead: 'ps' shows ALL system processes (too noisy)
+    jobs
+    
+    log_info "Waiting for all background jobs to complete..."
+    # WHAT: 'wait' blocks until ALL background jobs finish
+    # WHY: Without 'wait', the script would exit immediately, killing all background jobs (because they're child processes of the script)
+    # WHAT IF we remove 'wait': The jobs get killed mid-execution when cleanup() runs
+    wait
+    
+    log_info "All jobs completed successfully!"
+}
+
+################################################################################
+# SEGMENT 5.3: PROCESS TERMINATION DEMONSTRATION
+################################################################################
+
+demonstrate_termination() {
+    log_info "=== DEMONSTRATING PROCESS TERMINATION ==="
+    
+    # WHAT: Start a "runaway" process (infinite loop that never ends naturally)
+    # WHY: In production, bugs can cause infinite loops. We need to know how to kill them.
+    # WHAT IF this was real: Think of a data pipeline stuck retrying a failed API call
+    log_info "Starting a runaway process (infinite loop)..."
+    
+    # WHAT: Start an infinite while loop in the background
+    # WHY: while true runs forever. 'sleep 1' prevents it from consuming 100% CPU.
+    # WHAT IF we don't background it: The script gets stuck here forever
+    while true; do
+        echo "Runaway process is running..." >> /tmp/runaway.log
+        sleep 1
+    done &
+    
+    # WHAT: Save the PID of the runaway process
+    # WHY: We need this to demonstrate killing it with different signals
+    # WHAT IF we lose this PID: We'd have to use 'ps' or 'pgrep' to find it again
+    RUNAWAY_PID=$!
+    
+    log_info "Runaway process started with PID: $RUNAWAY_PID"
+    
+    # WHAT: Let it run for 3 seconds so we can verify it's running
+    # WHY: Demonstrates the process is alive before we kill it
+    # WHAT IF we skip this: The kill happens so fast you can't verify behavior
+    sleep 3
+    
+    # WHAT: Check if the process is still running using 'ps'
+    # WHY: 'ps -p PID' returns exit code 0 if the process exists, 1 if it doesn't
+    #      We redirect output to /dev/null because we only care about the exit code
+    # WHAT IF we don't check: We might try to kill an already-dead process
+    if ps -p $RUNAWAY_PID > /dev/null; then
+        log_info "Process $RUNAWAY_PID is running. Attempting graceful termination (SIGTERM)..."
+        
+        # WHAT: Send SIGTERM (signal 15) to the process
+        # WHY: SIGTERM is the "polite" way to kill. It allows the process to catch the signal and clean up (save state, close files, etc.)
+        # WHAT IF the process ignores SIGTERM: We'll need to use SIGKILL (9) next
+        kill -15 $RUNAWAY_PID
+        
+        # WHAT: Wait 3 seconds to see if the process exits gracefully
+        # WHY: Processes need time to handle SIGTERM and shutdown cleanly
+        # WHAT IF we wait too long: In production, you'd wait 10-30 seconds max
+        sleep 3
+        
+        # WHAT: Check if the process is STILL running after SIGTERM
+        # WHY: Some processes ignore SIGTERM (infinite loops, hung I/O)
+        # WHAT IF it exited: The 'else' block confirms graceful termination
+        if ps -p $RUNAWAY_PID > /dev/null; then
+            log_warn "Process did not respond to SIGTERM. Using SIGKILL (9)..."
+            
+            # WHAT: Send SIGKILL (signal 9) - the "nuclear option"
+            # WHY: SIGKILL cannot be caught or ignored. The OS forcibly terminates the process.
+            #      No cleanup happens. Files may be corrupted. Resources may leak.
+            # WHAT IF we always use SIGKILL: You risk data corruption. Always try SIGTERM first.
+            kill -9 $RUNAWAY_PID
+            
+            log_info "Process $RUNAWAY_PID forcefully terminated with SIGKILL"
+        else
+            log_info "Process $RUNAWAY_PID terminated gracefully with SIGTERM"
+        fi
+    fi
+    
+    # WHAT: Demonstrate killing by process name using 'pkill'
+    # WHY: Sometimes you don't have the PID (the process was started by another script)
+    #      or you want to kill ALL processes matching a pattern
+    # WHAT IF you use the wrong pattern: You might kill critical system processes
+    log_info "Demonstrating pkill (kill by name)..."
+    
+    # WHAT: Start another background process with a unique identifier
+    # WHY: We'll use this identifier to target it with pkill
+    # WHAT IF we don't use a unique name: pkill might kill unrelated processes
+    while true; do
+        echo "Target process for pkill demo"
+        sleep 1
+    done &
+    
+    PKILL_TARGET_PID=$!
+    log_info "Started pkill target with PID: $PKILL_TARGET_PID"
+    
+    sleep 2
+    
+    # WHAT: Use pkill to kill the process by matching its command
+    # WHY: 'pkill -f' matches the full command line, not just the process name
+    #      This is more precise than 'pkill bash' (which would kill ALL bash processes)
+    # WHAT IF we remove -f: We might kill the wrong processes
+    # The || true prevents the script from crashing if pkill finds no matches
+    log_info "Using pkill to terminate processes containing 'pkill demo'..."
+    pkill -f "pkill demo" || true
+    
+    sleep 1
+    
+    # WHAT: Verify the process was killed
+    # WHY: Confirms pkill worked as expected
+    # WHAT IF it's still running: Our pattern didn't match correctly
+    if ps -p $PKILL_TARGET_PID > /dev/null 2>&1; then
+        log_warn "pkill failed to kill process $PKILL_TARGET_PID"
+    else
+        log_info "pkill successfully terminated the target process"
+    fi
+}
+
+################################################################################
+# MAIN EXECUTION
+################################################################################
+# This is the entry point of the script. It orchestrates all demonstrations.
+################################################################################
+
+main() {
+    log_info "Starting Process Management & Resource Triage demonstration"
+    log_info "Log file: $LOG_FILE"
+    
+    # WHAT: Run resource checks BEFORE starting any jobs
+    # WHY: In production, you check system health before launching expensive operations
+    # WHAT IF we skip this: Jobs might fail due to insufficient resources
+    check_memory
+    check_disk_space
+    
+    echo ""
+    log_info "Resource checks complete. Press ENTER to continue to job control demo..."
+    # WHAT: Wait for user input before continuing
+    # WHY: Allows you to review resource check output before jobs start flooding the screen
+    # WHAT IF we remove this: Everything happens too fast to observe
+    read -r
+    
+    # WHAT: Demonstrate background jobs and job control
+    # WHY: This is the core workflow for running parallel ML experiments
+    # WHAT IF we skip this: You miss the most important part of the curriculum
+    demonstrate_job_control
+    
+    echo ""
+    log_info "Job control demo complete. Press ENTER to continue to termination demo..."
+    read -r
+    
+    # WHAT: Demonstrate process termination techniques
+    # WHY: You need to know how to kill runaway/stuck processes in production
+    # WHAT IF we skip this: You can't handle hung processes or infinite loops
+    demonstrate_termination
+    
+    log_info "All demonstrations complete!"
+    log_info "Check the log file for full details: $LOG_FILE"
+}
+
+# WHAT: Call the main function to start the script
+# WHY: Wrapping everything in a main() function is a best practice. It makes the
+#      script's entry point explicit and allows for easier testing/debugging.
+# WHAT IF we put code directly at the script level: It's harder to control execution flow and the code becomes less modular
+main
 
 
 
