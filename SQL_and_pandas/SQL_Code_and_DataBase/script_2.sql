@@ -530,3 +530,241 @@ WHERE (params ->> 'n_estimators')::INT > 50;
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- ===================================== MLOPS FEATURE ENGINEERING: THE WEAVER (JOINS) =====================================
+
+-- creating synthetic data...
+
+-- create Table A (customers)
+DROP TABLE IF EXISTS customers CASCADE;
+
+CREATE TABLE customers (
+	id SERIAL PRIMARY KEY,
+	user_age INT,
+	user_country VARCHAR(50),
+	info VARCHAR(88)
+);
+
+
+-- creating Table B (customer_transactions)
+DROP TABLE IF EXISTS customer_transactions CASCADE;
+CREATE TABLE customer_transactions (
+	tr_id SERIAL PRIMARY KEY,
+	id INT, -- Foreign key to customers
+	trans_amount REAL,
+	"is_fraud?" BOOLEAN, -- target column (y)
+	tr_date DATE,
+	info VARCHAR(88)
+);
+
+
+-- insert data into "customerss" table
+INSERT INTO customers (id, user_age, user_country, info) VALUES
+(1, 23, 'Niger', 'Customers and Customer Transactions'),
+(2, 22, 'Belgium', 'Customers'),
+(3, 11, 'Ghana', 'Customers and Customer Transactions'),
+(4, 44, 'Hamas', 'Customers and Customer Transactions');
+
+
+
+INSERT INTO customer_transactions (id, trans_amount, "is_fraud?", tr_date, info) VALUES
+(1, 234.34, TRUE, '2023-10-01', 'Customers and Customer Transactions'),
+(3, 1111.22, FALSE, '2023-10-02', 'Customers and Customer Transactions'),
+(5, 44, FALSE, '2023-10-03', 'Customer Transactions'),
+(4, 22.4, FALSE, '2023-11-05', 'Customers and Customer Transactions');
+
+
+-- ===================================== INNER JOIN =====================================
+SELECT
+	-- from customer_transactions table
+	tr.id, tr.trans_amount, tr.info,
+	-- from customers table
+	cus.user_age, cus.user_country, cus.info
+FROM customer_transactions tr
+INNER JOIN customers cus
+ON cus.id = tr.id;
+
+SELECT cus.user_age, ctr.trans_amount, ctr.tr_date
+FROM customers cus
+LEFT JOIN customer_transactions ctr
+ON cus.id = ctr.id;
+
+
+-- ===================================== LEFT JOIN =====================================
+
+SELECT
+	ctr.id, cus.id, ctr.trans_amount, ctr.info,
+	cus.user_age, -- will be null for user 5
+	cus.user_country,
+	cus.info
+FROM customer_transactions ctr
+LEFT JOIN customers cus
+ON ctr.id = cus.id;
+
+
+
+SELECT
+	ctr.id, cus.id, cus.info, ctr.info,
+	ctr.trans_amount, -- user 2 will be NULL
+	cus.user_country
+FROM customers cus
+LEFT JOIN customer_transactions ctr
+ON ctr.id = cus.id;
+
+
+
+-- ===================================== OUTER JOIN =====================================
+
+-- outer join combines both tables, filling NULLS in empty cells not available in the other table
+SELECT 
+	ctr.tr_id, cus.id AS customer_id,
+	ctr.trans_amount AS transaction_amount,
+	ctr.info AS tr_info,
+	cus.info AS customer_info
+FROM customer_transactions ctr
+FULL OUTER JOIN customers cus
+ON ctr.id = cus.id;
+
+
+
+
+-- ===================================== SELF-JOIN =====================================
+
+/*
+
+We want to predict today's stock price using yesterday's stock price.
+
+The data is in a different ROW, not a different column.
+
+The solution is to join the table to itself to align "Yesterday" with "Today".
+
+*/
+
+
+-- create a stocks table...
+DROP TABLE IF EXISTS prices_of_stocks;
+
+CREATE TABLE prices_of_stocks (
+	date DATE,
+	ticker VARCHAR(15),
+	closing_price FLOAT
+);
+
+INSERT INTO prices_of_stocks (date, ticker, closing_price) VALUES
+('2026-02-06', 'AAPL', 185.00), ('2026-02-07', 'AAPL', 185.50), ('2026-02-08', 'AAPL', 186.10),
+('2026-02-09', 'AAPL', 184.90), ('2026-02-10', 'AAPL', 187.20), ('2026-02-11', 'AAPL', 188.00),
+('2026-02-12', 'AAPL', 189.15), ('2026-02-13', 'AAPL', 187.50), ('2026-02-14', 'AAPL', 186.40),
+('2026-02-15', 'AAPL', 188.90), ('2026-02-16', 'AAPL', 190.10), ('2026-02-17', 'AAPL', 191.20),
+('2026-02-18', 'AAPL', 192.50), ('2026-02-19', 'AAPL', 191.80), ('2026-02-20', 'AAPL', 193.00),
+('2026-02-21', 'AAPL', 194.20), ('2026-02-22', 'AAPL', 195.10), ('2026-02-23', 'AAPL', 194.80),
+('2026-02-24', 'AAPL', 196.00), ('2026-02-25', 'AAPL', 197.30), ('2026-02-26', 'AAPL', 198.50),
+('2026-02-27', 'AAPL', 197.90), ('2026-02-28', 'AAPL', 199.10), ('2026-03-01', 'AAPL', 200.20),
+('2026-03-02', 'AAPL', 201.50), ('2026-03-03', 'AAPL', 202.80), ('2026-03-04', 'AAPL', 203.40),
+('2026-03-05', 'AAPL', 202.90), ('2026-03-06', 'AAPL', 204.10), ('2026-03-07', 'AAPL', 205.20),
+('2026-03-08', 'AAPL', 206.30), ('2026-03-09', 'AAPL', 205.80), ('2026-03-10', 'AAPL', 207.00),
+('2026-03-11', 'AAPL', 208.20), ('2026-03-12', 'AAPL', 209.40), ('2026-03-13', 'AAPL', 210.60),
+('2026-03-14', 'AAPL', 211.80), ('2026-03-15', 'AAPL', 212.90), ('2026-03-16', 'AAPL', 211.50),
+('2026-03-17', 'AAPL', 213.20), ('2026-03-18', 'AAPL', 214.40), ('2026-03-19', 'AAPL', 215.60),
+('2026-03-20', 'AAPL', 216.80), ('2026-03-21', 'AAPL', 217.00), ('2026-03-22', 'AAPL', 218.20),
+('2026-03-23', 'AAPL', 219.40), ('2026-03-24', 'AAPL', 220.60), ('2026-03-25', 'AAPL', 221.80),
+('2026-03-26', 'AAPL', 222.00), ('2026-03-27', 'AAPL', 221.50), ('2026-03-28', 'AAPL', 223.70),
+('2026-03-29', 'AAPL', 224.90), ('2026-03-30', 'AAPL', 225.10), ('2026-03-31', 'AAPL', 226.30),
+('2026-04-01', 'AAPL', 227.50), ('2026-04-02', 'AAPL', 228.70), ('2026-04-03', 'AAPL', 229.90),
+('2026-04-04', 'AAPL', 230.10), ('2026-04-05', 'AAPL', 231.30), ('2026-04-06', 'AAPL', 232.50),
+('2026-04-07', 'AAPL', 233.70), ('2026-04-08', 'AAPL', 234.90), ('2026-04-09', 'AAPL', 235.10),
+('2026-04-10', 'AAPL', 236.30), ('2026-04-11', 'AAPL', 237.50);
+
+
+
+SELECT
+	today.date AS prediction_date,
+	today.closing_price AS label_y, -- price today
+	yesterday.closing_price AS feature_previous_day	-- price yesterday
+FROM prices_of_stocks today
+LEFT JOIN prices_of_stocks yesterday
+ON yesterday.date = today.date - INTERVAL '1 day' -- join where yesterday is equal to today minus 1 day
+-- joining on ticker too...
+AND yesterday.ticker = today.ticker;
+
+/*
+Result:
+'2026-02-06': NULL previous price (First day)
+'2026-02-07': Target 185.50, Feature 185.00
+'2026-02-08': Target 186.10, Feature 185.50
+
+*/
+
+
+
+
+
+
+
+
