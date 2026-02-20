@@ -10,4 +10,44 @@
     - ERROR: "Database connection refused", "File not found". A specific operation failed, but the app didn't crash.
 
     - CRITICAL: The nuclear option. The app is dead or data is being corrupted. Wake up the billionaire (you).
+},
+
+{
+    When you create a logging.Formatter(), you are defining a template for your logs. It takes the raw data from a LogRecord (time, level, message, line number) and arranges it into a string.
+
+
+    Main Parameters:
+
+    1. fmt (The Log Template)
+    This is a string that defines the structure of the log message. You use "LogRecord attributes" (placeholders) to tell Python what information to include.
+
+    Common Attributes:
+        %(asctime)s: Human-readable time.
+        %(levelname)s: The severity (DEBUG, INFO, etc.).
+        %(name)s: The name of the logger (e.g., ml_pipeline).
+        %(message)s: The actual text you logged.
+        %(filename)s: The Python file that triggered the log.
+
+    Example:
+    fmt='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    
+    
+    2. datefmt (The Time Template)
+    By default, Python uses ISO8601 format (e.g., 2023-10-27 11:20:01,123). If you want the time to look different, you provide a string using standard strftime codes (the same ones used in the datetime module).
+
+    Common Codes:
+        %Y-%m-%d: 2023-10-27
+        %H:%M:%S: 11:20:01
+        %p: AM/PM
+
+    Example:
+    datefmt='%I:%M %p' (Output: 11:20 AM)
+    
+    
+    3. style (The Syntax Type)
+    This determines how Python parses the fmt string. Modern Python projects often change this to use more readable syntax.
+
+    '%' (Default): Uses old-school C-style formatting (e.g., %(message)s).
+    '{': Uses the modern .format() syntax (e.g., {message}). Highly recommended for readability.
+    '$': Uses string templates like shell scripts (e.g., ${message}).
 }
