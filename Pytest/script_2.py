@@ -1,6 +1,10 @@
 import time
 import pytest
+import logging
 import numpy as np
+import os
+import pandas as pd
+from sqlalchemy import create_engine
 np.random.seed(10)
 
 
@@ -805,7 +809,7 @@ def test_user_email_BAD_APPROACH():
     user = {"name": "Jesse", "age": 25, "email": "jesse@futo.edu.ng"}
     
     # Check if email validation works (should return True since email exists)
-    assert validate_email(user) == True
+    assert validate_email(user) is True
 
 
 # ===================================== THE SOLUTION - FIXTURES (The Professional Way) =====================================
@@ -893,7 +897,7 @@ def test_user_email(sample_user):
     result = validate_email(sample_user)
     
     # Assert that validation returns True for a valid email
-    assert result == True
+    assert result is True
 
 
 # ===================================== MULTIPLE FIXTURES - COMPOSABILITY =====================================
@@ -1136,6 +1140,736 @@ def test_boundary_adult(user_with_custom_age):
     assert result == "adult"
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ===================================== Performing logging operations =====================================
+
+path_to_file = "/home/jesfusion/Documents/ml/ML-Learning-Repository/logs/print.log"
+
+
+pytest_logger = logging.getLogger(name = 'Pytest Learning')
+
+pytest_logger.setLevel(level = logging.DEBUG)
+
+terminal = logging.StreamHandler()
+
+terminal.setLevel(
+    level = logging.INFO
+)
+
+terminal.setFormatter(
+    fmt = logging.Formatter(
+        fmt = "%(message)s"
+    )
+)
+
+
+file = logging.FileHandler(
+    filename = path_to_file,
+    mode = 'w'
+)
+
+file.setLevel(
+    level = logging.DEBUG
+)
+
+file.setFormatter(
+    fmt = logging.Formatter(
+        fmt = "{asctime} ::: {name} ::: {levelname} ::: [{filename}: line {lineno}]\n{message}\n\n",
+
+        datefmt = "%Y/%m/%d, %I:%M %p",
+
+        style = '{' # options are '%', '$' or '{' (check things to note)
+    )
+)
+
+# adding the two handlers to our logger...
+
+handlers = [terminal, file]
+
+for handler in range(len(handlers)):
+
+    pytest_logger.addHandler(hdlr = handlers[handler])
+
+
+
+def print(item):
+
+    return pytest_logger.info(item)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+np.random.seed(seed = 20) # Sets the random seed to 20 to ensure reproducible random numbers
+
+# ===================================== SEGMENT 2.2: SETUP AND TEARDOWN (yield) =====================================
+
+@pytest.fixture # Decorator marking the following function as a pytest fixture
+
+def temp_file_creation(): # Defines a fixture function to create and yield a temporary file
+    # SETUP PHASE: Everything before the 'yield' statement runs before the test starts.
+    path_to_file = "/home/jesfusion/Documents/ml/ML-Learning-Repository/Pytest/temporary_file.log" # Sets the hardcoded file path string
+
+    file_content = np.random.randn(16, 19) # Generates a 16x19 array of normally distributed random numbers
+
+    with open( # Opens a file context manager to handle file operations safely
+        file = path_to_file, # Specifies the file path to open
+        mode = 'w' # Sets the file mode to 'w' (write), overwriting if it exists
+    ) as file: # Assigns the opened file object to the variable 'file'
+
+        file.write(f"{file_content}") # Converts the numpy array to a string and writes it to the file
+
+    pytest_logger.debug(f"Temporary file created at: {path_to_file}") # Logs a debug message confirming file creation
+
+    # The 'yield' keyword pauses this fixture and hands control (and the file path) over to the test.
+    yield path_to_file # Yields the file path to the test function that requested it
+
+    # TEARDOWN PHASE: Everything after the 'yield' runs after the test finishes, ensuring cleanup.
+    if os.path.exists( # Checks if the file path actually exists on the disk
+        path = path_to_file # Passes the file path to the os.path.exists function
+    ): # Ends the condition check for file existence
+        
+        os.remove(path = path_to_file) # Deletes the file from the operating system
+
+        pytest_logger.debug(f'Temporary file deleted at "{path_to_file}"') # Logs a debug message confirming file deletion
+
+
+
+
+
+@pytest.fixture # Decorator marking the database_connection function as a pytest fixture
+
+def database_connection(): # Defines a fixture to handle database connections
+    # Setup: Create engine and establish a connection
+    database_engine = create_engine(os.environ.get('POSTGRE_ML_CONNECT')) # Creates an SQLAlchemy engine using an environment variable
+
+    conn = database_engine.connect() # Establishes a live connection from the engine
+
+    pytest_logger.debug("Successfully connected to database!") # Logs a debug message for successful connection
+
+    # Provide the connection object to the test
+    yield conn # Yields the connection object to the test function
+
+    # Teardown: Safely close the connection regardless of whether the test passed or failed
+    conn.close() # Closes the database connection to free up resources
+
+    pytest_logger.debug("Successfully closed database connection!") # Logs a debug message confirming the connection is closed
+
+
+
+
+
+
+
+
+
+
+# ===================================== SEGMENT 2.3: FIXTURE SCOPES =====================================
+
+# 'function' scope is the default. This fixture executes from scratch for EVERY individual test that requests it.
+@pytest.fixture(scope = 'function') # explicitly sets the fixture scope to 'function' (runs per test)
+
+def resource_at_function_scope(): # Defines a fixture meant to demonstrate function scope
+
+    the_resource = { # Initializes a dictionary representing a mock resource
+        
+        "name": "FunctionResource",  # Sets the 'name' key of the mock resource
+        
+        "call_count": 0 # Initializes a counter to track how many times it is used/modified
+    } # Closes the dictionary definition
+
+    pytest_logger.debug(f'Function scope created: \n{the_resource}') # Logs the creation of the function-scoped resource
+
+    yield the_resource # Hands the resource dictionary over to the requesting test
+
+
+    pytest_logger.debug(f"Function Scope '{the_resource['name']}' Destroyed!") # Logs the destruction/teardown of the resource
+
+
+
+
+
+# 'session' scope means this fixture runs exactly ONCE for the entire test suite run. 
+# All tests requesting it will share the exact same instance in memory.
+@pytest.fixture( # Starts the fixture decorator
+    scope = 'session' # Sets the scope to 'session' so it is shared across all tests in the run
+) # Closes the fixture decorator
+
+def resource_at_session_scope(): # Defines a fixture meant to demonstrate session scope
+
+    time.sleep(0.4) # Simulates a slow setup process by pausing execution for 0.4 seconds
+
+    database_engine = { # Initializes a dictionary to mock a database engine
+        "type": "PostgresEngine", # Sets the 'type' key to describe the mock engine
+
+        "pool_size": 5, # Sets a mock connection pool size
+
+        "queries_run": 0 # Initializes a counter to track queries run during the session
+    } # Closes the mock database engine dictionary
+
+    pytest_logger.debug(f"Database Engine Ready: {database_engine['type']}") # Logs that the session-scoped engine is ready
+
+    yield database_engine # Yields the session-shared engine dictionary to tests
+
+    pytest_logger.debug(f"Shutting Down engine with {database_engine['queries_run']} queries passed") # Logs the teardown and total queries run
+
+
+
+# 'module' scope means this fixture runs exactly ONCE per Python file (module).
+# Tests inside this file share the state, but tests in other files would get a fresh instance.
+@pytest.fixture(scope = 'module') # Sets the scope to 'module', shared by all tests in this specific file
+
+def resource_at_module_scope(): # Defines a fixture meant to demonstrate module scope
+
+    pytest_logger.debug("Loading app config for module...") # Logs the start of the module setup
+
+    test_config = { # Initializes a dictionary to mock application configuration
+        "app_name": "ProPlex", # Sets the application name
+        "version": "3.0.11", # Sets the application version
+        "db_host": "localhost", # Sets the mock database host
+        "debug": False # Sets the debug flag
+    } # Closes the config dictionary
+
+    yield test_config # Yields the configuration dictionary to the tests in this module
+
+    pytest_logger.debug("Unloaded config for the module!") # Logs the teardown of the module configuration
+
+
+
+
+
+
+
+# ===================================== SEGMENT 3.1: CONFTEST.PY =====================================
+
+"""
+
+conftest.py is a magic file pytest auto-discovers.
+  Fixtures defined there are available to ALL tests in the same directory
+  and ALL subdirectories — with ZERO import statements needed.
+
+In a real project, the fixtures below would NOT be in this file.
+They would live in conftest.py at the project root.
+We're keeping them here purely for a self-contained learning script.
+
+REAL PROJECT STRUCTURE:
+  project_root/
+  ├── conftest.py <-- global_auth_client, global_db_engine live here
+  ├── pytest.ini
+  └── tests/
+      ├── conftest.py <-- test-suite-wide fixtures live here
+      ├── unit/
+      │   ├── conftest.py   <-- unit-test-only fixtures live here
+      │   └── test_models.py
+      └── integration/
+          ├── conftest.py   <-- integration-test-only fixtures live here
+          └── test_api.py
+
+"""
+
+@pytest.fixture(scope = 'session') # Decorates a global fixture with session scope
+
+def global_authenticated_HTTP_client(): # Defines a fixture to simulate an authenticated HTTP client
+
+    pytest_logger.info("Initializing global authentication client...") # Logs the initialization of the auth client
+
+    authentication_client = { # Initializes a dictionary representing the HTTP client
+
+        "base_url": "https://localhost:2006", # Sets the mock base URL
+
+        "token": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9", # Sets a mock JWT token
+
+        "headers": {"HTTP Authorization": "Bearer test_token_jesse_123"}, # Sets the authorization headers
+
+        "is_authenticated": True, # Sets a boolean flag indicating authentication success
+    } # Closes the auth client dictionary
+
+    pytest_logger.info(f"Authentication client ready with url: {authentication_client['base_url']}") # Logs that the client is ready
+
+    yield authentication_client # Yields the client to the requesting tests
+
+    authentication_client['is_authenticated'] = False # Mocks the logout/cleanup process by setting auth to False
+
+    pytest_logger.info("Authentication client closed!") # Logs the teardown of the auth client
+
+
+
+
+
+
+@pytest.fixture(scope = 'module') # Decorates a fixture representing a database record with module scope
+
+def database_record(): # Defines a fixture to mock a user record from a database
+
+    pytest_logger.info("Creating user record...") # Logs the creation of the record
+
+    the_user = { # Initializes a dictionary representing the user data
+        "id": "usr_001", # Sets the user ID
+        "name": "Jesse Ekwebelem", # Sets the user name
+        "role": "Machine Learning Engineer", # Sets the user role
+        "email": "jesse@gmail.com", # Sets the user email
+        "is_active": True, # Sets the active status flag
+    } # Closes the user dictionary
+    
+    yield the_user # Yields the user record to the requesting tests
+
+    pytest_logger.info("User record cleaned up!") # Logs the teardown of the user record
+
+
+
+
+
+# Requesting the fixture by naming it in the test parameters automatically executes it
+def test_temporary_file_existence(temp_file_creation): # Defines a test that relies on the temp_file_creation fixture
+
+    # The value of 'temp_file_creation' here is whatever was yielded by the fixture (the file path)
+    file_path = temp_file_creation # Assigns the yielded file path to a local variable
+
+    pytest_logger.debug(f'Checking if file exists at "{file_path}"...') # Logs the start of the existence check
+
+    assert os.path.exists( # Asserts that the file path exists on the disk
+        path = file_path # Passes the local file_path to os.path.exists
+    ), "Temporary file was not created!" # Provides an error message if the assertion fails
+
+    with open(file = file_path) as the_file: # Opens the file to read its contents
+
+        the_file_content = the_file.read() # Reads the entire file content into a string variable
+
+    # Verifying that the numpy array data was actually written to the file
+    assert """1.44652159e+00 -3.76858470e-01 -1.28474253e-01 -4.77532686e-01
+  -1.22202480e-01  2.07655008e-01 -1.49265894e-01  1.02086503e+00
+   1.97192189e+00  """ in the_file_content, f"Array missing in temp file {file_path}" # Asserts that specific numbers exist in the string
+    
+
+    pytest_logger.debug(f'File Content at "{file_path}" verified!') # Logs success if the file content assertion passes
+    
+
+
+
+
+def test_connection_to_database(database_connection): # Defines a test that requires the database_connection fixture
+
+    conn = database_connection # Assigns the yielded connection object to a local variable
+
+    dataset = pd.read_sql_query( # Uses pandas to execute a SQL query and load it into a DataFrame
+        sql = "SELECT * FROM  breast_cancer_dataset", # Specifies the SQL query string
+        con = conn         # Provides the connection object to pandas
+    ) # Closes the read_sql_query function call
+
+    # Validating the expected number of rows returned from the database query
+    assert len(dataset) == 569 # Asserts that the resulting DataFrame has exactly 569 rows
+
+    pytest_logger.debug("Number of rows confirmed in breast cancer dataset!") # Logs a success message after the assertion
+
+
+
+
+
+
+
+# ===================================== Fixture Scopes Testing =====================================
+
+
+# function scope testing...
+
+def test_function_scope_1(resource_at_function_scope): # First test to demonstrate function scoping
+
+    resource = resource_at_function_scope # Grabs the yielded dictionary from the function-scoped fixture
+
+    resource['call_count'] += 1 # Increments the call_count to mutate the dictionary
+
+    pytest_logger.debug(f"Call count for test_function_scope_1 after mutation: {resource['call_count']}") # Logs the mutated count
+
+    # Because this is a function-scoped fixture, call_count starts at 0 for THIS test.
+    assert resource['call_count'] == 1 # Asserts that the count is exactly 1
+
+
+
+def test_function_scope_2(resource_at_function_scope): # Second test to demonstrate function scoping
+
+    resource2 = resource_at_function_scope # Grabs the dictionary; it will be a brand new instance because of function scope
+
+    resource2['call_count'] += 1 # Increments the new instance's count from 0 to 1
+
+    pytest_logger.debug(f"Call count for test_function_scope_2 after mutation: {resource2['call_count']}") # Logs the mutated count
+
+    # Notice how this also asserts 1! The fixture was completely recreated for this second test,
+    # proving that function-scoped fixtures do not share state between tests.
+    assert resource2['call_count'] == 1 # Asserts the count is 1, confirming state was not shared
+
+
+
+
+
+# session scope testing...
+
+
+def test_session_scope_1(resource_at_session_scope): # First test to demonstrate session scoping
+
+    session_resource = resource_at_session_scope # Grabs the session-scoped dictionary
+
+    session_resource['queries_run'] += 1 # Increments the queries_run counter
+
+    pytest_logger.debug(f"Query # {session_resource['queries_run']} on engine: {session_resource['type']}") # Logs the incremented value
+
+    assert session_resource['queries_run'] == 1 # Asserts the count is 1 for the first run
+
+
+def test_session_scope_2(resource_at_session_scope): # Second test to demonstrate session scoping
+
+    session_resource2 = resource_at_session_scope # Grabs the SAME dictionary instance as the previous test
+
+    session_resource2['queries_run'] += 1 # Increments the counter, which starts at 1 this time
+
+    pytest_logger.debug(f"Query # {session_resource2['queries_run']} on engine: {session_resource2['type']}") # Logs the incremented value
+
+    # Because this fixture is session-scoped, it remembers the mutation from test_session_scope_1.
+    # Shared state means 'queries_run' is now 2!
+    assert session_resource2['queries_run'] == 2 # Asserts the count is 2, proving shared state across the session
+
+
+
+
+
+# module scope testing...
+
+def test_configuration_app_name(resource_at_module_scope): # First test to demonstrate module scoping
+
+    m_resource = resource_at_module_scope # Grabs the module-scoped configuration dictionary
+
+    pytest_logger.debug("Verifying app name from configuration...") # Logs intent to verify app name
+
+
+    assert m_resource['app_name'] == 'ProPlex' # Asserts the app name matches the initial dictionary value
+
+    pytest_logger.debug(f'App name "{m_resource['app_name']} confirmed') # Logs confirmation of the original app name
+
+    pytest_logger.debug("Changing app name...") # Logs intent to mutate the dictionary
+
+    # We are mutating the module-scoped dictionary here.
+    m_resource['app_name'] = 'Skittle' # Changes the app name in the shared dictionary
+
+    pytest_logger.debug(f"App name changed to {m_resource['app_name']}") # Logs the new app name
+
+
+
+
+
+
+def test_configuration_version(resource_at_module_scope): # Second test to demonstrate module scoping
+
+    m_resource2 = resource_at_module_scope # Grabs the SAME module-scoped configuration dictionary
+
+    pytest_logger.debug("Verifying app version...") # Logs intent to check the version
+
+    assert m_resource2['version'] == "3.0.11" # Asserts the version matches the original value
+
+    pytest_logger.debug("Confirming app name change...") # Logs intent to check the mutated app name
+
+    # Proving module-scope: This test sees the 'Skittle' change made by the previous test
+    # because they share the same fixture instance.
+    assert m_resource2['app_name'] == 'Skittle' # Asserts the app name is Skittle, proving state is shared within the module
+
+
+
+
+
+
+
+
+
+# ===================================== SEGMENT 3.1: CONFTEST.PY =====================================
+
+def test_authentication_client(global_authenticated_HTTP_client): # Test to verify the mock auth client fixture
+
+    auth = global_authenticated_HTTP_client # Grabs the auth client dictionary
+
+    pytest_logger.info(f"Authentication status: {auth["is_authenticated"]}") # Logs the boolean auth status
+
+    assert auth['is_authenticated'] is True # Asserts that the client is authenticated
+
+    assert "HTTP Authorization" in auth['headers'] # Asserts that the expected header key exists
+
+    pytest_logger.info(f"Is Auth header present? {auth['headers']["HTTP Authorization"] == "Bearer test_token_jesse_123"}") # Logs a boolean check of the header value
+
+
+
+
+
+# Pytest allows you to request multiple fixtures in a single test simply by adding them to the parameters
+def test_database_record( # Starts defining a test that requires multiple fixtures
+    database_record, # Requests the module-scoped user record fixture
+    global_authenticated_HTTP_client # Requests the session-scoped auth client fixture
+): # Ends the parameter list
+    
+    authentication = global_authenticated_HTTP_client # Assigns the auth client to a local variable
+
+    record = database_record # Assigns the user record to a local variable
+
+    pytest_logger.info(f"User: {record['name']} ::: Role: {record['role']}") # Logs the user's name and role
+
+    assert record['role'] == "Machine Learning Engineer" # Asserts the user's role matches expectations
+
+    assert record['is_active'] is True # Asserts the user's active status is True
+
+    pytest_logger.info(f"MLOps Engineer career confirmed with token {authentication['token']}") # Logs a success message utilizing data from both fixtures
+
+
+
+
+
+def test_authentication_client_correct_base_url(global_authenticated_HTTP_client): # Test to verify the URL of the auth client
+
+    auth = global_authenticated_HTTP_client # Grabs the auth client dictionary
+
+    pytest_logger.info(f"Base URL: {auth['base_url']}") # Logs the base URL
+
+    # String assertions using standard Python string methods
+    assert auth['base_url'].startswith('https') # Asserts the URL starts with https, checking for secure protocol
+
+    assert '2006' in auth['base_url'] # Asserts that the port 2006 is present in the URL string
+
+    pytest_logger.info("Base URL is valid AWS Server: CONFIRMED!") # Logs confirmation of the URL
+
+
+
+
+def test_user_email_domain(database_record): # Test to verify the user record's email
+
+    rec = database_record # Grabs the user record dictionary
+
+    pytest_logger.info(f"Email: {rec['email']}") # Logs the user's email address
+
+    assert rec['email'].endswith('@gmail.com') # Asserts that the email belongs to the gmail domain
+
+    pytest_logger.info("User is using a valid gmail address!") # Logs confirmation of the email domain
 
 
 
