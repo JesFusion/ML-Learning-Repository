@@ -50,4 +50,19 @@
     '%' (Default): Uses old-school C-style formatting (e.g., %(message)s).
     '{': Uses the modern .format() syntax (e.g., {message}). Highly recommended for readability.
     '$': Uses string templates like shell scripts (e.g., ${message}).
+},
+
+{
+    The dictConfig dictionary has a strict schema with these top-level keys:
+
+    - version — always 1. It's the schema version. Not optional.
+
+    - formatters — a dict of named formatter objects and their format strings
+
+    - handlers — a dict of named handler objects, each specifying its class, level, formatter, and any class-specific args like filename or maxBytes
+    
+    - loggers — a dict of named loggers, each specifying which handlers to attach and what level to set
+    - root — optional config for the root logger itself
+    
+    - disable_existing_loggers — almost always False. If True, it silences any loggers created before dictConfig runs, which breaks third-party libraries.
 }
