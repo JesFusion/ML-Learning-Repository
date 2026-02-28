@@ -768,3 +768,164 @@ Result:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- Removes the 'modelRuns' table from the database if it already exists, using 'CASCADE' to automatically drop any objects (like views or constraints) that depend on it, ensuring a clean slate.
+DROP TABLE IF EXISTS modelRuns CASCADE;
+-- Removes the 'MlModels' table from the database if it exists, also using 'CASCADE' to drop dependent objects, preventing errors when we try to recreate it below.
+DROP TABLE IF EXISTS MlModels CASCADE;
+
+
+-- Initiates the creation of a new table named 'MlModels' to store information about different machine learning models.
+CREATE TABLE MlModels(
+    -- Defines 'id' as the primary key using 'SERIAL', an auto-incrementing integer type that uniquely identifies each model record.
+    id SERIAL PRIMARY KEY,  
+    -- Creates a 'ModelName' column that can hold a string up to 100 characters long, and 'NOT NULL' ensures every model must have a name.
+    ModelName VARCHAR(100) NOT NULL,
+    -- Creates a 'VersionTag' column for strings up to 33 characters, requiring it to be populated ('NOT NULL') and ensuring no two models can share the same version tag ('UNIQUE').
+    VersionTag VARCHAR(33) NOT NULL UNIQUE,
+    -- Adds a 'ModelDescription' column using the 'TEXT' data type, which allows for storing arbitrarily long string descriptions of the model.
+    ModelDescription TEXT,
+    -- Sets up a 'CreatedAt' column to track when the record was made; it defaults to the current database timestamp ('NOW()') if no value is explicitly provided.
+    CreatedAt TIMESTAMP NOT NULL DEFAULT NOW()
+-- Closes the column definition list and executes the table creation statement.
+);
+
+--moving to the ml_models schema...
+-- Modifies the newly created 'MlModels' table (explicitly referencing it in the 'public' schema) and physically moves it into a different organizational schema named 'ml_schema'.
+ALTER TABLE public.MlModels SET SCHEMA ml_schema;
+
+
+
+-- Updates the current session's 'search_path', instructing the database to first look in 'ml_schema' and then in 'public' when resolving unqualified table names in subsequent queries.
+SET search_path TO ml_schema, public;
+
+
+-- Begins defining a second table named 'ModelRuns' to log the performance metrics of individual executions or training runs for the models.
+CREATE TABLE ModelRuns(
+    -- Defines 'RunID' as the primary key, using 'SERIAL' so the database automatically generates a unique, incrementing ID for every run.
+    RunID SERIAL PRIMARY KEY,
+    -- Creates a 'ModelID' column acting as a foreign key that links to the 'id' column in the 'MlModels' table, establishing a relationship between a run and its parent model.
+    ModelID INT NOT NULL REFERENCES MlModels(id) ON DELETE CASCADE, -- ON DELETE CASCADE means: if a model is deleted from ml_models, all its associated runs in this table are automatically deleted too
+    -- Adds a column for the model's accuracy as a floating-point number, enforcing a rule ('CHECK') that the value must be a percentage between 0.0 and 1.0.
+    MAccuracy FLOAT CHECK(MAccuracy >= 0.0 AND MAccuracy <= 1.0),
+    -- Adds a column to record the model's loss (error rate) as a float, restricting it so that the loss cannot be a negative number.
+    ModelLoss FLOAT CHECK(ModelLoss >= 0.0),
+    -- Defines a column for the number of training epochs as an integer, requiring a value and ensuring it is strictly greater than zero.
+    MEpochs INT NOT NULL CHECK(mepochs > 0), -- epochs cannot be 0 or less. How the heck did you train your model?
+    -- Creates a 'RunTime' timestamp column to record when the run occurred, automatically defaulting to the exact moment the record is inserted.
+    RunTime TIMESTAMP NOT NULL DEFAULT NOW()
+-- Finalizes the structural definition of the 'ModelRuns' table.
+);
+
+
+-- Insert valid random data first to confirm the happy path works...
+-- Begins an insertion operation targeting the 'MlModels' table, specifying that we will provide data for the 'ModelName', 'VersionTag', and 'ModelDescription' columns.
+INSERT INTO MlModels (ModelName, VersionTag, ModelDescription)
+-- Starts a SELECT query that will generate rows of data on-the-fly to be fed directly into the INSERT statement above.
+SELECT 
+    -- Dynamically constructs the model name by concatenating the string 'Model_' with the current integer 'i'.
+    'Model_' || i, 
+    -- Dynamically builds a unique semantic version string (e.g., 'v1.1.0') by placing the integer 'i' between 'v1.' and '.0'.
+    'v1.' || i || '.0', 
+    -- Creates a dummy description text by appending the integer 'i' to the end of a base string.
+    'Auto-generated description for model ' || i
+-- Uses the 'generate_series' set-returning function to create a temporary sequence of numbers from 1 to 23, assigning each number to the alias 'i' for the SELECT clause to use.
+FROM generate_series(1, 23) AS i;
+
+
+-- Prepares to add new records into the 'ModelRuns' table, listing the specific columns ('ModelID', 'MAccuracy', 'ModelLoss', 'MEpochs') we are providing data for.
+INSERT INTO ModelRuns(ModelID, MAccuracy, ModelLoss, MEpochs)
+-- Indicates that the exact data rows to be inserted follow immediately after this keyword.
+VALUES
+-- Inserts the first record: linking to Model 1, with 87% accuracy, 0.34 loss, over 10 epochs.
+(1, 0.87, 0.34, 10),
+-- Inserts the second record: another run for Model 1, showing improved accuracy (91%) and lower loss (0.21) after 25 epochs.
+(1, 0.91, 0.21, 25),
+-- Inserts the third record: linking to Model 2, logging a 94% accuracy and 0.15 loss over 50 epochs, completing the multi-row insert statement.
+(2, 0.94, 0.15, 50);
+
+-- let's view the columns...
+-- Retrieves and displays every column ('*') for all rows currently stored in the 'MlModels' table to verify our mass insertion worked.
+SELECT * FROM MlModels;
+-- Retrieves and displays every column ('*') for all rows in the 'ModelRuns' table to review the manual metric logs we just added.
+SELECT * FROM ModelRuns;
+
+
+-- the following insert should fail...
+-- Attempts an insertion into the 'MlModels' table providing only the 'ModelName' and 'VersionTag' columns.
+INSERT INTO MlModels (ModelName, VersionTag)
+-- Declares the single row of values to be inserted.
+VALUES
+-- Attempts to insert 'ResNet Classifier' and 'v1.5.0'. NOTE: This will fail (as the user comment implies) because 'v1.5.0' was already generated and inserted by the 'generate_series' loop earlier, violating the UNIQUE constraint on 'VersionTag'.
+('ResNet Classifier', 'v1.5.0');
+
+
+
+
