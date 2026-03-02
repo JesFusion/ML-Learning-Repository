@@ -1,0 +1,49 @@
+{
+    The Construction Methods
+    There are several ways to build a tensor. Each has a specific use case:
+
+    # From raw data — you know the exact values
+    torch.tensor(data=[1.0, 2.0, 3.0], dtype=torch.float32)
+
+    # Zeros — initializing a placeholder before filling it
+    torch.zeros(size=(3, 4), dtype=torch.float32)
+
+    # Ones — often used for bias initialization or masks
+    torch.ones(size=(3, 4), dtype=torch.float32)
+
+    # Random (Uniform 0 to 1) — weight initialization
+    torch.rand(size=(3, 4), dtype=torch.float32)
+
+    # Random (Normal distribution, mean=0, std=1) — preferred for weights
+    torch.randn(size=(3, 4), dtype=torch.float32)
+
+    # Casting types — converting after creation
+    t = torch.tensor(data=[1, 2, 3], dtype=torch.int64)
+    t_float = t.to(dtype=torch.float32)
+},
+
+{
+    In a neural network, your input data X has shape (batch_size × input_features) and your weight matrix W has shape (input_features × output_features)
+    
+    The result X @ W has shape (batch_size × output_features)
+},
+
+{
+    The Three Matrix Operation Types:
+
+    1. Matrix Multiplication — transforms the space entirely:
+        C = torch.matmul(input=A, other=B)  # or A @ B
+
+    2. Dot Product — for two 1D vectors, produces a single scalar:
+    
+        # [1,2,3] · [4,5,6] = (1×4) + (2×5) + (3×6) = 4+10+18 = 32
+
+        result = torch.dot(input=a, other=b)
+
+    3. Element-wise Operations — operates on matching positions independently. Shapes must be identical (or broadcastable — covered in Module 2):
+    
+        # [1,2,3] * [4,5,6] = [4, 10, 18]  — NOT the same as dot product
+
+        C = A * B   # element-wise multiply
+        C = A + B   # element-wise add
+}

@@ -50,4 +50,29 @@
 
     --cov: Measures code coverage to see which parts of your model code aren't being tested (requires pytest-cov).
     -n <num>: Runs tests in parallel across multiple CPU cores (requires pytest-xdist). 
+},
+
+{
+    CONFTEST.PY ARCHITECTURE:
+
+
+    Pytest searches for conftest.py files starting from the test file's directory and moving up. If you define the same fixture in multiple conftest.py files, the closest one wins.
+
+    In a real project, this entire file would be split:
+
+    tests/
+    ├── conftest.py              ← Session-scoped fixtures (DB, API clients)
+    ├── unit/
+    │   ├── conftest.py          ← Unit-test-specific fixtures (mocks)
+    │   └── test_math.py
+    └── integration/
+        ├── conftest.py          ← Integration-specific fixtures (real DB)
+        └── test_api.py
+
+    
+
+    Rules:
+    - Never import conftest.py manually. Pytest does it automatically.
+    - Don't put test functions in conftest.py. Only fixtures and hooks.
+    - Use nested conftest.py files to scope fixtures to specific subdirectories (e.g., integration tests need a real DB, unit tests use mocks).
 }

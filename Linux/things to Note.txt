@@ -130,7 +130,7 @@
     Commonly used process signals in Linux:
 
 
-    1. SIGTERM (Termination Signal):
+    1. SIGTERM [-15] (Termination Signal):
 
     Tells the program to stop, but gives it a chance to clean up (close database connections, save logs) before it dies.
 
@@ -138,7 +138,7 @@
 
     
     
-    2. SIGKILL (Kill Signal):
+    2. SIGKILL [-9] (Kill Signal):
 
     The Kernel instantly removes the process from memory. The process has zero chance to save data or close files.
 
