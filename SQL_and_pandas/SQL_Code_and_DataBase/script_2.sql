@@ -836,6 +836,135 @@ Result:
 
 
 
+
+DROP TABLE IF EXISTS modelRuns CASCADE;
+DROP TABLE IF EXISTS MlModels CASCADE;
+
+
+CREATE TABLE MlModels(
+	id SERIAL PRIMARY KEY,	
+	ModelName VARCHAR(100) NOT NULL,
+	VersionTag VARCHAR(33) NOT NULL UNIQUE,
+	ModelDescription TEXT,
+	CreatedAt TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+--moving to the ml_models schema...
+ALTER TABLE public.MlModels SET SCHEMA ml_schema;
+
+
+
+SET search_path TO ml_schema, public;
+
+
+CREATE TABLE ModelRuns(
+	RunID SERIAL PRIMARY KEY,
+	ModelID INT NOT NULL REFERENCES MlModels(id) ON DELETE CASCADE, -- ON DELETE CASCADE means: if a model is deleted from ml_models, all its associated runs in this table are automatically deleted too
+	MAccuracy FLOAT CHECK(MAccuracy >= 0.0 AND MAccuracy <= 1.0),
+	ModelLoss FLOAT CHECK(ModelLoss >= 0.0),
+	MEpochs INT NOT NULL CHECK(mepochs > 0), -- epochs cannot be 0 or less. How the heck did you train your model?
+	RunTime TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+
+-- Insert valid random data first to confirm the happy path works...
+INSERT INTO MlModels (ModelName, VersionTag, ModelDescription)
+SELECT 
+    'Model_' || i, 
+    'v1.' || i || '.0', 
+    'Auto-generated description for model ' || i
+FROM generate_series(1, 23) AS i;
+
+
+INSERT INTO ModelRuns(ModelID, MAccuracy, ModelLoss, MEpochs)
+VALUES
+(1, 0.87, 0.34, 10),
+(1, 0.91, 0.21, 25),
+(2, 0.94, 0.15, 50);
+
+-- let's view the columns...
+SELECT * FROM MlModels;
+SELECT * FROM ModelRuns;
+
+
+-- the following insert should fail...
+INSERT INTO MlModels (ModelName, VersionTag)
+VALUES
+('ResNet Classifier', 'v1.5.0');
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 -- Removes the 'modelRuns' table from the database if it already exists, using 'CASCADE' to automatically drop any objects (like views or constraints) that depend on it, ensuring a clean slate.
 DROP TABLE IF EXISTS modelRuns CASCADE;
 -- Removes the 'MlModels' table from the database if it exists, also using 'CASCADE' to drop dependent objects, preventing errors when we try to recreate it below.
