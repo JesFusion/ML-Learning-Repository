@@ -1,3 +1,9 @@
+# Note:
+# .env ==> in .gitignore  → contains REAL secrets  → NEVER committed
+
+# .env.example ==> committed → contains FAKE placeholders → safe to share
+
+
 # file for testing code before putting into production
 test_things.py
 
@@ -44,4 +50,5 @@ Pytest/__pycache__/
 
 # file for writing pytest code 
 Pytest/test_file.py
+
 
