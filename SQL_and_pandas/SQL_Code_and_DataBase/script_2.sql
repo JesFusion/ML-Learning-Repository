@@ -981,7 +981,7 @@ CREATE TABLE MlModels(
     VersionTag VARCHAR(33) NOT NULL UNIQUE,
     -- Adds a 'ModelDescription' column using the 'TEXT' data type, which allows for storing arbitrarily long string descriptions of the model.
     ModelDescription TEXT,
-    -- Sets up a 'CreatedAt' column to track when the record was made; it defaults to the current database timestamp ('NOW()') if no value is explicitly provided.
+    -- Sets up a 'CreatedAt' column to track when the record was made; it defaults to the current database timestamp ('NOW()') if nalue is explicitly provided.
     CreatedAt TIMESTAMP NOT NULL DEFAULT NOW()
 -- Closes the column definition list and executes the table creation statement.
 );

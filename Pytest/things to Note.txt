@@ -75,4 +75,107 @@
     - Never import conftest.py manually. Pytest does it automatically.
     - Don't put test functions in conftest.py. Only fixtures and hooks.
     - Use nested conftest.py files to scope fixtures to specific subdirectories (e.g., integration tests need a real DB, unit tests use mocks).
+},
+
+{
+    Pytest's fixture scope system gives you precise control over fixture lifetime:
+
+    ==> "function" scope (the default) — the fixture runs fresh for every single test. Complete isolation, maximum cost.
+
+    ==> "class" scope — the fixture runs once per test class, shared among all methods in that class.
+
+    ==> "module" scope — the fixture runs once per file, shared among all tests in that module.
+    
+    ==> "session" scope — the fixture runs exactly once for the entire test suite run, regardless of how many tests use it.
+},
+
+{
+    Pytest includes several built-in markers that go beyond simple categorization. Unlike custom markers, these have pre-defined functional roles in how tests are executed. 
+
+    To see a complete list of all markers available in your specific project (including those from plugins), run the command `pytest --markers` in your terminal
+},
+
+{
+    In pytest, custom markers are user-defined tags used to categorize and filter tests. While you can create any marker name that fits your workflow, the following are common industry standards for organizing test suites: 
+
+    Supported operators: `and`, `or`, `not`, and parentheses
+
+    Common Custom Markers are:
+
+    - slow: Used for computationally expensive tests or those with long wait times.
+
+    - integration: Marks tests that require external services like APIs or databases.
+
+    - smoke: Identifies a small subset of critical "sanity" tests to run after a new build.
+
+    - regression: Tags tests specifically aimed at catching bugs in previously working features.
+
+    - unit: Explicitly labels fast, isolated tests that do not require external dependencies.
+
+    - database: Specifically for tests that interact with a database connection.
+
+    - api: Used for testing individual API endpoints.
+
+    - nightly: For extensive tests meant to run only during scheduled nightly builds.
+    
+    - flaky: Highlights tests known to fail inconsistently, often used with plugins like pytest-rerunfailures.
+},
+
+{
+    A Mock comes out of the box with "Tracking Attributes" and "Assertion Methods." These are built-in tools used to inspect what happened during the test.
+
+    Tracking Attributes:
+        .called: Boolean (True/False)
+
+        .call_count: Integer
+
+        .call_args: The arguments used in the last call
+
+        .call_args_list: A list of arguments from every call made
+
+
+    Assertion Methods:
+        .assert_called()
+
+        .assert_called_with(...)
+
+        .assert_called_once_with(...)
+
+
+    Configuration Attributes:
+        .return_value: What the mock returns when called as a function.
+
+        .side_effect: Used to raise errors or return different values in a sequence.
+
+    
+
+
+
+    Because of a feature called recursive mocking, a Mock will automatically create new Mock objects whenever you access an attribute or method that doesn't exist yet.
+
+    - Attributes: If you type `outlet.status`, the mock sees status doesn't exist and creates a new Mock for it on the fly.
+
+    - Methods: If you type outlet.post(), it creates a new Mock for post.
+
+    - Nested objects: You can go as deep as you want: outlet.service.api.v1.connect(). Every single step in that chain is a new Mock created automatically.
+},
+
+{
+    In addition to all the tracking attributes of a standard Mock (.called, .call_count, etc.), MagicMock has pre-created mock objects for almost every "dunder" method in Python.
+
+    Iteration: __iter__ is defined, so you can loop over it.
+
+    Length: __len__ is defined (it defaults to 0).
+
+    Context Managers: __enter__ and __exit__ are defined, so you can use it in a with statement.
+
+    Container behavior: __getitem__ (for obj[key]) and __setitem__ are ready to go.
+    
+    String representation: __str__ and __repr__ are ready.
 }
+
+
+
+
+
+

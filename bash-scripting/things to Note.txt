@@ -85,4 +85,12 @@
     printf $'Epoch\tLoss\tAccuracy\n1\t0.342\t0.891\n'
 
     The above outputs a properly tab-separated table with real newlines. No external tools needed
+},
+
+{
+    Variable names are case-sensitive. The convention is:
+
+    - UPPERCASE for environment variables and configuration constants that are exported or globally significant
+
+    - lowercase for local, script-internal variables with limited scope
 }

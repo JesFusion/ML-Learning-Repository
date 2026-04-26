@@ -58,17 +58,18 @@
 
 {
     tablefmt is a parameter in .to_markdown() that enables you to customize table styles. various options are:
-
-    1. GitHub Flavored Markdown (Default-like)
-    ==> .to_markdown(tablefmt="github")
-
-    2. Grid style with visible borders
-    ==> df.to_markdown(tablefmt="grid")
-
-    3. "Fancy" grid with Unicode box-drawing characters
-    ==> .to_markdown(tablefmt="fancy_grid")
-
-    4. Simple pipe format
-    ==> .to_markdown(tablefmt="pipe")
+    
+    Basic: plain, simple, github, pipe, orgtbl, jira, presto, pretty, psql, rst, mediawiki, moinmoin, youtrack, textile, tsv
+    ==> df.to_markdown(tablefmt="github")
+    
+    
+    Grid: grid, simple_grid, rounded_grid, heavy_grid, mixed_grid, double_grid, fancy_grid
+    ==> df.to_markdown(tablefmt="fancy_grid")
+    
+    Outline: outline, simple_outline, rounded_outline, heavy_outline, mixed_outline, double_outline, fancy_outline
+    ==> df.to_markdown(tablefmt="mixed_outline")
+    
+    Code/Markup: html, unsafehtml, latex, latex_raw, latex_booktabs, latex_longtable, asciidoc 
+    ==> df.to_markdown(tablefmt="latex_booktabs")
 }
 

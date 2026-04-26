@@ -21,6 +21,7 @@ cloudpickle==3.1.2
 colorama==0.4.6
 comm==0.2.3
 contourpy==1.3.3
+coverage==7.13.5
 cryptography==46.0.3
 cycler==0.12.1
 daff==1.4.2
@@ -136,6 +137,7 @@ psutil==7.1.3
 psycopg2-binary==2.9.11
 ptyprocess==0.7.0
 pure_eval==0.2.3
+py4j==0.10.9.9
 pyarrow==22.0.0
 pyasn1==0.6.1
 pyasn1_modules==0.4.2
@@ -150,10 +152,13 @@ pyinstaller-hooks-contrib==2025.11
 PyMuPDF==1.26.7
 pyparsing==3.2.5
 PySocks==1.7.1
+pyspark==4.1.1
 pytesseract==0.3.13
 pytest==9.0.2
+pytest-cov==7.1.0
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.1
+python-json-logger==4.0.0
 python-multipart==0.0.20
 python-slugify==8.0.4
 pytimeparse==1.1.8

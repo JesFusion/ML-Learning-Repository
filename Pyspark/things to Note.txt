@@ -1,0 +1,14 @@
+{
+    Imagine you're running a massive restaurant chain with hundreds of branches across Nigeria.
+
+    1. You (the CEO at HQ) = The Spark Driver
+    2. Branch Managers = Worker Nodes
+    3. The Kitchen Staff at each branch = Executors
+    4. The Menu Orders = Your Data (Partitions)   
+},
+
+{
+    The Driver is a single point of failure. If it dies, the job dies. This is why you never run heavy logic on the driver: it's a coordinator, not a workhorse.
+
+    If Spark already has a function for it in pyspark.sql.functions — use it. Native Spark functions execute entirely inside the JVM. Zero Python subprocess. Zero serialization tax.
+}
