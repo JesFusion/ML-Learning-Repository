@@ -3,10 +3,6 @@
 
 # .env.example ==> committed → contains FAKE placeholders → safe to share
 
-
-# file for testing code before putting into production
-test_things.py
-
 # file to practice freelancing projects
 dataset_cleaning_freelancer.py
 
