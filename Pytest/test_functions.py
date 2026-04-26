@@ -10,6 +10,9 @@ from unittest.mock import (
     AsyncMock
 )
 import requests as requests_lib
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+from fastapi import HTTPException
 from code_to_test import (
     log,
     GLOBAL_DICTIONARY,
@@ -1204,7 +1207,7 @@ markers = [
 
 
 
-@pytest.mark.code_to_run
+
 def test_jesse():
 
     log.debug("Jesse is cool")
@@ -1234,7 +1237,7 @@ def test_jesse():
 
 
 
-@pytest.mark.code_to_run
+
 def test_unittest_mock():
 
     outlet = Mock(
@@ -1261,7 +1264,7 @@ def test_unittest_mock():
 
 
 
-@pytest.mark.code_to_run
+
 def test_MagicMock():
 
     mock_file = MagicMock(
@@ -1287,7 +1290,7 @@ def test_MagicMock():
 
 
 
-@pytest.mark.jesse
+
 def test_isolation_speed_cost_of_mocking(tmp_path):
 
     outlet = MagicMock(name = 'FakeGateway')
@@ -1331,7 +1334,7 @@ def test_isolation_speed_cost_of_mocking(tmp_path):
 
 
 
-@pytest.mark.jesse
+
 @patch(
     target = 'test_functions.requests_lib.get'
 )
@@ -1374,7 +1377,7 @@ def test_the_patch_decorator(mock_acquisition):
 
 
 
-@pytest.mark.code_to_run
+
 def test_the_context_management_abilities_of_patch():
 
     with patch(
@@ -1404,7 +1407,7 @@ def test_the_context_management_abilities_of_patch():
 
 
 
-@pytest.mark.jesse
+
 def test_direct_patch_object():
 
     direct_patch_object_processor = PaymentProcessingClass()
@@ -1450,7 +1453,7 @@ def test_direct_patch_object():
 
 
 
-@pytest.mark.code_to_run
+
 def test_the_verification_of_assert_being_called_once():
 
     the_gate = MagicMock(name = 'TheClientGateway')
@@ -1473,7 +1476,7 @@ def test_the_verification_of_assert_being_called_once():
 
 
 
-@pytest.mark.code_to_run
+
 def test_assertion_being_called_once_with_exact_arguments():
 
     the_gateway = MagicMock(name = "TheClientGateway")
@@ -1508,7 +1511,7 @@ def test_assertion_being_called_once_with_exact_arguments():
 
 
 
-@pytest.mark.jesse
+
 def test_that_assertion_is_not_called_on_the_event_of_a_validation_failure():
 
     the_gateway = MagicMock(name = "TheClientGateway")
@@ -1543,7 +1546,7 @@ def test_that_assertion_is_not_called_on_the_event_of_a_validation_failure():
 
 
 
-@pytest.mark.code_to_run
+
 def test_the_call_count_and_call_argument_list():
 
     the_gateway = MagicMock(name = 'TheClientGateway')
@@ -1611,7 +1614,7 @@ call_args_list verified
 
 
 
-@pytest.mark.code_to_run
+
 @patch(
     target = 'test_functions.requests_lib.get'
 )
@@ -1638,7 +1641,7 @@ def test_the_value_from_mock_return(fake_data_mock):
 
 
 
-@pytest.mark.code_to_run
+
 @patch(
     target = 'test_functions.requests_lib.get'
 )
@@ -1706,7 +1709,7 @@ def test_iterable_side_effect_of_mock(mock):
 
 
 
-@pytest.mark.jesse
+
 @patch(
     target = "test_functions.requests_lib.get" 
 )
@@ -1739,7 +1742,7 @@ def test_raises_exception_mock_side_effect(the_mock):
 
 
 
-@pytest.mark.code_to_run
+
 @patch(
     target = 'test_functions.requests_lib.get'
 )
@@ -1815,7 +1818,7 @@ def test_mixed_sequence_format_of_mock_side_effect(jesse_mock):
 
 
 
-@pytest.mark.jesse
+
 def test_async_functions():
 
     async def async_function_inside_test_function():
@@ -1854,7 +1857,7 @@ def test_async_functions():
         log.info(f'AsyncMock confirmed: coroutine awaited cleanly. Result: {the_result}')
 
     
-    asyncio.run(async_function_inside_test_function())
+    asyncio.run(main = async_function_inside_test_function())
 
 
 
@@ -1869,6 +1872,144 @@ def test_async_functions():
 
 
 
+
+
+
+@pytest.mark.asyncio
+async def test_side_effect_of_async_mock_raises():
+
+    the_http_client = AsyncMock(name = 'TheAsyncHTTPClient')
+
+    the_http_client.get.side_effect = TimeoutError('Async request timed out')
+
+    with pytest.raises(expected_exception = TimeoutError,
+    match = 'timed out'):
+        await fetch_user_profile_async(uID = 34,
+        HTTP_clt = the_http_client)
+
+    log.info(msg = "AsyncMock side_effect exception confirmed")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@pytest.mark.asyncio
+@patch(
+    target = 'test_functions.fetch_user_profile_async',
+    new_callable = AsyncMock
+)
+async def test_async_function_patching_with_async_mock(async_mock_fetch):
+    #... [HOW]  new_callable=AsyncMock tells patch() to create an AsyncMock instead of
+    #...        the default MagicMock — critical for patching coroutine functions.
+    # mock_fetch.return_value = {"id": 7, "name": "Patched User", "role": "tester"}
+
+    async_mock_fetch.return_value = {
+        'id': 6,
+        'name': 'Patched Async User',
+        'role': 'code tester'
+    }
+
+    output = await fetch_user_profile_async(uID = 6)
+
+    assert output['name'] == 'Patched Async User'
+
+    async_mock_fetch.assert_called_once_with(uID = 6)
+
+    log.info(msg = f'@patch() with new_callable = AsyncMock confirmed: {output}')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@pytest.mark.jesse
+def test_demo_of_FastAPI_TestClient():
+    
+    f_api = pytest.importorskip(
+        modname = 'fastapi', 
+        reason = 'fastapi module may not be installed'
+    )
+
+    f_app = FastAPI()    
+
+    @f_app.get(path = '/payments/{payment_id}')
+    def extract_payment(payment_id: int):
+
+        output = {
+            'id': payment_id,
+            'status': 'charged',
+            'amount': 463
+        }
+
+        return output
+
+    @f_app.post(path = '/payments/')
+    def payment_creation(
+        the_amount: float,
+        the_currency: str = 'USD'
+    ):
+        if the_amount <= 0:
+            raise HTTPException(status_code = 422, detail = "Amount must be positive")
+        
+        output = {
+            'id': 1, 
+            'status': 'charged', 
+            'amount': the_amount,
+            'currency': the_currency
+        }
+        
+        return output
+
+    the_client = TestClient(app = f_app)
+
+    get_response = the_client.get('/payments/681')
+
+    assert get_response.status_code == 200
+
+    assert get_response.json()['id'] == 681
+
+    post_response = the_client.post(url = '/payments/', 
+    params = {
+        'the_amount': 561,
+        'the_currency': 'NGN'
+    })
+
+    assert post_response.status_code == 200
+
+    assert post_response.json()['status'] == 'charged'
+
+    post_error_response = the_client.post(
+        '/payments/',
+        params = {
+            'amount': -10.0
+        }
+    )
+
+    assert post_error_response.status_code == 422
+
+    log.info(msg = 'FastAPI TestClient confirmed: GET 200, POST 200, POST 422')
 
 
 
