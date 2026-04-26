@@ -1,0 +1,88 @@
+{
+    Use "#!/usr/bin/env bash" for any script that will run across multiple environments:
+    - CI/CD runners
+    - Docker containers
+    - EC2 instances
+    - Local dev machines
+    
+    Use "#!/bin/bash" only when you're locked into a known, controlled single environment and need the marginal performance gain of skipping the env lookup
+},
+
+{
+    A Subshell (child process) is spawned when you:
+
+    - Run a script directly: bash script.sh or ./script.sh
+
+    - Use parentheses: (cd /tmp && do_something)
+
+    - Use a pipe: cmd1 | cmd2 — both sides run in subshells
+
+    - Use command substitution: $(some_command)
+},
+
+{
+    Quoting Mechanisms:
+
+    1. Strong Quoting ('') => The Bank Vault:
+
+    Everything between single quotes is treated as a 100% literal string. No variable expansion, no command substitution, no interpretation of any special characters whatsoever. What you type is exactly what gets output
+
+
+    2. Weak Quoting ("") => The Safe With a Mail Slot:
+
+    Double quotes suppress word splitting and glob expansion, but they still allow:
+
+    - Variable expansion: $VAR and ${VAR} are replaced with their values
+    
+    - Command substitution: $(command) is executed and replaced with its output
+
+    - Arithmetic expansion: $((expression)) is evaluated
+
+    - Backslash escaping of: $, `, ", \, and newline
+
+
+    Always double-quote variables when using them as arguments. "$MODEL_PATH" instead of $MODEL_PATH. Without quotes, if the path contains spaces, Bash word-splits it into multiple arguments and everything breaks.
+},
+
+{
+    Backslash Escaping (\):
+
+    The backslash is the character-level escape. It neutralizes the special meaning of the very next single character that follows it.
+
+    1. Inside double quotes, backslash only escapes: $, backticks (``), double-quotes (""), backslash (\), and a literal newline. For everything else, the backslash is kept literally. Example:
+
+    echo "She said \"train the model\""
+    # OUTPUT: She said "train the model"
+    
+    2. Outside any quotes (unquoted context), backslash escapes any special character: spaces, $, *, !, etc. Example:
+
+    echo The\ model\ path\ has\ spaces
+    # OUTPUT: The model path has spaces
+
+    3. Line continuation: A backslash at the very end of a line (immediately before the newline) tells Bash to continue the command on the next line. This is how you write long commands readably. Example:
+    
+    docker run \
+    --gpus all \
+    --rm \
+    -v /data:/data \
+    my-training-image:latest
+
+},
+
+{
+    ANSI-C Quoting ($'...'): The Specialist
+
+    $'...' allows you to use ANSI-C escape sequences inside the string. The most important ones are:
+    
+    \n      Newline
+    \t      Tab character
+    \r      Carriage return
+    \\      Literal backslash
+    \'      Literal single quote
+    \x      HHHex character code
+    
+    Example:
+    printf $'Epoch\tLoss\tAccuracy\n1\t0.342\t0.891\n'
+
+    The above outputs a properly tab-separated table with real newlines. No external tools needed
+}

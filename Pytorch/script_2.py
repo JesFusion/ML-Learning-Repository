@@ -582,3 +582,687 @@ except RuntimeError as error:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# A conditional statement that always evaluates to true, executing the block below.
+if True:
+
+    # Initializes a logger instance named "PyTorch Learning".
+    log = logging.getLogger(name = "PyTorch Learning")
+
+    # Sets the minimum logging level to DEBUG to capture all log messages.
+    log.setLevel(level = logging.DEBUG)
+
+    # Creates a stream handler to send log output to the console.
+    handler_1 = logging.StreamHandler()
+
+    # Sets the stream handler's logging level to INFO.
+    handler_1.setLevel(level = logging.INFO)
+
+    # Defines a logging format that prints the message followed by a newline.
+    format_1 = logging.Formatter(fmt = '%(message)s\n')
+
+    # Applies the defined format to the stream handler.
+    handler_1.setFormatter(fmt = format_1)
+
+    # Attaches the configured stream handler to the logger.
+    log.addHandler(hdlr = handler_1)
+
+
+# Determines and sets the computation device to GPU if available, otherwise defaults to CPU.
+device_to_use = torch.device(
+    'cuda' if torch.cuda.is_available() else 'cpu'
+)
+
+log.info(f"Running on device --> {device_to_use}")
+
+
+
+
+
+
+# ===================================== SEGMENT 2.1: RESHAPING & VIEWING =====================================
+
+
+
+# Creates a 1D tensor containing values from 1 to 24 with a 16-bit float data type.
+tensor = torch.arange(
+    start = 1,
+    end = 25,
+    dtype = torch.float16
+)
+
+log.info(f"""
+Base 1D Tensor ({tensor.nelement()} total elements):
+{tensor}
+
+Tensor Shape
+{tensor.shape}
+""")
+
+
+# normal reshaping...
+
+# Reshapes the 1D tensor into a 2D matrix with 8 rows and 3 columns.
+reshaped_tensor_8x3 = tensor.reshape(8, 3)
+
+# Reshapes the 1D tensor into a 2D matrix with 12 rows and 2 columns.
+reshaped_tensor_12x2 = tensor.reshape(12, 2)
+
+# Reshapes the 1D tensor into a 2D matrix with 6 rows and 4 columns.
+reshaped_tensor_6x4 = tensor.reshape(6, 4)
+
+# Reshapes the 1D tensor into a 4D tensor with dimensions 2x2x3x2.
+reshaped_tensor_2x2x3x2 = tensor.reshape(2, 2, 3, 2)
+
+
+# auto reshaping...
+# Automatically calculates the number of rows needed for 6 columns and reshapes the tensor.
+auto_reshape = tensor.reshape(-1, 6)
+
+
+# Groups all the newly reshaped tensors into a Python list.
+reshapes = [
+    reshaped_tensor_8x3,
+    reshaped_tensor_12x2,
+    reshaped_tensor_6x4,
+    reshaped_tensor_2x2x3x2,
+    auto_reshape
+]
+
+# Iterates over each tensor in the 'reshapes' list.
+for tensor in reshapes:
+
+    log.info(f"""Reshaped to dimension {list(tensor.shape)}:
+            
+    Shape: {tensor.shape}
+    """)
+
+
+
+# .view() vs .reshape()
+
+# Assigns the current tensor to a new variable named 'contiguous_tensor'.
+contiguous_tensor = tensor
+
+# Creates a new view of the contiguous tensor with dimensions 4x2x3 without copying memory.
+view_tensor = contiguous_tensor.view(4, 2, 3)
+
+
+log.info(f"""view tensor:
+{view_tensor}
+
+Is original tensor contiguous? {contiguous_tensor.is_contiguous()}
+""")
+
+# Transposes the 6x4 tensor by swapping its 0th and 1st dimensions, resulting in a non-contiguous 4x6 tensor.
+non_contiguous_tensor = reshaped_tensor_6x4.transpose(
+    dim0 = 0,
+    dim1 = 1
+)
+
+log.info(f"Is new tensor contiguous? {non_contiguous_tensor.is_contiguous()}")
+
+
+# Initiates a try block to catch potential runtime exceptions.
+try:
+
+    # Attempts to create a 12x2 view of the non-contiguous tensor, which will fail.
+    non_contiguous_tensor.view(12, 2)
+
+# Catches the expected RuntimeError that occurs when viewing a non-contiguous tensor.
+except RuntimeError as error:
+
+    log.info(f"The tensor is not contiguous. See the error:\n{error}")
+
+
+
+
+# Creates a contiguous copy of the previously non-contiguous tensor in memory.
+FIXING_non_contiguous_tensor = non_contiguous_tensor.contiguous()
+
+# Successfully creates a 3x2x4 view from the now contiguous tensor.
+contiguous_tensor_2 = FIXING_non_contiguous_tensor.view(3, 2, 4)
+
+
+log.info(f'''fixed contiguous tensor:
+{contiguous_tensor_2}
+
+Shape: {contiguous_tensor_2.shape}
+''')
+
+
+
+
+# .permute()
+
+# Generates a 4D tensor of random numbers representing a batch of images with dimensions 8x3x4x1.
+image = torch.randn(
+    size = (8, 3, 4, 1),
+
+    dtype = torch.float32
+)
+
+
+# Rearranges the dimensions of the image tensor from (B, H, W, C) to (B, C, H, W).
+processed_image_for_PyTorch = image.permute(0, 3, 1, 2)
+
+
+log.info(f'''Original Image Batch Shape:
+{image.shape} (B, H, W, C)
+
+Permuted Batch Shape:
+{processed_image_for_PyTorch.shape} (B, C, H, W)
+''')
+
+
+# Invalid reshaping...
+
+# Initiates a try block to handle potential errors during an invalid reshape operation.
+try:
+
+    # Attempts to reshape a 24-element tensor into a 36-element shape, which will cause an error.
+    invalid_reshaping = reshaped_tensor_6x4.reshape(4, 9)
+
+# Catches the RuntimeError resulting from the shape mismatch in the reshape attempt.
+except RuntimeError as reshape_error:
+
+    log.info(f"Bad Reshaping. Here's the error:\n{reshape_error}")
+
+
+
+
+
+
+
+
+
+
+
+
+# ===================================== SEGMENT 2.2: INDEXING, SLICING, AND ADVANCED SELECTION =====================================
+
+
+
+
+# Creates a 1D tensor with a specific list of 32-bit float values.
+D1_tensor = torch.tensor(
+    data = [-3.0, 1.0, -1.0, 4.0, 2.0, -5.0, 7.0, 0.0],
+
+    dtype = torch.float32
+)
+
+
+
+# 1D slicing...
+
+log.info(f"""===================================== Slicing in 1 Dimension =====================================
+         
+First element in tensor: {D1_tensor[0].item()}
+
+Last element in tensor: {D1_tensor[-1].item()}
+
+2nd to 4th element: {D1_tensor[2:5]}
+
+Slice of every 2nd element: {D1_tensor[::2]}
+""")
+
+
+
+
+# 2D slicing...
+
+# Creates a 1D tensor of values from 1 to 25 and immediately reshapes it into a 5x5 matrix.
+D2_tensor = torch.arange(
+    start = 1,
+    end = 26,
+    dtype = torch.float32
+).reshape(5, 5)
+
+
+
+log.info(f'''
+===================================== Slicing in 2 Dimensions =====================================
+         
+Matrix (Shape: {list(D2_tensor.shape)}):
+{D2_tensor}
+
+Item at row 1, column 1 => {D2_tensor[1, 1].item()}
+
+Entire row 0 => {D2_tensor[0, :]}
+
+Entire column 3 => {D2_tensor[:, 3]}
+
+2x2 sub-grid:
+{D2_tensor[2:4, 0:2]}
+''')
+
+
+# Assigns the 1D tensor created earlier to the 'tensor' variable.
+tensor = D1_tensor
+
+# boolean masking...
+
+# Evaluates the tensor for values strictly greater than 0, generating a boolean mask.
+the_mask = tensor > 0
+
+log.info(f"Boolean Mask (x > 0): {the_mask}")
+
+
+
+# boolean indexing (doesn't preserve shape)
+
+# Extracts all positive values from the tensor using the boolean mask, altering the original shape.
+p_values = tensor[the_mask]
+
+log.info(f"Positive values from tensor: {p_values}")
+
+
+# Converts the boolean mask values (True/False) into integers (1/0).
+the_mask_as_integer = the_mask.int()
+
+# Multiplies the original tensor by the integer mask to zero out negative values while preserving shape.
+p_values_2 = tensor * the_mask_as_integer
+
+
+log.info(f'''
+Tensor:
+{tensor}
+
+Integer Mask: {the_mask_as_integer}
+
+positive values = tensor * integer mask
+
+{p_values_2} (negatives zeroed, shape preserved)
+''')
+
+
+
+# Applies a ReLU-like operation, keeping values greater than 0 and replacing others with 0.
+result_from_ReLU = torch.where(
+    input = tensor,
+
+    other = torch.zeros_like(
+        input = tensor
+    ),
+
+    condition = (tensor > 0)
+)
+
+
+# replace negative with absolute value...
+
+# Calculates the absolute values of the tensor by negating values that do not meet the condition.
+absolute_tensor = torch.where(
+    input = tensor,
+    
+    other = -tensor,
+    
+    condition = (tensor >= 0)
+)
+
+
+log.info(f'''
+torch.where() {{ReLU (x)}}: {result_from_ReLU}
+
+torch.where() {{abs (x)}}: {absolute_tensor}
+''')
+
+
+
+
+
+# Creates a 2D tensor representing a batch of prediction scores for different classes.
+SCORES = torch.tensor(
+    data = [
+        [0.1, 0.9, 0.3, 0.5],
+        [0.8, 0.2, 0.6, 0.1],
+        [0.3, 0.4, 0.7, 0.2]
+    ],
+    
+    dtype=torch.float32
+)
+
+
+
+# Creates a 1D tensor of true class labels and adds a new dimension to make it a column vector.
+the_true_labels = torch.tensor(
+    data = [1, 0, 2],
+
+    dtype = torch.int64
+).unsqueeze(
+    dim = 1
+)
+
+
+
+# Given a 2D tensor and a tensor of indices, gather collects values
+# Extracts the predicted scores corresponding to the true labels for each sample.
+correct_values = torch.gather(
+    input = SCORES,
+
+    # dim=1 means "gather along the column axis"
+    dim = 1,
+
+    # For each row, pick the column specified in 'index'
+    index = the_true_labels
+)
+
+
+log.info(f'''
+Scores (3 samples, 4 classes):
+{SCORES}
+
+The True Labels (Columns to pick per row):
+{the_true_labels.squeeze()}
+
+Gathered scores for true class:
+{correct_values.squeeze()}
+
+Score for sample 0, class 1 = {SCORES[0, 1].item():.1f}
+
+Score for sample 1, class 0 = {SCORES[1, 0].item():.1f}
+
+Score for sample 2, class 2 = {SCORES[2, 2].item():.1f}
+''')
+
+
+
+
+
+
+
+
+
+
+
+# ===================================== SEGMENT 2.3: BROADCASTING SEMANTICS =====================================
+
+
+# Creates a 2D tensor containing a single row of values.
+row_vector = torch.tensor(
+    data = [
+        [1.0, 2.0, 3.0]
+    ],
+
+    dtype = torch.float32
+)
+
+# Creates a 2D tensor containing a single column of values.
+column_vector = torch.tensor(
+    data=[
+        [1.0],
+        [2.0],
+        [3.0]
+    ],
+
+    dtype = torch.float32
+)
+
+
+# BROADCASTING: C[i,j] = A[0,j] + B[i,0]
+
+# Adds the row and column vectors together, triggering broadcasting to produce a full matrix.
+Matrix = row_vector + column_vector
+
+
+log.info(f'''
+Row Vector (Shape: {row_vector.shape}):
+{row_vector}
+
+Column Vector (Shape: {column_vector.shape}):
+{column_vector}
+
+Matrix (Shape: {Matrix.shape}):
+{Matrix}
+''')
+
+
+
+# Initializes a 4x3 tensor representing a batch of data.
+batch = torch.tensor(
+    data = [
+        [1.0, 2.0, 3.0],
+        [4.0, 5.0, 6.0],
+        [7.0, 8.0, 9.0],
+        [1.5, 2.5, 3.5]
+    ],
+
+    dtype = torch.float32
+)
+
+
+# Initializes a 1D tensor representing bias values to be added to the batch.
+bias = torch.tensor(
+    data = [0.1, 0.2, 0.3],
+
+    dtype = torch.float16
+)
+
+
+# Adds the bias vector to each row of the batch tensor using broadcasting.
+adding_bias_to_batch = batch + bias
+
+
+log.info(f'''
+Batch output shape: {adding_bias_to_batch.shape}
+
+Bias shape: {bias.shape}
+
+After bias add: shape = {adding_bias_to_batch.shape}
+
+{adding_bias_to_batch}
+''')
+
+
+
+# .unsqueeze() & .squeeze()
+
+
+# Creates a standard 1D tensor with three float values.
+normal_tensor = torch.tensor(
+    data = [10.0, 20.0, 30.0],
+    
+    dtype=torch.float32
+)
+
+
+# Adds an extra dimension at the 0th position to turn the 1D tensor into a 2D row vector.
+unsqueezed_tensor_row_vector = normal_tensor.unsqueeze(
+    dim = 0
+)
+
+
+# Adds an extra dimension at the 1st position to turn the 1D tensor into a 2D column vector.
+unsqueezed_tensor_column_vector = normal_tensor.unsqueeze(
+    dim = 1
+)
+
+
+# Adds the two unsqueezed vectors together to generate a matrix via broadcasting.
+unsqueezed_Matrix = unsqueezed_tensor_row_vector + unsqueezed_tensor_column_vector
+
+
+log.info(f'''
+Original Vector (Shape = {normal_tensor.shape}):
+{normal_tensor}
+
+unsqueezing vector, we have:
+Shape: {unsqueezed_tensor_row_vector.shape}
+Vector: {unsqueezed_tensor_row_vector}
+
+squeezing vector, we have:
+Shape: {unsqueezed_tensor_column_vector.shape}
+Vector: {unsqueezed_tensor_column_vector}
+
+Adding unsqueezed and squeezed vector to get a Matrix:
+Shape: {unsqueezed_Matrix.shape}
+Vector: {unsqueezed_Matrix}
+''')
+
+
+
+
+
+# .squeeze()
+
+
+# Removes all dimensions of size 1 from the column vector, reverting it to 1D.
+squeeze_1 = unsqueezed_tensor_column_vector.squeeze()
+
+# Specifically removes the dimension of size 1 at the 0th position from the row vector.
+squeeze_2 = unsqueezed_tensor_row_vector.squeeze(
+    dim = 0
+)
+
+
+log.info(f'''
+.squeeze() all:
+{squeeze_1.shape}
+
+.squeeze(dim = 0) only:
+{squeeze_2.shape}
+''')
+
+
+
+
+# === BROADCASTING FAILURE ===
+
+# Creates a 3x4 tensor entirely filled with ones.
+a = torch.ones(
+    size = (3, 4),
+
+    dtype = torch.float16
+)
+
+
+
+# Creates a 3x5 tensor entirely filled with ones.
+b = torch.ones(
+    size = (3, 5),
+
+    dtype = torch.float16
+)
+
+
+
+# Initiates a try block to handle expected errors from an incompatible broadcasting attempt.
+try:
+
+    # Attempts to add two tensors with incompatible shapes, which will cause a broadcasting error.
+    c = a + b
+
+# Catches the RuntimeError generated by the broadcasting failure.
+except RuntimeError as broadcasting_failure_error:
+
+    log.info(f"Expected Error (shapes (3,4) and (3,5) incompatible) => {broadcasting_failure_error}")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
