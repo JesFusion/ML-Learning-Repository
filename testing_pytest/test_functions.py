@@ -1854,7 +1854,7 @@ def test_async_functions():
         log.info(f'AsyncMock confirmed: coroutine awaited cleanly. Result: {the_result}')
 
     
-    asyncio.run(async_function_inside_test_function())
+    asyncio.run(main = async_function_inside_test_function())
 
 
 
