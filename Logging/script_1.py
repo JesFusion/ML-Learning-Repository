@@ -26,6 +26,16 @@
 # import uuid
 # from contextvars import ContextVar
 
+import os
+import sys
+import time
+import uuid
+import queue
+import logging 
+import logging.config
+import logging.handlers
+from contextvars import ContextVar
+
 #... ------------------------------------------------------------------------------
 #... [HOW]: Graceful imports for third-party libraries. The script will not crash
 #...        if these are missing — it will skip those segments and tell you why.
@@ -45,6 +55,11 @@
 # except ImportError:
     # SENTRY_AVAILABLE = False
 
+from pythonjsonlogger import jsonlogger
+import sentry_sdk
+from sentry_sdk.integrations.logging import LoggingIntegration
+
+log_dir = 'logs'
 
 #... ==============================================================================
 #... GLOBAL: LOG DIRECTORY SETUP
@@ -53,6 +68,11 @@
 #...        script twice won't blow up on the second run.
 #... ==============================================================================
 # os.makedirs(name="logs", exist_ok=True)
+
+os.makedirs(
+    name = log_dir,
+    exist_ok = True
+)
 
 
 #... ==============================================================================
