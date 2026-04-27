@@ -1,73 +1,24 @@
-#... ==============================================================================
-#... MASTERING PYTHON LOGGING — MLOps Observability Curriculum
-#... All 12 Segments | Student: Nwachukwu Jesse | OS: Ubuntu Linux
-#... Senior Instructor: Chijioke Ekwebelem
-#... ==============================================================================
-#... [WHAT]: A single, linear Python script that implements every concept from the
-#...         12-segment Python Logging curriculum. From LogRecord anatomy all the
-#...         way to async QueueHandlers and distributed Correlation IDs. One file.
-#...         No jumping around.
-#... [WHY]:  One script, one dataset, zero context-switching. You watch the same
-#...         5 prediction records get handled by increasingly powerful logging
-#...         infrastructure as the script runs top-to-bottom. This mirrors the
-#...         actual journey of a maturing MLOps pipeline.
-#... ==============================================================================
-#... INSTALL REQUIRED (run before executing):
-#...   pip install python-json-logger sentry-sdk
-#... ==============================================================================
-
-# import logging
-# import logging.config
-# import logging.handlers
-# import os
-# import queue
-# import sys
-# import time
-# import uuid
-# from contextvars import ContextVar
-
 import os
 import sys
 import time
 import uuid
 import queue
 import logging 
+import subprocess
 import logging.config
 import logging.handlers
 from contextvars import ContextVar
-
-#... ------------------------------------------------------------------------------
-#... [HOW]: Graceful imports for third-party libraries. The script will not crash
-#...        if these are missing — it will skip those segments and tell you why.
-#... [WATCH OUT]: These must be installed before running Segments 2.2 and 4.3.
-#...              Run: pip install python-json-logger sentry-sdk
-#... ------------------------------------------------------------------------------
-# try:
-    # from pythonjsonlogger import jsonlogger
-    # JSON_LOGGER_AVAILABLE = True
-# except ImportError:
-    # JSON_LOGGER_AVAILABLE = False
-
-# try:
-    # import sentry_sdk
-    # from sentry_sdk.integrations.logging import LoggingIntegration
-    # SENTRY_AVAILABLE = True
-# except ImportError:
-    # SENTRY_AVAILABLE = False
-
 from pythonjsonlogger import jsonlogger
 import sentry_sdk
 from sentry_sdk.integrations.logging import LoggingIntegration
 
 log_dir = 'logs'
 
-#... ==============================================================================
-#... GLOBAL: LOG DIRECTORY SETUP
-#... [HOW]: Create a dedicated logs/ directory so every FileHandler in this script
-#...        has a clean home. exist_ok=True makes this idempotent — running the
-#...        script twice won't blow up on the second run.
-#... ==============================================================================
-# os.makedirs(name="logs", exist_ok=True)
+def clear():
+    if True:
+        subprocess.run('clear', shell = True)
+
+clear()
 
 os.makedirs(
     name = log_dir,
@@ -75,169 +26,221 @@ os.makedirs(
 )
 
 
-#... ==============================================================================
-#... GLOBAL: THE DATASET — Simulated Real Estate ML Prediction Batch
-#... [WHAT]: 5 incoming prediction request dicts representing API calls to a Real Estate price prediction model. This single dataset is processed,
-#...         logged, adapted, traced, and shipped across all 12 segments.
-#... [WHY]:  Real MLOps observability is event-driven. Every log you write maps
-#...         to a real system event — a request came in, a shape mismatched, a
-#...         confidence score fell below threshold. Using a concrete, realistic
-#...         dataset grounds every abstract logging concept in something tangible.
-#... [WATCH OUT]: PREDICTION_BATCH[1] and PREDICTION_BATCH[4] have intentional
-#...              shape mismatches. PREDICTION_BATCH[2] has intentional low
-#...              confidence. These "bad" records are the fuel for the error-
-#...              tracing, exception-logging, and alerting segments.
-#... ==============================================================================
-# PREDICTION_BATCH = [
-    # {
-        # "request_id":     "req_001",
-        # "user_id":        "user_42",
-        # "experiment_id":  "exp_phoenix_v3",
-        # "model_version":  "v3.1",
-        # "input_shape":    (128, 256),
-        # "expected_shape": (128, 256),
-        # "confidence":     0.92,
-        # "feature_vector": [0.1, 0.4, 0.9, 0.2],
-    # },
-    # {
-        # "request_id":     "req_002",
-        # "user_id":        "user_17",
-        # "experiment_id":  "exp_phoenix_v3",
-        # "model_version":  "v3.1",
-        # "input_shape":    (128, 512),    # INTENTIONAL: Triggers shape mismatch
-        # "expected_shape": (128, 256),
-        # "confidence":     0.88,
-        # "feature_vector": [0.3, 0.7, 0.1, 0.5],
-    # },
-    # {
-        # "request_id":     "req_003",
-        # "user_id":        "user_89",
-        # "experiment_id":  "exp_phoenix_v3",
-        # "model_version":  "v3.1",
-        # "input_shape":    (128, 256),
-        # "expected_shape": (128, 256),
-        # "confidence":     0.31,          # INTENTIONAL: Below confidence threshold
-        # "feature_vector": [0.9, 0.1, 0.2, 0.8],
-    # },
-    # {
-        # "request_id":     "req_004",
-        # "user_id":        "user_55",
-        # "experiment_id":  "exp_phoenix_v3",
-        # "model_version":  "v3.1",
-        # "input_shape":    (128, 256),
-        # "expected_shape": (128, 256),
-        # "confidence":     0.78,
-        # "feature_vector": [0.5, 0.5, 0.5, 0.5],
-    # },
-    # {
-        # "request_id":     "req_005",
-        # "user_id":        "user_03",
-        # "experiment_id":  "exp_phoenix_v3",
-        # "model_version":  "v3.1",
-        # "input_shape":    (64, 256),     # INTENTIONAL: Another shape mismatch
-        # "expected_shape": (128, 256),
-        # "confidence":     0.95,
-        # "feature_vector": [0.2, 0.8, 0.6, 0.3],
-    # },
-# ]
-
-# CONFIDENCE_THRESHOLD = 0.50
 
 
-#... ==============================================================================
-#... SHARED UTILITY: Shape Validator
-#... [WHAT]: Simulates the tensor shape validation step inside a model's forward
-#...         pass. Raises ValueError on mismatch, which feeds Segments 3.2 and 4.3.
-#... [WHY]:  Defined once at the top to keep segments DRY. This exact pattern —
-#...         a validation function that raises a typed exception — is the function
-#...         you will be wrapping with logger.exception() in production every day.
-#... ==============================================================================
-# def _validate_shape(input_shape, expected_shape):
-    # if input_shape != expected_shape:
-        # raise ValueError(
-            # f"Shape mismatch: received {input_shape}, model expects {expected_shape}"
-        # )
+batch_prediction = [
+
+    {
+        'requestID': 'RQ-291',
+        'userID': 'USER-39',
+        'experimentID': 'EXP-PHOENIX-V1.3.5',
+        'the_model_version': 'v2.3',
+        'inp_shape': (312, 200), # inp_shape = input shape
+        'exp_shape': (312, 200), # exp_shape = expected shape
+        'model_confidence': 0.89,
+        'featureVECT': [0.341, 0.12, 0.732, 0.291]
+    },
+
+    {
+        'requestID': 'RQ-607',
+        'userID': 'USER-45',
+        'experimentID': 'EXP-PHOENIX-V2.0.4',
+        'the_model_version': 'v1.0',
+        'inp_shape': (312, 419), # intentional shape mismatch
+        'exp_shape': (312, 302),
+        'model_confidence': 0.72,
+        'featureVECT': [0.3, 0.7, 0.1, 0.5]
+    },
+
+    {
+        'requestID': 'RQ-681',
+        'userID': 'USER-72',
+        'experimentID': 'EXP-PHOENIX-V3.5.4',
+        'the_model_version': 'v4.3',
+        'inp_shape': (312, 200),
+        'exp_shape': (312, 200),
+        'model_confidence': 0.22, # intentional low confidence threshold
+        'featureVECT': [0.9, 0.1, 0.2, 0.8]
+    },
+
+    {
+        'requestID': 'RQ-308',
+        'userID': 'USER-25',
+        'experimentID': 'EXP-PHOENIX-V7.0.9',
+        'the_model_version': 'v1.8',
+        'inp_shape': (312, 200),
+        'exp_shape': (312, 200),
+        'model_confidence': 0.42,
+        'featureVECT': [0.5, 0.5, 0.5, 0.5]
+    },
+
+    {
+        'requestID': 'RQ-197',
+        'userID': 'USER-82',
+        'experimentID': 'EXP-PHOENIX-V5.1.2',
+        'the_model_version': 'v4.7',
+        'inp_shape': (128, 200), # intentional shape mismatch
+        'exp_shape': (391, 200),
+        'model_confidence': 0.97,
+        'featureVECT': [0.2, 0.8, 0.6, 0.3]
+    },
+]
 
 
-#... ==============================================================================
-#... SEGMENT 1.1: THE ANATOMY OF A RECORD
-#... [Logging-1.1.A] logging module
-#... [Logging-1.1.B] LogRecord
-#... [Logging-1.1.C–G] Five severity levels
-#... [Logging-1.1.H] Root Logger
-#... ==============================================================================
-# print("\n" + "=" * 72)
-# print("  SEGMENT 1.1: THE ANATOMY OF A RECORD")
-# print("=" * 72)
+the_confidence_threshold = 0.50
 
-#... [WHAT]: A custom one-shot Handler subclass whose sole purpose is to intercept
-#...         a single LogRecord and print every attribute in its __dict__.
-#... [WHY]:  You cannot understand the logging system until you see that a LogRecord
-#...         is a rich Python object — not a string. Subclassing Handler to intercept
-#...         the raw record before formatting is the surgical way to expose this.
-#...         This class teaches [Logging-1.1.A] and [Logging-1.1.B] simultaneously.
-# class _RecordInspectorHandler(logging.Handler):
-    #... [HOW]: emit() is the SINGLE method every Handler subclass must override.
-    #...        It receives the fully-formed LogRecord object BEFORE any formatting.
-    #...        This is your lowest-level access point to the logging pipeline.
-    # def emit(self, record):
-        # print("\n  ┌─ LogRecord.__dict__ Anatomy ─────────────────────────────────")
-        # for attr_name, attr_value in sorted(record.__dict__.items()):
-            # print(f"  │  {attr_name:<20} = {attr_value}")
-        # print("  └───────────────────────────────────────────────────────────────")
 
-#... [HOW]: Wire the inspector to a NAMED logger, NOT the root logger.
-#...        propagate=False prevents the record from bubbling up to root
-#...        and printing twice via any root handlers already attached.
-# anatomy_logger = logging.getLogger(name="anatomy_demo")
-# anatomy_logger.setLevel(level=logging.DEBUG)
-# anatomy_logger.propagate = False
-# anatomy_logger.addHandler(hdlr=_RecordInspectorHandler())
 
-# print("\n  [FIRING] anatomy_logger.info() — Catch and expose the raw LogRecord:\n")
-# anatomy_logger.info(
-    # msg="Prediction batch received",
-    # extra={"request_id": PREDICTION_BATCH[0]["request_id"]},
-# )
 
-#... [HOW]: Swap the inspector for a clean StreamHandler to demo the 5 levels.
-# anatomy_logger.handlers.clear()
-# five_level_stream = logging.StreamHandler(stream=sys.stdout)
-# five_level_stream.setLevel(level=logging.DEBUG)
-# five_level_stream.setFormatter(
-    # fmt=logging.Formatter(fmt="  [%(levelname)-8s] %(message)s")
-# )
-# anatomy_logger.addHandler(hdlr=five_level_stream)
+def shape_validator(
+    InputShape,
+    ExpectedShape
+):
+    
+    if InputShape != ExpectedShape:
 
-# print("\n  [FIRING] All 5 severity levels in sequence:\n")
-# anatomy_logger.debug(
-    # msg="[DEBUG]    Internal state: batch_size=5, device=cpu, dtype=float32"
-# )
-# anatomy_logger.info(
-    # msg="[INFO]     Training run started. Experiment: exp_phoenix_v3, Model: v3.1"
-# )
-# anatomy_logger.warning(
-    # msg="[WARNING]  Low confidence on req_003: 0.31 < threshold 0.50"
-# )
-# anatomy_logger.error(
-    # msg="[ERROR]    Shape mismatch on req_002: (128,512) vs expected (128,256)"
-# )
-# anatomy_logger.critical(
-    # msg="[CRITICAL] Prediction server OOM. Shutting down all inference workers."
-# )
+        raise ValueError(
+            f"Shape mismatch: received {InputShape}, model expects {ExpectedShape}"
+        )
 
-#... [WATCH OUT]: The Root Logger [Logging-1.1.H] is a GLOBAL SINGLETON. Every
-#...              library you import (boto3, sqlalchemy, httpx, requests) writes
-#...              to it. Configuring it carelessly means AWS SDK debug spam floods
-#...              your application logs. From Segment 1.3 onward, we use ONLY
-#...              named loggers. The root logger is training wheels.
-# print(
-    # "\n  [ROOT LOGGER NOTE]: logging.warning() hits the global root logger singleton."
-    # "\n  In production, always use: logger = logging.getLogger(__name__)"
-# )
 
-#... Clean up for next segment
-# anatomy_logger.handlers.clear()
+
+
+
+
+
+# ===================================== SEGMENT 1.1: THE ANATOMY OF A RECORD =====================================
+
+
+class HandlerThatInspectsRecords(logging.Handler):
+
+    def emit(self, record):
+        print("\n  ┌─ LogRecord.__dict__ Anatomy ─────────────────────────────────")
+
+        for atrribute_name, atrribute_value in sorted(
+            record.__dict__.items()
+        ):
+            print(f"  │  {atrribute_name:<15} = {atrribute_value}")
+        
+        print("  └───────────────────────────────────────────────────────────────")
+
+
+
+logger_for_anatomy = logging.getLogger(
+    name = 'AnatomyDemoLogger'
+)
+
+logger_for_anatomy.setLevel(
+    level = logging.DEBUG # you can just set this to 10
+    # CRITICAL = 50
+    # ERROR = 40
+    # WARNING = 30
+    # INFO = 20
+    # DEBUG = 10
+    # NOTSET = 0
+)
+
+logger_for_anatomy.propagate = False
+
+logger_for_anatomy.addHandler(
+    hdlr = HandlerThatInspectsRecords()
+)
+
+
+
+print("\nfiring anatomy_logger.info() — Catch and expose the raw LogRecord:\n")
+
+logger_for_anatomy.info(
+    msg = 'Prediction batch has been received',
+    extra = {
+        'requestID': batch_prediction[0]['requestID']
+    }
+)
+
+"""
+
+
+  ┌─ LogRecord.__dict__ Anatomy ─────────────────────────────────
+  │  args            = ()
+  │  created         = 1777289216.8057432
+  │  exc_info        = None
+  │  exc_text        = None
+  │  filename        = script_1.py
+  │  funcName        = <module>
+  │  levelname       = INFO
+  │  levelno         = 20
+  │  lineno          = 206
+  │  module          = script_1
+  │  msecs           = 805.0
+  │  msg             = Prediction batch has been received
+  │  name            = AnatomyDemoLogger
+  │  pathname        = /ml/ML-Learning-Repository/Logging/script_1.py
+  │  process         = 70268
+  │  processName     = MainProcess
+  │  relativeCreated = 344.1305160522461
+  │  requestID       = RQ-291
+  │  stack_info      = None
+  │  taskName        = None
+  │  thread          = 139447480217728
+  │  threadName      = MainThread
+  └───────────────────────────────────────────────────────────────
+
+"""
+
+
+log = logger_for_anatomy
+
+log.handlers.clear()
+
+five_log_levels = logging.StreamHandler(
+    stream = sys.stdout
+)
+
+five_log_levels.setLevel(
+    level = logging.DEBUG
+)
+
+five_log_levels.setFormatter(
+    fmt = logging.Formatter(
+        fmt = "\nLine %(lineno)s,\n%(levelname)s Level,\nOutput ::: %(message)s"
+    )
+)
+
+
+log.addHandler(
+    hdlr = five_log_levels
+)
+
+
+
+clear()
+
+log.debug(
+    msg = "Internal state: batch_size = 5, device = cpu, dtype = float32"
+)
+
+log.info(
+    msg = "Training run started. Experiment: exp_phoenix_v3, Model: v3.1"
+)
+
+log.warning(
+    msg = "Low confidence on req_003: 0.31 < threshold 0.50"
+)
+
+
+
+log.error(
+    msg = "Shape mismatch on req_002: (128,512) vs expected (128,256)"
+)
+
+log.critical(
+    msg = "Prediction server OOM. Shutting down all inference workers"
+)
+
+
+log.handlers.clear()
+
+# clear()
 
 
 #... ==============================================================================
