@@ -15,8 +15,10 @@ from sentry_sdk.integrations.logging import LoggingIntegration
 log_dir = 'logs'
 
 def clear():
-    if True:
-        subprocess.run('clear', shell = True)
+    # if True:
+    #     subprocess.run('clear', shell = False)
+
+    pass
 
 clear()
 
@@ -157,7 +159,7 @@ logger_for_anatomy.info(
     }
 )
 
-"""
+variables = """
 
 
   ┌─ LogRecord.__dict__ Anatomy ─────────────────────────────────
@@ -240,7 +242,7 @@ log.critical(
 
 log.handlers.clear()
 
-# clear()
+clear()
 
 
 #... ==============================================================================
@@ -267,10 +269,17 @@ log.handlers.clear()
 # for existing_handler in logging.root.handlers[:]:
     # logging.root.removeHandler(hdlr=existing_handler)
 
+
+for handler in logging.root.handlers[:]:
+    logging.root.removeHandler(
+        hdlr = handler
+    )
+
+
 #... [WHAT]: basicConfig() performs one-shot configuration of the root logger.
 #... [WHY]:  Fastest path from zero to a working logger. Fine for scripts and
-#...         quick debugging. NOT appropriate for production applications — use
-#...         dictConfig (Segment 2.3) when you care about your career.
+#... quick debugging. NOT appropriate for production applications — use
+#... dictConfig (Segment 2.3) when you care about your career.
 # logging.basicConfig(
     # level=logging.DEBUG,
     #... [HOW]: format= [Logging-1.2.E] is a percent-style template string.
@@ -282,6 +291,14 @@ log.handlers.clear()
     # filename="logs/segment_1_2_basic.log",
     # filemode="w",   # 'w' overwrites; use 'a' in production to APPEND
 # )
+
+logging.basicConfig(
+    level = logging.DEBUG,
+    format = "\n%(asctime)s ::: %(name)s ::: %(levelname)s ::: %(message)s",
+    datefmt = "%d/%m/%Y, %I:%M:%S %p",
+    filename = 'logs/segment_1_2.log',
+    filemode = 'w' # 'w' overwrites; use 'a' in production to APPEND
+)
 
 # print("\n  [basicConfig DEMO] Writing first 2 records to logs/segment_1_2_basic.log")
 # print("  (Open the file after running to see the formatted output)\n")
@@ -298,6 +315,20 @@ log.handlers.clear()
     # )
 # )
 
+the_root_logger = logging.getLogger()
+
+the_root_logger.info(
+    msg = f"Batch processing started. Total records: {len(batch_prediction)}"
+)
+
+the_root_logger.debug(
+    msg = (
+        f"First record metadata: id = {batch_prediction[0]['requestID']}, "
+        f"confidence = {batch_prediction[0]['model_confidence']}, "
+        f"shape = {batch_prediction[0]['inp_shape']}"
+    )
+)
+
 #... [HOW]: Demonstrate the LEVEL THRESHOLD GATE [Logging-1.2.B].
 #...        Raising the level to WARNING causes every subsequent DEBUG and INFO
 #...        call to be silently discarded BEFORE reaching any handler.
@@ -305,6 +336,16 @@ log.handlers.clear()
 # root_logger.debug(
     # msg="[INVISIBLE] This DEBUG is silently killed by the WARNING threshold gate."
 # )
+
+the_root_logger.setLevel(
+    level = logging.WARNING
+)
+
+the_root_logger.debug(
+    msg = "This DEBUG is silently killed by the WARNING threshold gate"
+)
+
+
 # root_logger.info(
     # msg="[INVISIBLE] This INFO is also killed. The gate blocks both."
 # )
@@ -313,6 +354,14 @@ log.handlers.clear()
 # )
 # print("  Level gate raised to WARNING. The DEBUG and INFO calls above were discarded.")
 # print("  Open logs/segment_1_2_basic.log — the [INVISIBLE] lines are NOT there.\n")
+
+the_root_logger.info(
+    msg = "This INFO is also killed. The gate blocks both"
+)
+
+the_root_logger.warning(
+    msg = 'This WARNING clears the gate and writes to the file'
+)
 
 #... [WHAT ELSE]: basicConfig also accepts: handlers= (a list of pre-built handler
 #...              objects to attach directly), encoding= (file encoding, e.g.
@@ -324,6 +373,20 @@ log.handlers.clear()
 # root_logger.setLevel(level=logging.DEBUG)
 # for existing_handler in logging.root.handlers[:]:
     # logging.root.removeHandler(hdlr=existing_handler)
+
+
+the_root_logger.setLevel(
+    level = logging.DEBUG
+)
+
+for an_existing_handler in logging.root.handlers[:]:
+
+    handler = an_existing_handler
+
+    logging.root.removeHandler(
+        hdlr = handler
+    )
+
 
 
 #... ==============================================================================
