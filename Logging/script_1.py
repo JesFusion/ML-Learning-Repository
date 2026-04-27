@@ -77,8 +77,7 @@ os.makedirs(
 
 #... ==============================================================================
 #... GLOBAL: THE DATASET — Simulated Real Estate ML Prediction Batch
-#... [WHAT]: 5 incoming prediction request dicts representing API calls to a Real
-#...         Estate price prediction model. This single dataset is processed,
+#... [WHAT]: 5 incoming prediction request dicts representing API calls to a Real Estate price prediction model. This single dataset is processed,
 #...         logged, adapted, traced, and shipped across all 12 segments.
 #... [WHY]:  Real MLOps observability is event-driven. Every log you write maps
 #...         to a real system event — a request came in, a shape mismatched, a
