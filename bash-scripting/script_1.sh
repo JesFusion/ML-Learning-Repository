@@ -72,6 +72,12 @@ logging_warning(){
   echo -e "${red_color}Line ${BASH_LINENO[0]},\nERROR Level,\n${reset_color}$*" >&2;
 }
 
+systemctl enable --now ssh
+
+
+ufw allow ssh
+
+hostname -I
 
 
 #... Section/pillar headers for visual separation between segments.
