@@ -11,13 +11,14 @@
 #...   -u  : treat reference to an unset variable as a fatal error
 #...   -o pipefail : pipeline exit code = last non-zero exit (not just last cmd)
 # set -euo pipefail
+set -euo pipefail
+
 
 #... =============================================================================
 #... SANDBOX CONSTRAINT
 #... [WHAT]: Create an isolated temporary workspace for ALL script operations.
 #... [WHY] : Jesse is learning. We NEVER touch live home/root directories.
-#...         mktemp --directory atomically creates a unique temp dir — no race
-#...         conditions, no predictable names, no collisions.
+#...         mktemp --directory atomically creates a unique temp dir — no race conditions, no predictable names, no collisions.
 #... [HOW] : mktemp returns the path → stored in WORKSPACE. The trap fires on
 #...         EXIT (normal or error), SIGINT (Ctrl+C), SIGTERM — never litters /tmp.
 #... [WATCH OUT]: rm -rf is permanently destructive. Safe here ONLY because
@@ -26,6 +27,12 @@
 # WORKSPACE=$(mktemp --directory)
 # trap 'echo ""; echo "[CLEANUP] Removing sandbox: $WORKSPACE"; rm -rf "$WORKSPACE"' EXIT
 # cd "$WORKSPACE"
+
+megabatch_workspace=$(mktemp --directory)
+
+trap 'echo ""; echo "Removing sandbox: $megabatch_workspace"; rm -rf "$megabatch_workspace"' EXIT
+
+cd "$megabatch_workspace"
 
 #... =============================================================================
 #... COLOUR HELPERS — pure Bash builtins, zero subshells, zero external commands.
@@ -38,11 +45,34 @@
 # BOLD=$'\033[1m'
 # RESET=$'\033[0m'
 
+red_color=$'\033[0;31m'
+green_color=$'\033[0;32m'
+yellow_color=$'\033[1;33m'
+cyan_color=$'\033[0;36m'
+bold_color=$'\033[1m'
+reset_color=$'\033[0m'
+
+
 #... [WHAT]: Structured log functions. Writing to >&2 keeps logs off stdout,
 #...         honouring Unix separation of data from diagnostics.
 # log_info()  { echo "${GREEN}[INFO  $(date '+%H:%M:%S')]${RESET} $*" >&2; }
 # log_warn()  { echo "${YELLOW}[WARN  $(date '+%H:%M:%S')]${RESET} $*" >&2; }
 # log_error() { echo "${RED}[ERROR $(date '+%H:%M:%S')]${RESET} $*" >&2; }
+
+logging_info(){
+  echo -e "${green_color}Line ${BASH_LINENO[0]}, \nINFO Level,\n${reset_color}$*" >&2;
+}
+
+
+logging_warning(){
+  echo -e "${yellow_color}Line ${BASH_LINENO[0]}, \nWARNING Level,\n${reset_color}$*" >&2;
+}
+
+logging_warning(){
+  echo -e "${red_color}Line ${BASH_LINENO[0]},\nERROR Level,\n${reset_color}$*" >&2;
+}
+
+
 
 #... Section/pillar headers for visual separation between segments.
 # section() {
@@ -51,20 +81,46 @@
     # "$*" \
     # "================================================================================"
 # }
+
+section_seperator() {
+  printf "\n${BOLD}${CYAN}%s\n  %s\n%s${RESET}\n\n" \
+    "================================================================================" \
+    "$*" \
+    "================================================================================"
+}
+
+
+
 # pillar() { printf "\n${YELLOW}--- PILLAR %s ---%s\n" "$*" "${RESET}"; }
+
+pillar_marker() { printf "\n${YELLOW}--- PILLAR %s ---%s\n" "$*" "${RESET}"; }
 
 # log_info "Sandbox: $WORKSPACE | Bash: $BASH_VERSION | PID: $$"
 
+logging_info "Sandbox: $megabatch_workspace | Bash: $BASH_VERSION | PID: $$"
 
 #...##############################################################################
 #... SEGMENT 1.1 | THE UNIX MENTAL MODEL
 #...##############################################################################
+
+
+
+
+
+
+# ===================================== SEGMENT 1.1 | THE UNIX MENTAL MODEL =====================================
+
+
+
+
+
+
 # section "SEGMENT 1.1 | THE UNIX MENTAL MODEL"
+
 
 # pillar "1 | BASIC — Everything Is A File"
 #... [WHAT]: Read live process state from /proc — the kernel's virtual filesystem.
-#... [WHY] : Every tool that reads process info (ps, top, lsof) ultimately reads
-#...         /proc. Knowing this makes you a better debugger.
+#... [WHY] : Every tool that reads process info (ps, top, lsof) ultimately reads /proc. Knowing this makes you a better debugger.
 #... [HOW] : $$ is the shell's PID. /proc/$$/status is synthesised on-the-fly
 #...         by the kernel when opened — no data is stored on disk.
 # echo "[1.1.B] Process status from /proc/\$\$/status (first 4 lines):"
