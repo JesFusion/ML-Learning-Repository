@@ -56,7 +56,7 @@ if __name__ == "__main__":
     # Pass the filename directly here as a string.
     # Replace "your_file_name.py" with your actual file path!
     # ---------------------------------------------------------
-    file_to_comment = "testing_pytest/Gemini_Code.py"
+    file_to_comment = ""
         
     # Run the function
     if file_to_comment.strip():
