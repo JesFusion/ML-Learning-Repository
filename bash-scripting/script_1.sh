@@ -15,71 +15,611 @@
 #... ==============================================================================
 
 # set -euo pipefail
+#... [FLAG MEANING] -e  = errexit   — exit immediately on any non-zero command return
+#... [FLAG MEANING] -u  = nounset   — treat any unset variable reference as a fatal error
+#... [FLAG MEANING] -o pipefail     — the pipeline's exit code = the first failing command (not just the last)
 
-#... =============================================================================
-#... SANDBOX CONSTRAINT
-#... [WHAT]: Create an isolated temporary workspace for ALL script operations.
-#... [WHY] : Jesse is learning. We NEVER touch live home/root directories.
-#...         mktemp --directory atomically creates a unique temp dir — no race
-#...         conditions, no predictable names, no collisions.
-#... [HOW] : mktemp returns the path → stored in WORKSPACE. The trap fires on
-#...         EXIT (normal or error), SIGINT (Ctrl+C), SIGTERM — never litters /tmp.
-#... [WATCH OUT]: rm -rf is permanently destructive. Safe here ONLY because
-#...              WORKSPACE is a freshly-created mktemp path we own.
-#... =============================================================================
-# WORKSPACE=$(mktemp --directory)
-# trap 'echo ""; echo "[CLEANUP] Removing sandbox: $WORKSPACE"; rm -rf "$WORKSPACE"' EXIT
+#... ── Sandbox Setup ─────────────────────────────────────────────────────────────
+#... [WHAT]: Create an isolated temp workspace for the entire session and register
+#...         an EXIT trap to auto-delete it no matter how the script terminates.
+#... [WHY]:  mktemp -d is atomic and unpredictable — no race-condition symlink attacks.
+#...         Using $$ for temp names (e.g. /tmp/script.$$) is a known security hole.
+# WORKSPACE=$(mktemp -d)
+#... [COMMAND MEANING] mktemp = Make Temporary (file or directory)
+#... [FLAG MEANING] -d = directory — create a temp DIRECTORY instead of a file
+
+# trap 'rm -rf "$WORKSPACE"' EXIT
+#... [COMMAND MEANING] trap = Trap a signal or shell event and run a handler
+#... [WHAT ELSE]: trap also catches ERR (on non-zero), DEBUG (before every command),
+#...              RETURN (on function return), and real signals like SIGTERM, SIGINT
+
 # cd "$WORKSPACE"
 
-megabatch_workspace=$(mktemp --directory)
-
-trap 'echo ""; echo "Removing sandbox: $megabatch_workspace"; rm -rf "$megabatch_workspace"' EXIT
-
-cd "$megabatch_workspace"
-
-#... =============================================================================
-#... COLOUR HELPERS — pure Bash builtins, zero subshells, zero external commands.
-#... ANSI-C quoting ($'...') embeds ESC (\033) directly — demonstrates [1.1.M].
-#... =============================================================================
-# RED=$'\033[0;31m'
-# GREEN=$'\033[0;32m'
-# YELLOW=$'\033[1;33m'
-# CYAN=$'\033[0;36m'
-# BOLD=$'\033[1m'
-# RESET=$'\033[0m'
-
-#... [WHAT]: Structured log functions. Writing to >&2 keeps logs off stdout,
-#...         honouring Unix separation of data from diagnostics.
-# log_info()  { echo "${GREEN}[INFO  $(date '+%H:%M:%S')]${RESET} $*" >&2; }
-# log_warn()  { echo "${YELLOW}[WARN  $(date '+%H:%M:%S')]${RESET} $*" >&2; }
-# log_error() { echo "${RED}[ERROR $(date '+%H:%M:%S')]${RESET} $*" >&2; }
-
-#... Section/pillar headers for visual separation between segments.
-# section() {
-  # printf "\n${BOLD}${CYAN}%s\n  %s\n%s${RESET}\n\n" \
-    # "================================================================================" \
-    # "$*" \
-    # "================================================================================"
+#... Helper: pretty section printer
+# _section() {
+  # echo ""
+  # echo "================================================================================"
+  # echo "  $*"
+  # echo "================================================================================"
+  # echo ""
 # }
-# pillar() { printf "\n${YELLOW}--- PILLAR %s ---%s\n" "$*" "${RESET}"; }
 
-# log_info "Sandbox: $WORKSPACE | Bash: $BASH_VERSION | PID: $$"
+# _pillar() {
+  # echo ""
+  # echo "  ──────────────────────────────────────────────────────"
+  # echo "  $*"
+  # echo "  ──────────────────────────────────────────────────────"
+# }
 
+#... ==============================================================================
+#... MODULE 1 — THE UNIX PHILOSOPHY & SHELL FUNDAMENTALS
+#... ==============================================================================
 
-#...##############################################################################
-#... SEGMENT 1.1 | THE UNIX MENTAL MODEL
-#...##############################################################################
-# section "SEGMENT 1.1 | THE UNIX MENTAL MODEL"
+# _section "SEGMENT 1.1 — THE UNIX MENTAL MODEL"
 
-# pillar "1 | BASIC — Everything Is A File"
-#... [WHAT]: Read live process state from /proc — the kernel's virtual filesystem.
-#... [WHY] : Every tool that reads process info (ps, top, lsof) ultimately reads
-#...         /proc. Knowing this makes you a better debugger.
-#... [HOW] : $$ is the shell's PID. /proc/$$/status is synthesised on-the-fly
-#...         by the kernel when opened — no data is stored on disk.
-# echo "[1.1.B] Process status from /proc/\$\$/status (first 4 lines):"
-# grep --max-count=4 "" /proc/$$/status
+#... ── Mock Data ─────────────────────────────────────────────────────────────────
+#... Most /proc reads are live — they need no mock data. We just read the kernel.
 
+# _pillar "BASIC: Snapshot your process table"
+
+#... [COMMAND MEANING] ps = Process Status
+#... [WHAT]: Print a snapshot of running processes. This is the first tool you reach
+#...         for when asking "what is alive on this system right now?"
+#... [WHY]:  ps reads from /proc — it does NOT need root for basic usage.
+# ps
+
+# echo ""
+
+# _pillar "POWER: Full system process inventory"
+
+#... [FLAG MEANING] a = all users' processes (not just yours)
+#... [FLAG MEANING] u = user-oriented format (shows %CPU, %MEM, VSZ, RSS)
+#... [FLAG MEANING] x = include processes without a controlling TTY (daemons)
+#... [WATCH OUT]: ps aux output order is NOT guaranteed — don't pipe this into
+#...              positional parsing. Use --format or awk field names.
+# ps aux | head -8
+# echo "  [truncated for brevity — full system shown in production]"
+# echo ""
+
+#... [FLAG MEANING] -e = every process on the system (POSIX form of 'ax')
+#... [FLAG MEANING] -o = output format — select exactly which columns you want
+#... [WHAT]: Print only PID, parent PID, and command for every process
+#... [WHY]:  This is the POSIX-portable form used in #!/bin/sh scripts where
+#...         BSD-style 'aux' flags may not exist
+# ps -eo pid,ppid,cmd | head -8
+# echo ""
+
+# _pillar "PRECISION: Visualise the process TREE"
+
+#... [FLAG MEANING] --forest = render parent→child relationships as an ASCII tree
+#... [WHAT]: Shows which processes spawned which — identifies orphaned/zombie chains
+#... [WHY]:  In a Docker container crash investigation, --forest reveals whether
+#...         a zombie was created by a signal-unaware parent
+# ps --forest -eo pid,ppid,cmd | head -15
+# echo ""
+
+#... [COMMAND MEANING] pstree = Process-Status Tree
+#... [WHAT]: Compact tree rooted at PID 1 (init/systemd)
+#... [WHY]:  Faster visual than ps --forest for understanding the full hierarchy
+#... [FLAG MEANING] -p = include PIDs alongside each process name
+# pstree -p | head -20
+# echo ""
+
+# _pillar "DEVOPS CONTEXT: Inspecting a process via /proc"
+
+#... [COMMAND MEANING] /proc = Process filesystem — a virtual FS the kernel exposes
+#... [WHAT]: Read the kernel-maintained status file for the CURRENT shell ($$)
+#... [WHY]:  No external tool needed. /proc/$$/status gives you UID, GID, memory,
+#...         and thread info — critical for debugging privilege issues in automation
+#... [WATCH OUT]: $$ is the PID of the PARENT shell, not a subshell. Use $BASHPID
+#...              inside subshells if you need the actual PID of that child.
+# echo "--- /proc/\$\$/status (live kernel data for THIS shell) ---"
+# cat /proc/$$/status | head -20
+# echo ""
+
+#... [FLAG MEANING] -la = long listing with hidden files, all attributes shown
+#... [WHAT]: List ALL virtual files under the current process's /proc directory
+# echo "--- /proc/\$\$ directory listing ---"
+# ls -la /proc/$$ | head -20
+# echo ""
+
+#... [WHAT]: Show every memory region mapped into this process — .text, .data,
+#...         heap, stack, and shared libraries with their permissions
+# echo "--- /proc/\$\$/maps (virtual memory map) ---"
+# cat /proc/$$/maps | head -15
+# echo ""
+
+#... [WHAT]: List every open file descriptor this shell currently holds
+#... [WHY]:  FD 0/1/2 are stdin/stdout/stderr. Any extra FDs reveal open sockets,
+#...         log files, or pipe handles — the source of "too many open files" bugs
+# echo "--- /proc/\$\$/fd (open file descriptors) ---"
+# ls -la /proc/$$/fd
+# echo ""
+
+#... [COMMAND MEANING] lsof = List Open Files
+#... [WHAT]: Kernel-level view of ALL open files by process, including sockets & pipes
+#... [FLAG MEANING] -p = filter by PID
+#... [WHY]:  Tells you exactly what a process is touching at this moment —
+#...         indispensable when a log file grows unexpectedly or a port is "in use"
+# lsof -p $$ 2>/dev/null | head -20 || true
+# echo ""
+
+# _pillar "WHAT ELSE (strace — not run live to avoid permission noise)"
+
+#... [COMMAND MEANING] strace = System Call Trace
+#... [WHAT]: Intercepts and logs every syscall between a process and the kernel
+#... [WHY]:  When a script hangs on a blocked read() or fails with EACCES, strace
+#...         shows EXACTLY which syscall is the culprit — no guessing
+#... [FLAG MEANING] -e trace=execve = filter to only show program launch events
+#... [FLAG MEANING] -p PID          = attach to an already-running process
+#... [FLAG MEANING] -f              = follow (trace) all child processes forked
+# echo "  strace -e trace=execve bash -c 'ls'   # traces every exec() call made"
+# echo "  strace -p \$SOME_PID                   # attach to live process"
+# echo "  strace -f bash script.sh               # follow all forks in a script"
+
+#... [COMMAND MEANING] file = Identify file type via magic bytes
+#... [WHAT]: Confirms that /dev/sda is a block device — not a regular file
+#... [WHY]:  Reinforces "everything is a file" — devices appear as files in /dev
+# echo ""
+# file /dev/null   # safe stand-in for block devices in any sandbox
+# echo ""
+
+#... [FLAG MEANING] -la /dev/ = long listing of device files
+#... [WHAT]: Shows 'b' (block), 'c' (character), 'p' (pipe) in the first column
+# echo "--- Sample /dev device files ---"
+# ls -la /dev/ | head -15
+# echo ""
+
+#... ==============================================================================
+
+# _section "SEGMENT 1.2 — TERMINAL EMULATORS, TTYs & THE SHELL"
+
+# _pillar "BASIC: Identify your TTY and session context"
+
+#... [COMMAND MEANING] tty = TeleTYpewriter — prints the terminal device path
+#... [WHAT]: Shows which PTY (pseudo-terminal) stdin is connected to
+#... [WHY]:  In scripts, if tty returns "not a tty", you know stdin is a pipe/file
+#...         not an interactive terminal — use this to gate interactive prompts
+# tty || echo "  [no TTY — stdin is redirected (pipe or file)]"
+# echo ""
+
+#... [COMMAND MEANING] who = Show who is logged in
+#... [WHAT]: Lists each login session, the TTY assigned, and login time
+#... [WHY]:  In a multi-user server audit script, who tells you which TTYs are live
+# who || true
+# echo ""
+
+#... [COMMAND MEANING] w = Who + What they are doing
+#... [WHAT]: Extends 'who' with the command each user is currently running and idle time
+#... [WHY]:  Useful in SRE runbooks for confirming no other engineer is running
+#...         a conflicting maintenance script on the same server
+# w || true
+# echo ""
+
+# _pillar "POWER: Shell nesting and startup file diagnostics"
+
+#... [WHAT]: Print the shell nesting depth — starts at 1, increments each subshell
+#... [WHY]:  If $SHLVL is unexpectedly high (e.g. 4+) inside a CI job, it means
+#...         your CI wrapper is spawning redundant shell layers. Useful debug signal.
+# echo "SHLVL (nesting depth): $SHLVL"
+# echo ""
+
+#... [WHAT]: Print active shell option flags — 'i' = interactive, 's' = stdin
+#... [WHY]:  Scripts should NOT behave differently based on interactivity unless
+#...         explicitly designed to. $- exposes which options are active.
+# echo "Active shell flags (\$-): $-"
+# echo ""
+
+#... [WHAT]: Check if this is a login shell
+#... [COMMAND MEANING] shopt = Shell Options — get or set Bash option flags
+#... [FLAG MEANING] login_shell = reports on/off whether this is a login shell
+# shopt login_shell || true  # returns non-zero if off — guard against set -e
+# echo ""
+
+#... [WHAT]: Print all valid login shells registered in /etc/shells
+#... [WHY]:  chsh will reject any shell not listed here. Automation that calls chsh
+#...         must verify the target shell is pre-registered.
+# echo "--- Valid login shells (/etc/shells) ---"
+# cat /etc/shells 2>/dev/null || echo "  [/etc/shells not found on this system]"
+# echo ""
+
+# _pillar "PRECISION: Resolve stdin's actual device"
+
+#... [WHAT]: Show what device is connected to FD 0 (stdin) for this process
+#... [WHY]:  Distinguishes TTY from pipe from file redirect — the three execution contexts
+#...         that change how a script must behave (prompts, passwords, colour output)
+# echo "--- stdin device (FD 0) ---"
+# ls -la /proc/$$/fd/0
+# echo ""
+
+# _pillar "WHAT ELSE (SSH & multiplexers — shown as syntax, not executed live)"
+
+#... [COMMAND MEANING] ssh = Secure Shell
+#... [FLAG MEANING] -t = force PTY allocation — required for interactive remote commands
+#... [FLAG MEANING] -T = suppress PTY — used for batch/non-interactive SSH automation
+# echo "  ssh user@host                    # login shell, login startup files run"
+# echo "  ssh -t user@host 'htop'          # force PTY for interactive TUI programs"
+# echo "  ssh -T user@host 'bash -s' < local.sh  # run local script on remote host"
+# echo ""
+#... [COMMAND MEANING] tmux = Terminal Multiplexer
+#... [COMMAND MEANING] screen = Screen multiplexer (legacy alternative to tmux)
+# echo "  tmux new -s mysession            # new named tmux session (PTY inside)"
+# echo "  tmux attach -t mysession         # re-attach to surviving session"
+# echo "  screen                           # classic detachable session"
+# echo ""
+
+#... ==============================================================================
+
+# _section "SEGMENT 1.3 — ENVIRONMENT SETUP & TOOLCHAIN"
+
+# _pillar "BASIC: Version and binary identification"
+
+#... [WHAT]: Print the full Bash version string — essential before using Bash 4+ features
+#... [WHY]:  macOS ships with Bash 3.2 (GPL2). Bash 4+ features like associative arrays,
+#...         ${var^^}, and mapfile will silently fail or throw syntax errors on 3.2
+# bash --version
+# echo ""
+
+#... [COMMAND MEANING] which = Locate a binary in PATH
+#... [WHAT]: Find the first 'bash' binary found by searching PATH left-to-right
+#... [WHY]:  On macOS with Homebrew, /usr/local/bin/bash (5.x) may shadow /bin/bash (3.2)
+#...         Use this to confirm which bash the shebang will actually invoke
+# which bash
+# echo ""
+
+#... [COMMAND MEANING] command = Shell builtin for command lookup
+#... [FLAG MEANING] -v = verbose — print the path or alias/function definition
+#... [WHAT]: POSIX-compliant alternative to 'which' — preferred in scripts
+#... [WHY]:  'which' is an external binary that may not exist on all systems.
+#...         'command -v' is a shell builtin — it always works in #!/bin/sh scripts.
+# command -v bash
+# echo ""
+
+#... [COMMAND MEANING] type = Identify the nature of a command name
+#... [WHAT]: Reports whether a name resolves to a builtin, function, alias, or external binary
+#... [WHY]:  After sourcing a library, 'type funcname' confirms the function loaded correctly
+# type bash
+# type ls
+# echo ""
+
+# _pillar "POWER: Static analysis with shellcheck"
+
+#... [COMMAND MEANING] shellcheck = Shell Check — static analysis for sh/bash scripts
+#... [WHAT]: Write a deliberately flawed script, then run shellcheck to catch the bugs
+#... [WHY]:  shellcheck catches unquoted variables (SC2086), word-splitting traps,
+#...         and portability issues that cause production failures — BEFORE they run
+
+#... Create a flawed script for analysis
+# cat > "$WORKSPACE/flawed.sh" << 'FLAWED'
+#...!/bin/bash
+# name=World
+# echo Hello $name
+# files=$(ls /tmp)
+# for f in $files; do
+  # echo $f
+# done
+# FLAWED
+
+# echo "--- Flawed script content ---"
+# cat "$WORKSPACE/flawed.sh"
+# echo ""
+
+#... [FLAG MEANING] -s bash = set dialect to bash (not sh or ksh)
+# echo "--- shellcheck output (SC numbers = warning codes) ---"
+# shellcheck -s bash "$WORKSPACE/flawed.sh" || true
+# echo ""
+
+#... [FLAG MEANING] -s sh = check for POSIX sh compliance — Bashisms become errors
+# echo "--- shellcheck POSIX compliance check ---"
+# shellcheck -s sh "$WORKSPACE/flawed.sh" || true
+# echo ""
+
+#... [FLAG MEANING] -e SC2086 = suppress a specific warning globally
+# echo "--- shellcheck with SC2086 suppressed ---"
+# shellcheck -s bash -e SC2086 "$WORKSPACE/flawed.sh" || true
+# echo ""
+
+# _pillar "PRECISION: source and dot-operator"
+
+#... [COMMAND MEANING] source = Execute a file IN the current shell (not a subshell)
+#... [WHAT]: Create a library file, source it, confirm its contents are in scope
+#... [WHY]:  'source' vs './script.sh': sourcing shares the current shell's env;
+#...         executing in a subshell isolates it. Get this wrong and your env vars
+#...         disappear after the script completes.
+# cat > "$WORKSPACE/lib.sh" << 'LIB'
+# MY_LIB_VERSION="1.0"
+# greet() { echo "Hello from lib, arg=$1"; }
+# LIB
+
+# source "$WORKSPACE/lib.sh"
+# echo "MY_LIB_VERSION after source: $MY_LIB_VERSION"
+# greet "Jesse"
+# echo ""
+
+#... [WHAT]: POSIX dot-operator — identical to source but works in #!/bin/sh
+#... [WHY]:  In scripts that must run under /bin/sh, use . instead of source
+# . "$WORKSPACE/lib.sh"
+# echo "Re-sourced with dot operator — greet still available:"
+# greet "dot-operator"
+# echo ""
+
+# _pillar "WHAT ELSE (apt-get installs — shown as syntax)"
+
+#... [COMMAND MEANING] apt-get = Advanced Package Tool (Debian/Ubuntu)
+# echo "  sudo apt-get install -y coreutils  # GNU ls, cp, mv, cat (~100 tools)"
+# echo "  sudo apt-get install -y util-linux # mount, lsblk, flock, kill"
+# echo "  sudo apt-get install -y procps     # ps, top, kill, free, vmstat"
+# echo "  sudo apt-get install -y lsof       # open-file lister"
+# echo "  sudo apt-get install -y strace     # syscall tracer"
+# echo "  sudo apt-get install -y shellcheck # static analysis"
+# echo ""
+
+#... ==============================================================================
+
+# _section "SEGMENT 1.4 — ANATOMY OF A BASH SCRIPT"
+
+# _pillar "BASIC: Shebang variants and what they mean"
+
+#... [WHAT]: Create three identical scripts with different shebangs to compare
+
+#... Shebang 1: hardcoded path
+# cat > "$WORKSPACE/hard_shebang.sh" << 'EOF'
+#...!/bin/bash
+# echo "I use the hardcoded /bin/bash shebang"
+# EOF
+
+#... Shebang 2: env-based portable shebang
+# cat > "$WORKSPACE/env_shebang.sh" << 'EOF'
+#...!/usr/bin/env bash
+# echo "I use the portable /usr/bin/env bash shebang"
+# EOF
+
+#... Shebang 3: POSIX sh — restricted subset
+# cat > "$WORKSPACE/posix_shebang.sh" << 'EOF'
+#...!/bin/sh
+# echo "I use the POSIX sh shebang — no Bash features"
+# EOF
+
+# echo "--- Shebang 1: hard-coded ---"
+# cat "$WORKSPACE/hard_shebang.sh"
+# echo ""
+# echo "--- Shebang 2: env-portable (PREFERRED) ---"
+# cat "$WORKSPACE/env_shebang.sh"
+# echo ""
+# echo "--- Shebang 3: POSIX sh ---"
+# cat "$WORKSPACE/posix_shebang.sh"
+# echo ""
+
+# _pillar "POWER: chmod permission modes"
+
+#... [COMMAND MEANING] chmod = Change Mode (file permission bits)
+#... [FLAG MEANING] +x = add eXecute permission for owner, group, and others
+# chmod +x "$WORKSPACE/env_shebang.sh"
+# ls -la "$WORKSPACE/env_shebang.sh"
+# echo ""
+
+#... [FLAG MEANING] 755 = rwxr-xr-x — owner: full, group+others: read+execute only
+#... [WHY]: 755 is the standard for scripts in system paths (/usr/local/bin)
+# chmod 755 "$WORKSPACE/hard_shebang.sh"
+# ls -la "$WORKSPACE/hard_shebang.sh"
+# echo ""
+
+#... [FLAG MEANING] 700 = rwx------ — ONLY the owner can access this script
+#... [WHY]: Use 700 for scripts containing credential logic or sensitive operations
+# chmod 700 "$WORKSPACE/posix_shebang.sh"
+# ls -la "$WORKSPACE/posix_shebang.sh"
+# echo ""
+
+# _pillar "PRECISION: bash flags as execution modifiers"
+
+#... [COMMAND MEANING] bash -n = No-execute (dry run / syntax check only)
+#... [WHAT]: Parse the script for syntax errors WITHOUT running any of it
+#... [WHY]:  Run this in a pre-commit hook or CI gate — catches parse errors
+#...         before they detonate in production
+# echo "--- bash -n syntax check (should pass) ---"
+# bash -n "$WORKSPACE/env_shebang.sh" && echo "Syntax OK"
+# echo ""
+
+#... [WHAT]: Introduce a syntax error and show bash -n catching it
+# cat > "$WORKSPACE/broken.sh" << 'EOF'
+#...!/usr/bin/env bash
+# if true
+  # echo "missing 'then'"
+# fi
+# EOF
+# echo "--- bash -n syntax check (should FAIL) ---"
+# bash -n "$WORKSPACE/broken.sh" 2>&1 || echo "Syntax error detected — script NOT run"
+# echo ""
+
+#... [FLAG MEANING] -x = xtrace — print each expanded command before executing it
+#... [WHAT]: The most powerful live-debugging tool in Bash
+#... [WHY]:  When a script behaves unexpectedly in CI, -x shows you the EXACT
+#...         commands and variable values at every step — no print-debugging needed
+# echo "--- bash -x xtrace output ---"
+# bash -x "$WORKSPACE/env_shebang.sh" 2>&1
+# echo ""
+
+#... [FLAG MEANING] -v = verbose — print each INPUT LINE as it is READ (before expansion)
+#... [WHAT]: Reveals macro/source expansion — shows the raw text before substitution
+# echo "--- bash -v verbose output ---"
+# bash -v "$WORKSPACE/env_shebang.sh" 2>&1
+# echo ""
+
+#... [FLAG MEANING] -e = errexit — exit on first non-zero command
+# echo "--- bash -e: exit on first failure ---"
+# bash -e -c 'echo start; false; echo "NEVER REACHED"' 2>&1 || echo "Exited due to -e"
+# echo ""
+
+# _pillar "DEVOPS CONTEXT: Exit codes — the API contract"
+
+#... [WHAT]: Demonstrate each reserved exit code and what it means
+#... [WHY]:  Exit codes are the ONLY communication channel between your script and
+#...         the calling process (CI runner, orchestrator, cron, systemd). Get this
+#...         wrong and silent failures become invisible corruptions.
+# echo "--- Exit code 0 (success) ---"
+# bash -c 'exit 0'; echo "Exit code: $?"
+
+# echo "--- Exit code 1 (generic failure) ---"
+# bash -c 'exit 1' || echo "Exit code: $?"
+
+# echo "--- Exit code 127 (command not found) ---"
+# bash -c 'nonexistent_command_xyz' 2>/dev/null || echo "Exit code: $?"
+
+# echo "--- Exit code 126 (not executable) ---"
+#... Create a non-executable file to trigger 126
+# cat > "$WORKSPACE/noexec.sh" << 'EOF'
+# echo "I am not executable"
+# EOF
+# chmod 644 "$WORKSPACE/noexec.sh"
+# "$WORKSPACE/noexec.sh" 2>/dev/null || echo "Exit code: $?"
+# echo ""
+
+#... ==============================================================================
+#... MODULE 2 — VARIABLES, DATA TYPES & THE ENVIRONMENT
+#... ==============================================================================
+
+# _section "SEGMENT 2.1 — VARIABLE DECLARATION & ASSIGNMENT"
+
+# _pillar "BASIC: declare flags and type enforcement"
+
+#... [COMMAND MEANING] declare = Declare a variable with optional type attributes
+#... [WHAT]: The Swiss Army knife of variable declaration in Bash
+
+#... [FLAG MEANING] -i = integer — non-numeric assignments coerce to 0
+# declare -i counter=0
+# counter=42
+# echo "Integer var: $counter"
+#... [WATCH OUT]: Assigning a non-integer string to a declare -i var coerces it to 0.
+#...              In arithmetic context, bare words are treated as variable names.
+#...              With set -u, this fires "unbound variable". Disable -u momentarily.
+# (
+  # set +u
+  # declare -i _ct=0
+  # _ct="not_a_number"
+  # echo "After non-integer assignment: $_ct  (coerced to 0)"
+# )
+# echo ""
+
+#... [FLAG MEANING] -r = readonly — any reassignment is a fatal error
+# declare -r APP_VERSION="3.14.1"
+# echo "Readonly var: $APP_VERSION"
+#... Attempting to reassign would trigger: bash: APP_VERSION: readonly variable
+#... We don't run it to preserve set -e
+# echo "  [readonly reassignment would abort script under set -e]"
+# echo ""
+
+#... [FLAG MEANING] -x = export — equivalent to 'export varname'
+# declare -x EXPORTED_DB_HOST="db.prod.example.com"
+# printenv EXPORTED_DB_HOST
+# echo ""
+
+#... [FLAG MEANING] -a = array — explicitly declare an indexed array
+# declare -a my_servers
+# my_servers=("web01" "web02" "db01")
+# echo "Array: ${my_servers[*]}"
+# echo ""
+
+#... [FLAG MEANING] -A = associative array (hash map) — MUST be declared before use
+# declare -A service_ports
+# service_ports[http]=80
+# service_ports[https]=443
+# service_ports[postgres]=5432
+# echo "Associative array keys: ${!service_ports[*]}"
+# echo "Associative array values: ${service_ports[*]}"
+# echo ""
+
+#... [FLAG MEANING] -n = nameref — the variable becomes an alias for another variable
+# declare -n alias_for_counter=counter
+# alias_for_counter=99
+# echo "counter via nameref: $counter"
+# echo ""
+
+#... [FLAG MEANING] -p = print — show the full declaration including type flags
+# echo "--- declare -p output ---"
+# declare -p APP_VERSION
+# declare -p service_ports
+# echo ""
+
+#... [FLAG MEANING] -l = lowercase — values auto-lowercased on assignment
+# declare -l lower_var
+# lower_var="HeLLo WoRLD"
+# echo "lower_var: $lower_var"
+# echo ""
+
+#... [FLAG MEANING] -u = uppercase — values auto-uppercased on assignment
+# declare -u upper_var
+# upper_var="hello world"
+# echo "upper_var: $upper_var"
+# echo ""
+
+# _pillar "POWER: readonly and unset"
+
+#... [COMMAND MEANING] readonly = Mark variable immutable (POSIX form of declare -r)
+# readonly MAX_RETRIES=3
+# echo "MAX_RETRIES: $MAX_RETRIES"
+
+#... [FLAG MEANING] -p (readonly) = print all readonly variables
+# echo "--- All readonly variables ---"
+# readonly -p | grep -E "MAX_RETRIES|APP_VERSION" || true
+# echo ""
+
+#... [COMMAND MEANING] unset = Remove a variable or function from the shell
+#... [FLAG MEANING] -v = variable — unset a variable (not a function)
+#... [WATCH OUT]: Unsetting a variable in a set -u script will cause the NEXT
+#...              reference to it to throw a fatal "unbound variable" error
+# counter_temp=100
+# unset -v counter_temp
+# echo "counter_temp after unset: ${counter_temp:-[unset — default shown]}"
+# echo ""
+
+#... [FLAG MEANING] -f (unset) = function — unset a function definition
+# _temp_func() { echo "I am temporary"; }
+# _temp_func
+# unset -f _temp_func
+# echo "  [_temp_func removed — calling it now would error]"
+# echo ""
+
+# _pillar "DEVOPS CONTEXT: local in functions"
+
+#... [COMMAND MEANING] local = Scope a variable to the current function only
+#... [WHAT]: Prevent function variables from leaking into the global namespace
+# deploy_service() {
+  #... [FLAG MEANING] local -i = function-scoped integer
+  # local -i attempt=0
+  #... [FLAG MEANING] local -r = function-scoped readonly
+  # local -r SERVICE_NAME="$1"
+  # local status="unknown"
+
+  # echo "  Deploying: $SERVICE_NAME (local vars: attempt=$attempt, status=$status)"
+  # status="success"
+  # echo "  After deploy: status=$status"
+# }
+
+# deploy_service "payment-api"
+# echo "status outside function: ${status:-[not set — local worked!]}"
+# echo ""
+
+#... ==============================================================================
+
+# _section "SEGMENT 2.2 — VARIABLE EXPANSION & QUOTING RULES"
+
+# _pillar "BASIC: The four quoting modes"
+
+#... [WHAT]: Demonstrate each quoting mode side-by-side
+# demo_var="hello world"
+# special_chars='$HOME and `date`'
+
+#... [WHAT]: Double quotes — allow $ and `` expansion, suppress word-splitting
+# echo "Double-quoted: \"$demo_var\""
+
+#... [WHAT]: Single quotes — 100% literal, nothing expanded
+# echo 'Single-quoted: $demo_var is NOT expanded'
+
+#... [WHAT]: ANSI-C quoting — interpret escape sequences
+# echo $'ANSI-C: tab\there, newline\nhere'
+
+#... [WHAT]: No quotes — subject to word-splitting and glob expansion
+#... [WATCH OUT]: NEVER use unquoted variables on filesystem operations
 # echo ""
 
 # _pillar "POWER: IFS — the word-splitting engine"
@@ -8076,5 +8616,48 @@ cd "$megabatch_workspace"
 
 #... ==============================================================================
 
-# _section "BASH CURRICULUM CODE COMPLETE!"
+# _section "MODULES 19 & 20 COMPLETE"
 
+# echo "  ✓  Module 19.1: crontab MAILTO/SHELL/PATH header, 5-field syntax, @specials"
+# echo "  ✓  Module 19.1: /etc/cron.d/ drop-in format, cron.daily/ + run-parts anatomy"
+# echo "  ✓  Module 19.1: Logging pattern (>> log 2>&1), anacron for downtime resilience"
+# echo ""
+# echo "  ✓  Module 19.2: at -f for file-based submission, atq/atrm job lifecycle"
+# echo "  ✓  Module 19.2: at -q queue letters, batch load-aware deferred execution"
+# echo "  ✓  Module 19.2: /etc/at.allow / /etc/at.deny access control"
+# echo ""
+# echo "  ✓  Module 19.3: .service + .timer unit file anatomy"
+# echo "  ✓  Module 19.3: OnCalendar (realtime) vs OnBootSec+OnUnitActiveSec (monotonic)"
+# echo "  ✓  Module 19.3: Persistent=true, RandomizedDelaySec, AccuracySec"
+# echo "  ✓  Module 19.3: systemctl list-timers, journalctl -u, systemd-run transient"
+# echo ""
+# echo "  ✓  Module 19.4: Full daemon implemented — PID file, flock single-instance"
+# echo "  ✓  Module 19.4: SIGTERM/SIGHUP/EXIT traps, RUNNING flag pattern"
+# echo "  ✓  Module 19.4: Signal-safe sleep (sleep N & wait \$!) explained + demonstrated"
+# echo "  ✓  Module 19.4: start/stop/status/reload framework — full lifecycle demo"
+# echo "  ✓  Module 19.4: setsid / nohup / disown daemonization spectrum"
+# echo ""
+# echo "  ✓  Module 20.1: time builtin real/user/sys, /usr/bin/time -v/-f"
+# echo "  ✓  Module 20.1: PS4 nanosecond profiling, BASH_XTRACEFD separation"
+# echo "  ✓  Module 20.1: strace -c summary, -e trace=execve, -T, -tt"
+# echo ""
+# echo "  ✓  Module 20.2: \${var^^/,,}, \${path##*/}, \${path%/*}, \${#var} replacements"
+# echo "  ✓  Module 20.2: IFS= read -rd '' zero-fork file slurp vs \$(cat)"
+# echo "  ✓  Module 20.2: mapfile + \${#arr[@]} vs wc -l, batch awk vs N sed calls"
+# echo "  ✓  Module 20.2: here-string read for inline parsing, printf array | awk"
+# echo ""
+# echo "  ✓  Module 20.3: type -a/-t, builtin, command -v (portable which)"
+# echo "  ✓  Module 20.3: printf vs echo portability, read -r IFS splitting"
+# echo "  ✓  Module 20.3: [[ ]] and (( )) zero-fork builtins, loop invariant hoisting"
+# echo "  ✓  Module 20.3: hash command cache, hash -r after PATH changes"
+# echo ""
+# echo "  ✓  Module 20.4: The 200-line rule, Bash/Python/Go escalation decision tree"
+# echo "  ✓  Module 20.4: python3 -c bridge (floats, JSON, URL encode)"
+# echo "  ✓  Module 20.4: perl one-liner regex bridge, shellcheck CI integration"
+# echo "  ✓  Module 20.4: Complexity signals — the 6 Bash event horizon warnings"
+# echo ""
+# echo "  Workspace auto-cleaned by EXIT trap registered at script start."
+# echo "  Modules 1–20 complete. Next stop: Module 21 Capstone Projects."
+# echo ""
+# echo "  — Mike | FUTO Nigeria Bash Zero-to-Hero Program | Modules 1–20 ✓"
+# echo ""
