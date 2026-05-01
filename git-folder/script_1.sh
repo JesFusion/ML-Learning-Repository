@@ -1,5 +1,7 @@
+#!/usr/bin/env bash
 #...!/usr/bin/env bash
 # set -euo pipefail
+set -euo pipefail
 
 #... =============================================================================
 #...  NEXUS CONCRETE — GIT & GITHUB MASTERCLASS
@@ -17,16 +19,43 @@
 #...   temp dir; the trailing X's are replaced with random characters at runtime
 #...   to guarantee a unique, never-colliding directory name.
 # WORKSPACE=$(mktemp -d -t nexus-concrete-git-XXXX)
+Folder_WORKSPACE='/home/jesfusion/Documents/ml/My-Learning/Practice-Repo'
+
+mkdir -p "$Folder_WORKSPACE"
+
+
+cleanup_logic() {
+    # Ask the user for a single character input (-n 1)
+    echo
+    read -p "program ended/cancelled, clear folder? [y/n] " -n 1 -r
+    echo # Move to a new line after the keypress
+
+    # Check if the reply is 'y' or 'Y'
+    # If the user hits enter, $REPLY is empty, which defaults to the 'else' (preservation)
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        echo "Deleting folder: $Folder_WORKSPACE"
+        rm -rf "$Folder_WORKSPACE"
+    else
+        echo "Folder preserved."
+    fi
+}
+
+
+
 
 #... [COMMAND MEANING] trap = trap — a shell built-in that registers a command to
 #...   fire automatically when a specific signal or shell EXIT event occurs.
-#... [WHAT]: Guarantees the sandbox is always cleaned up on exit — whether the
-#...   script finishes normally, errors out, or is killed with Ctrl+C. Zero orphan
+#... [WHAT]: Guarantees the sandbox is always cleaned up on exit — whether the script finishes normally, errors out, or is killed with Ctrl+C. Zero orphan
 #...   directories ever left in /tmp after a lesson run.
 # trap 'rm -rf "$WORKSPACE"' EXIT
 
+trap cleanup_logic EXIT INT TERM
+
 #... [COMMAND MEANING] cd = Change Directory — moves the shell's working directory.
 # cd "$WORKSPACE"
+
+cd "$Folder_WORKSPACE"
+
 
 # echo "=================================================================="
 # echo "  NEXUS CONCRETE — Git & GitHub Masterclass"
