@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #...!/usr/bin/env bash
 # set -euo pipefail
-set -euo pipefail
-
+set -euxo pipefail
+clear
 #... =============================================================================
 #...  NEXUS CONCRETE — GIT & GITHUB MASTERCLASS
 #...  Modules 1–5 | Segments 1.1 → 5.1 | 20 Segments Total
@@ -21,7 +21,6 @@ set -euo pipefail
 # WORKSPACE=$(mktemp -d -t nexus-concrete-git-XXXX)
 Folder_WORKSPACE='/home/jesfusion/Documents/ml/My-Learning/Practice-Repo'
 
-mkdir -p "$Folder_WORKSPACE"
 
 
 cleanup_logic() {
@@ -49,12 +48,13 @@ cleanup_logic() {
 #...   directories ever left in /tmp after a lesson run.
 # trap 'rm -rf "$WORKSPACE"' EXIT
 
-trap cleanup_logic EXIT INT TERM
+# JESSE CODE!!!    ===    trap cleanup_logic EXIT INT TERM
+
+trap 'echo ""' DEBUG
 
 #... [COMMAND MEANING] cd = Change Directory — moves the shell's working directory.
 # cd "$WORKSPACE"
 
-cd "$Folder_WORKSPACE"
 
 
 # echo "=================================================================="
@@ -78,21 +78,27 @@ cd "$Folder_WORKSPACE"
 #... [VALUE MEANING] "Jesse Chijioke" = the identity string written into commits.
 # git config --global user.name  "Jesse Chijioke"
 
+
+
+
 #... [KEY MEANING] user.email = User Email — the email address embedded in every
 #...   commit; GitHub uses this to link commits to a contributor account and paint
 #...   the green squares on the contribution graph.
 #... [VALUE MEANING] "jesse@nexusconcrete.ng" = the email string written into commits.
 # git config --global user.email "jesse@nexusconcrete.ng"
 
+
 #... [KEY MEANING] init.defaultBranch = Initialize Default Branch — sets the name
 #...   of the first branch created by `git init`, replacing the legacy "master".
 #... [VALUE MEANING] main = the branch name used by GitHub's current default.
 # git config --global init.defaultBranch main
 
+
 #... [KEY MEANING] core.editor = Core Editor — the text editor Git opens for
 #...   commit messages, rebase to-do lists, and any interactive text prompts.
 #... [VALUE MEANING] nano = lightweight terminal editor; no config file required.
 # git config --global core.editor nano
+
 
 
 #... =============================================================================
@@ -133,18 +139,42 @@ cd "$Folder_WORKSPACE"
 # ╚══════════════════════════════════════════════════════════════════════╝
 # GITHUB_OPS
 
+cd ..
+
+if false; then
+  git clone https://github.com/JesFusion/Nexus-Concrete.git
+fi
+
 #... ── Initialize the Nexus Concrete repo that all remaining modules use ─────────
 
 #... [COMMAND MEANING] mkdir = Make Directory — creates a new filesystem directory.
-#... [FLAG MEANING] -p = parents — creates parent directories as needed; no error
-#...   if the target already exists.
+#... [FLAG MEANING] -p = parents — creates parent directories as needed; no error if the target already exists.
 # mkdir -p nexus-concrete
 # cd nexus-concrete
+
+rm -rf "$Folder_WORKSPACE"
+
+mkdir -p "$Folder_WORKSPACE"
+
+cd "$Folder_WORKSPACE"
 
 #... [SUBCOMMAND MEANING] init = initialize — creates a fresh .git/ skeleton
 #...   (HEAD, config, objects/, refs/) in the current directory, turning it into
 #...   an empty Git repository. No files are tracked yet.
 # git init
+
+git init
+
+git config --global user.name "Nwachukwu Jesse"
+
+git config --global user.email "jesfusionprox@gmail.com"
+
+if false; then
+  git config init.defaultBranch main
+fi
+
+git config --global core.editor nano
+
 
 # echo "[1.1] Repository initialized. Observing .git/ anatomy..."
 # echo ""
@@ -154,6 +184,8 @@ cd "$Folder_WORKSPACE"
 #... [FLAG MEANING] -l = long format — shows permissions, owner, size, timestamp.
 #... [FLAG MEANING] -A = almost-all — includes hidden dotfiles but excludes . and ..
 # ls -lA .git/
+
+ls -lA .git/
 
 # echo ""
 # echo "  HEAD       → symbolic ref → refs/heads/main (your active branch)"
@@ -166,6 +198,8 @@ cd "$Folder_WORKSPACE"
 # echo "── Raw content of .git/HEAD ─────────────────────────────────────"
 #... [COMMAND MEANING] cat = Concatenate — reads and prints file contents to stdout.
 # cat .git/HEAD
+
+cat .git/HEAD
 # echo ""
 
 # echo "  GIT IS NOT a delta-based VCS (SVN stores 'what changed')."
@@ -186,7 +220,7 @@ cd "$Folder_WORKSPACE"
 
 # : <<'GITHUB_OPS'
 # ╔══════════════════════════════════════════════════════════════════════╗
-# ║  GITHUB OPS — Segment 1.2: Verify Identity Matches GitHub Email     ║
+# ║  GITHUB OPS — Segment 1.2: Verify Identity Matches GitHub Email      ║
 # ╠══════════════════════════════════════════════════════════════════════╣
 # ║  After the config commands below, run:                               ║
 # ║    git config --global --list | grep user                            ║
@@ -194,9 +228,9 @@ cd "$Folder_WORKSPACE"
 # ║  The email shown MUST match the primary email in:                    ║
 # ║    GitHub → Settings → Emails                                        ║
 # ║                                                                      ║
-# ║  If they don't match → your commits won't appear on your GitHub     ║
-# ║  contribution graph (the green squares). Fix it with:               ║
-# ║    git config --global user.email "your-github-email@example.com"   ║
+# ║  If they don't match → your commits won't appear on your GitHub      ║
+# ║  contribution graph (the green squares). Fix it with:                ║
+# ║    git config --global user.email "your-github-email@example.com"    ║
 # ╚══════════════════════════════════════════════════════════════════════╝
 # GITHUB_OPS
 
@@ -207,11 +241,13 @@ cd "$Folder_WORKSPACE"
 #... [VALUE MEANING] input = On Linux/macOS: normalizes CRLF → LF on commit but
 #...   never converts on checkout. Prevents Windows CRLF from polluting the repo.
 # git config --global core.autocrlf input
+git config --global core.autocrlf input
 
-#... [KEY MEANING] core.eol = Core End Of Line — explicitly sets the line-ending
-#...   style used in the working tree, working alongside .gitattributes rules.
+#... [KEY MEANING] core.eol = Core End Of Line — explicitly sets the line-ending style used in the working tree, working alongside .gitattributes rules.
 #... [VALUE MEANING] lf = Line Feed — UNIX-style line endings. Correct for Ubuntu.
 # git config --global core.eol lf
+
+git config --global core.eol lf
 
 #... [KEY MEANING] credential.helper = Credential Helper — the mechanism Git uses
 #...   to store and retrieve HTTPS authentication credentials.
@@ -219,16 +255,24 @@ cd "$Folder_WORKSPACE"
 #...   short TTL (default 15 min). Nothing written to disk. Safe on shared machines.
 # git config --global credential.helper cache
 
+clear
+git config credential.helper cache
+
 # echo "── git config --list: All active values across all scopes ──────"
 #... [FLAG MEANING] --list = List All — dumps every active key=value pair from all
 #...   scopes (system → global → local), showing the winning value for each key.
 # git config --list
+git config --list
 # echo ""
 
 # echo "── git config --show-origin: Trace a key to its config file ────"
 #... [FLAG MEANING] --show-origin = Show Origin — prints the exact filesystem path
 #...   of the config file that currently defines the specified key.
 # git config --show-origin user.email
+
+git config --show-origin init.defaultBranch
+
+git config --show-origin core.bare
 # echo ""
 
 #... ── Local scope override ──────────────────────────────────────────────────────
@@ -239,6 +283,18 @@ cd "$Folder_WORKSPACE"
 # echo "        (Overrides global jesse@nexusconcrete.ng for this repo only)"
 # git config --show-origin user.email
 # echo ""
+
+# git config --local init.defaultBranch nexus-concrete-base
+
+git config --local user.name "Jesse Chijioke"
+
+git config --local --unset user.name
+
+git config --show-origin init.defaultBranch
+
+git config --show-origin user.name
+
+git config --list
 
 #... [FLAG MEANING] --system = System Scope — writes to the system-wide config
 #...   (e.g., /etc/gitconfig), affecting EVERY user on the machine. Requires sudo.
@@ -259,6 +315,71 @@ cd "$Folder_WORKSPACE"
 # echo '  [includeIf "gitdir:~/personal/"]'
 # echo '    path = ~/.gitconfig-personal    # personal email for ~/personal/ repos'
 # echo ""
+
+if true; then
+
+  # Define Paths (Easier to change later)
+  ML_DIR="$HOME/Documents/ml/My-Learning"
+  ELEC_DIR="$HOME/Documents/electronics/schematic-viewer/public"
+  PRACTICE_REPO="Practice-Repo"
+  CONFIG_DIR="$HOME/.gitConditConfig"
+  GIT_MAIN="$HOME/.gitconfig"
+  GIT_BACKUP="$HOME/.gitconfig.bak"
+
+  # Preparation
+  echo "Setting up environment..."
+  mkdir -p "$CONFIG_DIR"
+  cp "$GIT_MAIN" "$GIT_BACKUP" # Safety backup
+
+  # Create Conditional Configs
+  cat <<EOF > "$CONFIG_DIR/.gitconfig-work"
+  [user]
+    name = Jesse for Work
+    email = workemailaddress@gmail.com
+EOF
+
+  cat <<EOF > "$CONFIG_DIR/.gitconfig-personal"
+  [user]
+    name = Personal Aspect of Jesse
+    email = personalemailaddress@gmail.com
+EOF
+
+  # Move Folder & Apply Conditional Logic
+  # Use -f on rm to prevent 'file not found' errors from stopping the script
+  rm -rf "$ELEC_DIR/$PRACTICE_REPO"
+
+  mv "$ML_DIR/$PRACTICE_REPO" "$ELEC_DIR/"
+
+  # Append includeIf to the REAL gitconfig (using >> to append safely)
+  cat <<EOF >> "$GIT_MAIN"
+
+  [includeIf "gitdir:$ML_DIR/"]
+    path = $CONFIG_DIR/.gitconfig-work
+  [includeIf "gitdir:$ELEC_DIR/"]
+    path = $CONFIG_DIR/.gitconfig-personal
+EOF
+
+  # Verification
+  echo "--- Testing Identities ---"
+  echo -n "ML Dir Email: "
+  cd "$ML_DIR/ML-Learning-Repository/" && git config user.email
+
+  echo -n "Electronics Dir Email: "
+  cd "$ELEC_DIR/$PRACTICE_REPO/" && git config user.email
+
+  # Cleanup (Restore original state)
+  echo "Cleaning up..."
+  mv "$ELEC_DIR/$PRACTICE_REPO" "$ML_DIR/"
+  mv "$GIT_BACKUP" "$GIT_MAIN"  # Restore original config
+  rm -rf "$CONFIG_DIR"
+
+  echo "Done! Environment restored."
+
+fi
+
+# clear
+
+git config --list
 
 #... ── Wrong author correction ───────────────────────────────────────────────────
 # echo "── git commit --amend --reset-author: Fix wrong identity ────────"
