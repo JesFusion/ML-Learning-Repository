@@ -1,30 +1,20 @@
-#...!/usr/bin/env bash
-#... [FLAG MEANING] #!/usr/bin/env bash = Portable shebang — uses PATH to find bash, not hardcoded /bin/bash
+#!/usr/bin/env bash
 
-#... ==============================================================================
-#...  BASH ZERO-TO-HERO | MODULES 1–5 MASTERCLASS EXECUTION SCRIPT
-#...  Segments: 1.1 → 5.2 | Toptal Elite Standard
-#...  Author  : Mike (Principal DevOps Architect)
-#...  Student : Jesse
-#...  Version : 1.0
-#...
-#...  EXIT CODES USED:
-#...    0   = success
-#...    1   = generic failure
-#...    2   = missing dependency
-#... ==============================================================================
+
 
 # set -euo pipefail
 #... [FLAG MEANING] -e  = errexit   — exit immediately on any non-zero command return
 #... [FLAG MEANING] -u  = nounset   — treat any unset variable reference as a fatal error
 #... [FLAG MEANING] -o pipefail     — the pipeline's exit code = the first failing command (not just the last)
 
+set -euo pipefail
+
 #... ── Sandbox Setup ─────────────────────────────────────────────────────────────
-#... [WHAT]: Create an isolated temp workspace for the entire session and register
-#...         an EXIT trap to auto-delete it no matter how the script terminates.
+#... [WHAT]: Create an isolated temp workspace for the entire session and register an EXIT trap to auto-delete it no matter how the script terminates.
 #... [WHY]:  mktemp -d is atomic and unpredictable — no race-condition symlink attacks.
 #...         Using $$ for temp names (e.g. /tmp/script.$$) is a known security hole.
 # WORKSPACE=$(mktemp -d)
+temporary_folder_for_practice=$(mktemp -d)
 #... [COMMAND MEANING] mktemp = Make Temporary (file or directory)
 #... [FLAG MEANING] -d = directory — create a temp DIRECTORY instead of a file
 
@@ -33,7 +23,9 @@
 #... [WHAT ELSE]: trap also catches ERR (on non-zero), DEBUG (before every command),
 #...              RETURN (on function return), and real signals like SIGTERM, SIGINT
 
-# cd "$WORKSPACE"
+# cd "$WORKSPACE"\
+
+cd "$temporary_folder_for_practice"\
 
 #... Helper: pretty section printer
 # _section() {
@@ -51,11 +43,32 @@
   # echo "  ──────────────────────────────────────────────────────"
 # }
 
+log() {
+  local term_width=$(tput cols)
+  local text="$1"
+  local padding=$(((term_width + ${#text}) / 2))
+
+  echo ""
+  # \e[1;32m makes it bold green; \e[0m resets it
+  printf "%*s\n" "$padding" "$(echo -e "\e[1;32m$text\e[0m")"
+  echo ""
+}
+clear
+
 #... ==============================================================================
 #... MODULE 1 — THE UNIX PHILOSOPHY & SHELL FUNDAMENTALS
 #... ==============================================================================
 
 # _section "SEGMENT 1.1 — THE UNIX MENTAL MODEL"
+
+
+
+
+# ===================================== SEGMENT 1.1 — THE UNIX MENTAL MODEL =====================================
+
+
+
+
 
 #... ── Mock Data ─────────────────────────────────────────────────────────────────
 #... Most /proc reads are live — they need no mock data. We just read the kernel.
@@ -68,6 +81,9 @@
 #... [WHY]:  ps reads from /proc — it does NOT need root for basic usage.
 # ps
 
+log "ps"
+ps
+
 # echo ""
 
 # _pillar "POWER: Full system process inventory"
@@ -78,6 +94,11 @@
 #... [WATCH OUT]: ps aux output order is NOT guaranteed — don't pipe this into
 #...              positional parsing. Use --format or awk field names.
 # ps aux | head -8
+
+
+log "ps with -aux"
+
+ps -aux | head -10
 # echo "  [truncated for brevity — full system shown in production]"
 # echo ""
 
@@ -87,6 +108,10 @@
 #... [WHY]:  This is the POSIX-portable form used in #!/bin/sh scripts where
 #...         BSD-style 'aux' flags may not exist
 # ps -eo pid,ppid,cmd | head -8
+
+log "ps with -eo"
+ps -eo pid,ppid,%cpu,%mem,cmd | head -15
+
 # echo ""
 
 # _pillar "PRECISION: Visualise the process TREE"
@@ -96,6 +121,10 @@
 #... [WHY]:  In a Docker container crash investigation, --forest reveals whether
 #...         a zombie was created by a signal-unaware parent
 # ps --forest -eo pid,ppid,cmd | head -15
+
+log "ps with --forest"
+ps --forest -eo pid,ppid,cmd,%mem| head -25
+
 # echo ""
 
 #... [COMMAND MEANING] pstree = Process-Status Tree
@@ -103,37 +132,53 @@
 #... [WHY]:  Faster visual than ps --forest for understanding the full hierarchy
 #... [FLAG MEANING] -p = include PIDs alongside each process name
 # pstree -p | head -20
+
+if false; then
+  pstree -p | head -25
+fi
+
 # echo ""
 
 # _pillar "DEVOPS CONTEXT: Inspecting a process via /proc"
 
 #... [COMMAND MEANING] /proc = Process filesystem — a virtual FS the kernel exposes
 #... [WHAT]: Read the kernel-maintained status file for the CURRENT shell ($$)
-#... [WHY]:  No external tool needed. /proc/$$/status gives you UID, GID, memory,
-#...         and thread info — critical for debugging privilege issues in automation
+#... [WHY]:  No external tool needed. /proc/$$/status gives you UID, GID, memory, and thread info — critical for debugging privilege issues in automation
 #... [WATCH OUT]: $$ is the PID of the PARENT shell, not a subshell. Use $BASHPID
 #...              inside subshells if you need the actual PID of that child.
 # echo "--- /proc/\$\$/status (live kernel data for THIS shell) ---"
 # cat /proc/$$/status | head -20
+
+log "--- /proc/\$\$/status (live kernel data for THIS shell) ---"
+cat /proc/$$/status | head -20
 # echo ""
 
 #... [FLAG MEANING] -la = long listing with hidden files, all attributes shown
 #... [WHAT]: List ALL virtual files under the current process's /proc directory
 # echo "--- /proc/\$\$ directory listing ---"
 # ls -la /proc/$$ | head -20
+
+log "--- /proc/\$\$ directory listing ---"
+ls -la /proc/$$ | head -10
 # echo ""
 
 #... [WHAT]: Show every memory region mapped into this process — .text, .data,
 #...         heap, stack, and shared libraries with their permissions
 # echo "--- /proc/\$\$/maps (virtual memory map) ---"
 # cat /proc/$$/maps | head -15
+
+log "--- /proc/\$\$/maps (virtual memory map) ---"
+cat /proc/$$/maps | head -16
+
 # echo ""
 
 #... [WHAT]: List every open file descriptor this shell currently holds
-#... [WHY]:  FD 0/1/2 are stdin/stdout/stderr. Any extra FDs reveal open sockets,
-#...         log files, or pipe handles — the source of "too many open files" bugs
+#... [WHY]:  FD 0/1/2 are stdin/stdout/stderr. Any extra FDs reveal open sockets, log files, or pipe handles — the source of "too many open files" bugs
 # echo "--- /proc/\$\$/fd (open file descriptors) ---"
 # ls -la /proc/$$/fd
+
+log "--- /proc/\$\$/fd (open file descriptors) ---"
+ls -la /proc/$$/fd
 # echo ""
 
 #... [COMMAND MEANING] lsof = List Open Files
@@ -142,6 +187,10 @@
 #... [WHY]:  Tells you exactly what a process is touching at this moment —
 #...         indispensable when a log file grows unexpectedly or a port is "in use"
 # lsof -p $$ 2>/dev/null | head -20 || true
+
+log "lsof -p $$ 2>/dev/null | head -20"
+
+lsof -p $$ 2>/dev/null | head -20
 # echo ""
 
 # _pillar "WHAT ELSE (strace — not run live to avoid permission noise)"
