@@ -116,6 +116,15 @@ trap 'echo ""' DEBUG
 # echo "── Segment 1.1: What Git Is and Is Not ─────────────────────────"
 # echo ""
 
+
+
+
+# ===================================== Segment 1.1: What Git Is and Is Not =====================================
+
+
+
+
+
 # : <<'GITHUB_OPS'
 # ╔══════════════════════════════════════════════════════════════════════╗
 # ║  GITHUB OPS — Segment 1.1: Create Account, Init Repo, Observe .git ║
@@ -217,6 +226,14 @@ cat .git/HEAD
 
 # echo "── Segment 1.2: Installing, Configuring, and Validating Git ────"
 # echo ""
+
+
+
+
+# ===================================== Segment 1.2: Installing, Configuring, and Validating Git =====================================
+
+
+
 
 # : <<'GITHUB_OPS'
 # ╔══════════════════════════════════════════════════════════════════════╗
@@ -320,7 +337,7 @@ if true; then
 
   # Define Paths (Easier to change later)
   ML_DIR="$HOME/Documents/ml/My-Learning"
-  ELEC_DIR="$HOME/Documents/electronics/schematic-viewer/public"
+  ELEC_DIR="$HOME/Documents/my PDF's/Books Yet to read/Machine Learning"
   PRACTICE_REPO="Practice-Repo"
   CONFIG_DIR="$HOME/.gitConditConfig"
   GIT_MAIN="$HOME/.gitconfig"
@@ -394,11 +411,24 @@ git config --list
 # echo "  Safe ONLY before pushing. Rewrites the commit SHA."
 # echo ""
 
+if false; then
+  git commit --amend --reset-author --no-edit
+fi
 
-#... ─── SEGMENT 1.3 ─────────────────────────────────────────────────────────────
+
+#... ─── SEGMENT 1.3 ───
 
 # echo "── Segment 1.3: Git's Object Model — The Four Object Types ─────"
 # echo ""
+
+
+
+
+# ===================================== Segment 1.3: Git's Object Model — The Four Object Types =====================================
+
+
+
+
 
 #... Build the first real commit so we have live objects to inspect.
 # echo "Project: Nexus Concrete Block Manufacturing" >  README.md
@@ -409,18 +439,39 @@ git config --list
 # echo "Capacity: 2000 blocks per day"       >> plant-config.txt
 # echo "Diesel Budget: 50 litres/day"        >> plant-config.txt
 
-#... [FLAG MEANING] -A (git add) = All — stages ALL new files, modifications, and
-#...   deletions across the ENTIRE working tree regardless of current directory.
+cat <<EOF > "README.md"
+Project: Nexus Concrete Block Manufacturing
+Location: Enugu, Nigeria
+Products: 9-inch hollow blocks, 6-inch hollow blocks
+EOF
+
+
+cat <<EOF > "nexus-concrete-warehouse-configuration.txt"
+Plant: Main Plant Alpha
+Capacity: 2000 blocks per day
+Diesel Budget: 50 litres/day
+EOF
+
+
+#... [FLAG MEANING] -A (git add) = All — stages ALL new files, modifications, and deletions across the ENTIRE working tree regardless of current directory.
 # git add -A
+
+git add -A
 
 #... [FLAG MEANING] -m = message — supplies the commit message inline from the CLI,
 #...   bypassing the editor prompt.
 # git commit -m "feat: initialize Nexus Concrete plant configuration"
 
+git commit -m "feat: initialize Nexus Concrete plant configuration"
+
 # echo ""
 # COMMIT_SHA=$(git rev-parse HEAD)
 # echo "  First commit SHA: $COMMIT_SHA"
 # echo ""
+
+sha_of_commit=$(git rev-parse HEAD)
+
+echo "SHA Of First commit: $sha_of_commit"
 
 #... ── cat-file: Inspect the raw object graph ────────────────────────────────────
 # echo "── git cat-file: Inspect raw Git objects ───────────────────────"
@@ -431,6 +482,8 @@ git config --list
 #...   of the object stored at the given SHA.
 # echo "  Type of HEAD commit object:"
 # git cat-file -t "$COMMIT_SHA"
+echo "Type of HEAD commit object:" \
+&& git cat-file -t "$sha_of_commit"
 
 #... [FLAG MEANING] -p = pretty-print — formats and displays the full human-readable
 #...   content of the object, exposing the raw data structure Git stores internally.
@@ -438,6 +491,10 @@ git config --list
 # echo "  Full commit object content:"
 # git cat-file -p "$COMMIT_SHA"
 # echo ""
+echo "Full commit object content:"
+git cat-file -p "$sha_of_commit"
+
+
 
 #... Drill down: extract the tree SHA from the commit object.
 # TREE_SHA=$(git cat-file -p "$COMMIT_SHA" | grep "^tree" | awk '{print $2}')
@@ -445,6 +502,10 @@ git config --list
 # echo "  Tree SHA: $TREE_SHA"
 # git cat-file -p "$TREE_SHA"
 # echo ""
+clear
+sha_of_tree=$(git cat-file -p "$sha_of_commit" | grep "^tree" | awk '{print $2}')
+
+echo "Tree SHA: $sha_of_tree" && git cat-file -p "$sha_of_tree"
 
 #... Drill further: extract the blob SHA for README.md and inspect it.
 # BLOB_SHA=$(git cat-file -p "$TREE_SHA" | grep "README.md" | awk '{print $3}')
@@ -453,6 +514,12 @@ git config --list
 # git cat-file -p "$BLOB_SHA"
 # echo ""
 
+sha_of_blob=$(git cat-file -p "$sha_of_tree" | grep "README.md" | awk '{print $3}')
+
+echo "Blob SHA: $sha_of_blob" && git cat-file -p "$sha_of_blob" && cat README.md
+
+
+
 #... [FLAG MEANING] -s = size — prints the BYTE SIZE of the object without printing
 #...   its content. Useful for disk-usage analysis on large repos.
 # echo "── Blob byte size: ──────────────────────────────────────────────"
@@ -460,34 +527,49 @@ git config --list
 # echo "  bytes (no filename, no permissions stored — just pure content)"
 # echo ""
 
+echo "Blob byte size: $(git cat-file -s "$sha_of_blob") bytes"
+
 #... ── hash-object: Content-addressing demonstration ────────────────────────────
 # echo "── git hash-object: Write objects directly to the store ─────────"
 
 #... [SUBCOMMAND MEANING] hash-object = Hash Object — computes the SHA hash for a
 #...   given file (or stdin input) using Git's internal format and optionally stores
 #...   the resulting object in the .git/objects/ directory.
-#... [FLAG MEANING] -w = write — writes the hashed object INTO .git/objects/ in
-#...   addition to printing the resulting SHA. Without -w, it's a dry-run hash.
+#... [FLAG MEANING] -w = write — writes the hashed object INTO .git/objects/ in addition to printing the resulting SHA. Without -w, it's a dry-run hash.
 # echo "Diesel consumption report: Day 1 = 48L" > diesel-report.txt
 # DIESEL_BLOB=$(git hash-object -w diesel-report.txt)
 # echo "  diesel-report.txt hashed and stored → $DIESEL_BLOB"
 # echo "  (File is in .git/objects/ but NOT yet in the index — not staged)"
 # echo ""
 
-#... [FLAG MEANING] --stdin = Standard Input — reads object content from stdin
-#...   instead of a file path, enabling pipeline-based object creation in scripts.
+d_report='diesel-report.txt'
+
+echo "Diesel consumption report: Day 1 = 56L" > "$d_report"
+
+blob_of_diesel=$(git hash-object "$d_report")
+
+echo "diesel-report.txt hashed and stored → $blob_of_diesel"
+
+
+
+
+#... [FLAG MEANING] --stdin = Standard Input — reads object content from stdin instead of a file path, enabling pipeline-based object creation in scripts.
 # echo "Block Quality Report: Batch #001 PASS" | git hash-object --stdin
 # echo "  (stdout only — -w omitted so no store write this time)"
 # echo ""
 
+echo "Block Quality Report: Batch BK-4728-10 PASS" | git hash-object --stdin
+
 # echo "── Manual SHA-1 verification (Git blob header format): ─────────"
 # echo "  Git hashes as: 'blob <byte_count>\\0<content>'"
 # echo "  For the 5-byte string 'hello':"
-#... [COMMAND MEANING] printf = Print Formatted — prints a formatted string to
-#...   stdout; handles escape sequences like \\0 (NUL byte) correctly, unlike echo.
+#... [COMMAND MEANING] printf = Print Formatted — prints a formatted string to stdout; handles escape sequences like \\0 (NUL byte) correctly, unlike echo.
 # printf "blob 5\0hello" | sha1sum
 # echo "  This matches what git hash-object would compute for 'hello'."
 # echo ""
+
+printf "blob 5\0hello" | sha1sum
+
 
 
 #... ─── SEGMENT 1.4 ─────────────────────────────────────────────────────────────
@@ -503,14 +585,17 @@ git config --list
 # git ls-files --stage
 # echo ""
 
+
+git ls-files --stage
+
 #... diesel-report.txt was hashed above but never staged — show it as untracked.
-# echo "── Untracked files in working tree: ─────────────────────────────"
-#... [FLAG MEANING] --others = Others — lists files in the working tree that are
-#...   NOT currently tracked in the index (untracked files).
-#... [FLAG MEANING] --exclude-standard = Exclude Standard — applies all standard
-#...   ignore rules (.gitignore, .git/info/exclude, global gitignore) to the listing.
+# echo "── Untracked files in working tree: ─────────"
+#... [FLAG MEANING] --others = Others — lists files in the working tree that are NOT currently tracked in the index (untracked files).
+#... [FLAG MEANING] --exclude-standard = Exclude Standard — applies all standard ignore rules (.gitignore, .git/info/exclude, global gitignore) to the listing.
 # git ls-files --others --exclude-standard
 # echo ""
+
+git ls-files --others --exclude-standard
 
 # echo "── git rev-parse: Resolve refs to their canonical SHA ───────────"
 #... [SUBCOMMAND MEANING] rev-parse = Revision Parse — resolves any ref, symbolic
