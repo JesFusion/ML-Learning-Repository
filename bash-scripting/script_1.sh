@@ -1,36 +1,109 @@
 #!/usr/bin/env bash
-#... ============================================================================
-#...  BASH SCRIPTING & OS AUTOMATION — 20-SEGMENT PRODUCTION MASTERCLASS
-#...  Toptal Top 3% Systems Engineering Standard | FUTO Nigeria
-#...  Author  : Jesse (guided by Mike — Principal DevOps Architect)
-#...  Index   : bash_knowledge_index.txt  (Segments 1–20)
-#... ============================================================================
 
-#... [COMMAND MEANING] set = A shell builtin that controls optional shell behaviors
-#...                   via named mode flags.
-#... [FLAG MEANING]    -e   = errexit    : abort immediately on any non-zero exit.
-#... [FLAG MEANING]    -u   = nounset    : treat unset variable references as errors.
-#... [FLAG MEANING]    -o pipefail = make a pipeline fail if ANY stage exits non-zero,
-#...                   not only the last command in the chain.
-# set -euo pipefail
+set -euo pipefail
 
-#... ─── SANDBOX SETUP ───────────────────────────────────────────────────────────
-#... [COMMAND MEANING] mktemp = Make Temporary; atomically creates a uniquely named
-#...                   temp file or directory, preventing race conditions.
-#... [FLAG MEANING]    -d = Directory mode; creates a temp directory instead of a file.
-#... [WHAT]: Allocate a throwaway workspace so every demo runs in total isolation.
-#... [WHY]:  mktemp -d is the only safe pattern. /tmp/script.$$ is a symlink-attack
-#...         waiting to happen — the PID is predictable and the name is guessable.
-# WORKSPACE=$(mktemp -d)
+
+log() {
+
+  if [[ $# -eq 1 ]]; then
+    
+    local input_level=0
+
+    local message="$1"
+
+    local log_file=""
+
+  elif [[ $# -eq 2 ]]; then
+
+    local input_level="$1"
+
+    local message="$2"
+
+    local log_file=""
+
+  elif [[ $# -eq 3 ]]; then
+
+    local input_level="$1"
+
+    local message="$2"
+    
+    local log_file="$3" # Optional: pass a file path to enable JSON logging
+  
+  else
+
+    echo "To many input arguments. Max arguments is 3" >&2
+
+    exit 1
+
+  fi
+
+  
+  local level color
+
+  local reset="\e[0m"
+
+  # 1. Map Levels and ANSI Colors
+  case "${input_level,,}" in # ,, converts to lowercase (Bash 4+)
+    0|debug)    level="DEBUG";   color="\e[36m" ;; # Cyan
+    1|info)     level="INFO";    color="\e[32m" ;; # Green
+    2|warning)  level="WARNING"; color="\e[33m" ;; # Yellow
+    3|error)    level="ERROR";   color="\e[31m" ;; # Red
+    4|critical) level="CRITICAL";color="\e[41;37m" ;; # White on Red
+    *)          level="LOG";     color="\e[37m" ;;
+  esac
+
+  # 2. Context Detection
+  # If FUNCNAME[1] is empty or "main", it's a regular line.
+  local caller_name="${FUNCNAME[1]:-main}"
+  local context_msg
+  if [[ "$caller_name" == "main" ]]; then
+    context_msg="Script Root"
+  else
+    context_msg="Function: $caller_name()"
+  fi
+
+  # 3. Console Output (Formatted)
+cat <<EOF | xargs -0 printf
+Level: ${color}[${level}]${reset}, ${context_msg}
+File: ${BASH_SOURCE[1]}
+Line Number: ${BASH_LINENO[0]}
+Output: ${message}
+EOF
+
+
+  # 4. File Output (JSON Format)
+  if [[ -n "$log_file" ]]; then
+    # Create valid JSON string
+    local timestamp=$(date +"%Y-%m-%dT%H:%M:%S%z")
+    printf '{"timestamp":"%s","level":"%s","file":"%s","caller":"%s","line":%d,"message":"%s"}\n' \
+      "$timestamp" "$level" "${BASH_SOURCE[1]}" "$caller_name" "${BASH_LINENO[0]}" "$message" >> "$log_file"
+  fi
+}
+
+
+
+
+clear
+workspace_folder="/home/jesfusion/Documents/ml/My-Learning/ML-Learning-Repository/bash-scripting/workspace/"
+
+rm -rf "$workspace_folder"
+
+mkdir -p "$workspace_folder"
+
+
 
 #... [WHAT]:  Register the cleanup handler BEFORE doing any work.
 #... [WHY]:   If the script dies at line 12, cleanup still runs. EXIT fires on every
 #...          exit path: normal, set -e triggered, or Ctrl+C.
-#... [WATCH OUT]: Register the trap IMMEDIATELY after creating the resource you want
-#...              cleaned. A crash between mktemp and the trap leaves garbage behind.
+#... [WATCH OUT]: Register the trap IMMEDIATELY after creating the resource you want cleaned. A crash between mktemp and the trap leaves garbage behind.
 # trap 'rm -rf "$WORKSPACE"' EXIT
 
+trap 'echo ""' DEBUG
+# trap 'rm -rf "$workspace_folder"' EXIT
+
 # cd "$WORKSPACE"
+
+cd "$workspace_folder"
 
 #... ─── COLOUR HELPERS (zero-dependency, pure ANSI) ─────────────────────────────
 #... [COMMAND MEANING] printf = Formatted print; used here to emit raw ANSI escape
@@ -58,91 +131,99 @@
 # banner "SANDBOX: $WORKSPACE  |  BASH: $BASH_VERSION"
 
 
-#... ============================================================================
-#... ███████╗███████╗ ██████╗ ███╗   ███╗███████╗███╗   ██╗████████╗     ██╗
-#... ██╔════╝██╔════╝██╔════╝ ████╗ ████║██╔════╝████╗  ██║╚══██╔══╝    ███║
-#... ███████╗█████╗  ██║  ███╗██╔████╔██║█████╗  ██╔██╗ ██║   ██║       ╚██║
-#... ╚════██║██╔══╝  ██║   ██║██║╚██╔╝██║██╔══╝  ██║╚██╗██║   ██║        ██║
-#... ███████║███████╗╚██████╔╝██║ ╚═╝ ██║███████╗██║ ╚████║   ██║        ██║
-#... ╚══════╝╚══════╝ ╚═════╝ ╚═╝     ╚═╝╚══════╝╚═╝  ╚═══╝   ╚═╝        ╚═╝
-#...  THE UNIX MENTAL MODEL & SHELL BOOT SEQUENCE
-#... ============================================================================
-# banner "SEGMENT 1 — The Unix Mental Model & Shell Boot Sequence"
 
-#... ─── BASIC: Shebang mechanics ────────────────────────────────────────────────
-# section "1-BASIC: Shebang — The Two Forms"
+cat <<EOF > "shebang_that_was_hardcoded.sh"
+#!/bin/bash
 
-#... [WHAT]: Write two minimal scripts — one with each shebang form — and show the
-#...         behavioral difference in portability and interpreter resolution.
-#... [WHY]:  The shebang line is not bash syntax. It is read by the KERNEL during
-#...         execve(). The kernel opens the file, sees #!, and re-launches the named
-#...         interpreter with the script as its argument.
+echo "I use a hardcoded path. If bash lives elsewhere, I break."
+EOF
 
-#... [COMMAND MEANING] cat = Concatenate; writes content to stdout or into a file
-#...                   via output redirection.
-# cat > "$WORKSPACE/hardcoded_shebang.sh" << 'EOF'
-#...!/bin/bash
-# echo "I use a hardcoded path. If bash lives elsewhere, I break."
-# EOF
+cat shebang_that_was_hardcoded.sh
 
 # cat > "$WORKSPACE/portable_shebang.sh" << 'EOF'
 #...!/usr/bin/env bash
 # echo "I ask env to find bash on PATH. I work on any Unix system."
 # EOF
 
+cat > "shebang_that_is_portable.sh" << 'EOF'
+#!/usr/bin/env bash
+
+echo "I ask env to find bash on PATH. I work on any Unix system."
+EOF
+
+cat shebang_that_is_portable.sh
+
 #... [COMMAND MEANING] chmod = Change Mode; modifies the permission bits of a file.
 #... [FLAG MEANING]    +x = Execute bit; allows the file to be run directly as ./file.
 # chmod +x "$WORKSPACE/hardcoded_shebang.sh" "$WORKSPACE/portable_shebang.sh"
 # pass "Both scripts made executable via chmod +x"
 
-#... ─── POWER: Login vs. non-login shell startup chain ──────────────────────────
-# section "1-POWER: Shell Boot Sequence — File Execution Order"
+chmod +x "shebang_that_is_portable.sh" "shebang_that_was_hardcoded.sh"
 
-#... [WHAT]: Demonstrate the documented startup chain by showing which files exist
-#...         on this system that bash would read for a login shell.
-#... [WHY]:  Misplacing an export in ~/.bashrc vs. ~/.bash_profile causes hard-to-
-#...         debug environment bleed between SSH sessions and GUI terminals.
-# for startup_file in /etc/profile "$HOME/.bash_profile" "$HOME/.bashrc" "$HOME/.bash_logout"; do
-  # if [[ -f "$startup_file" ]]; then
-    # pass "EXISTS: $startup_file"
-  # else
-    # info "ABSENT: $startup_file (would be sourced if it existed)"
-  # fi
-# done
 
-#... ─── PRECISION: fork() + exec() — The two-step launch model ──────────────────
-# section "1-PRECISION: fork() + exec() — Every Process's Origin Story"
 
-#... [WHAT]: Show the PID lineage from PID 1 down to this script using /proc.
-#... [WHY]:  Understanding that every process on Linux is a descendant of PID 1
-#...         (systemd/init) is the mental model behind kill -PGID, process groups,
-#...         and zombie reaping.
-#... [COMMAND MEANING] cat = (re-use, no new tag) reading a proc file.
-#... [COMMAND MEANING] ps = Process Status; reports a snapshot of running processes.
-#... [FLAG MEANING]    -p = Selects processes by PID.
-#... [FLAG MEANING]    -o = Output format; defines which columns to display.
-#... [FLAG MEANING]    --no-headers = Suppress the column header line.
-# info "This script's PID  : $$"
-# info "This script's PPID : $(ps -p $$ -o ppid= --no-headers 2>/dev/null | tr -d ' ' || echo 'N/A')"
-# info "PID 1 cmdline      : $(cat /proc/1/comm 2>/dev/null || echo 'N/A')"
+echo "Both scripts made executable via chmod +x"
+
+
+
+echo "" > setup_files.txt
+
+for file_for_startup in /etc/profile "$HOME/.bash_profile" "$HOME/.bashrc" "$HOME/.bash_logout"; do
+  if [[ -f "$file_for_startup" ]]; then
+
+    cat "$file_for_startup" >> setup_files.txt
+
+    echo -e "\n\n===================================== SECTION =====================================\n\n" >> setup_files.txt
+
+    echo "EXISTS: $file_for_startup"
+
+  else
+    echo "ABSENT: $file_for_startup (would be sourced if it existed)"
+  fi
+done
+
+
+
+
+cat <<EOF
+This script's PID = $$
+
+This script's PPID = $(ps -p $$ -o ppid= --no-headers 2>/dev/null | tr -d ' ' || echo 'N/A')
+
+PID 1 cmdline =  $(cat /proc/1/comm 2>/dev/null || echo 'N/A')
+EOF
+
+mv "setup_files.txt" "demo_of_shebang.sh"
+
 
 #... ─── DEVOPS CONTEXT: bash vs. bash -s remote execution ───────────────────────
 # section "1-DEVOPS: bash script.sh vs. ./script.sh — When Each Is Correct"
 
 #... [WHAT]: Create a script with a deliberate shebang pointing to a non-existent
 #...         interpreter, then show that `bash script.sh` bypasses it entirely.
-#... [WHY]:  In CI pipelines you often invoke `bash deploy.sh` explicitly. This
-#...         bypasses the shebang AND the execute bit — useful for running scripts
+#... [WHY]:  In CI pipelines you often invoke `bash deploy.sh` explicitly. This bypasses the shebang AND the execute bit — useful for running scripts
 #...         downloaded from artifact storage without an explicit chmod +x first.
 # cat > "$WORKSPACE/shebang_demo.sh" << 'EOF'
-#...!/totally/fake/path/to/bash
+#!/totally/fake/path/to/bash
 # echo "My shebang is garbage, but bash invocation still works."
 # EOF
+
+cat <<EOF > "demo_of_shebang.sh"
+#!/totally/fake/path/to/bash
+echo "My shebang is garbage, but bash invocation still works."
+EOF
+
+
 #... [COMMAND MEANING] bash = Invoke the bash interpreter explicitly.
 #... [WHAT ELSE]: Use `env -i bash script.sh` to run with a scrubbed environment.
 # bash "$WORKSPACE/shebang_demo.sh"
 # pass "Segment 1 complete — Unix mental model established."
 
+bash "demo_of_shebang.sh"
+
+env -i bash "demo_of_shebang.sh"
+
+rm -f "demo_of_shebang.sh" "shebang_that_is_portable.sh" "shebang_that_was_hardcoded.sh"
 
 #... ============================================================================
 #...  SEGMENT 2 — VARIABLES, ASSIGNMENT, AND SCOPE
@@ -152,8 +233,7 @@
 #... ─── BASIC: declare flags ─────────────────────────────────────────────────────
 # section "2-BASIC: declare — Typed Variable Definitions"
 
-#... [COMMAND MEANING] declare = Bash builtin that explicitly defines variables with
-#...                   type constraints, scope modifiers, and export flags.
+#... [COMMAND MEANING] declare = Bash builtin that explicitly defines variables with type constraints, scope modifiers, and export flags.
 #... [FLAG MEANING]    -i = Integer; bash automatically evaluates arithmetic on assignment.
 #... [FLAG MEANING]    -r = Readonly; any re-assignment causes an immediate runtime error.
 #... [FLAG MEANING]    -x = Export; marks the variable for child process inheritance.
@@ -165,6 +245,18 @@
 # declare -a  SEG2_FRUITS=("mango" "pawpaw" "banana")
 # declare -A  SEG2_MAP=( [host]="prod-01" [env]="production" )
 
+clear
+
+declare -i jesse_age=20
+
+declare -r serious_variable="Don't you dare re-assign this variable!"
+
+declare -x gift_for_child="This is for my child"
+
+declare -a jesse_siblings=("favour" "caleb" "goodness" "chiedozie")
+
+declare -A user_info=( [name]="Nwachukwu Jesse" [status]="cool" [summary]="Jesse is cool" )
+
 # SEG2_COUNT=5+3   # Arithmetic is auto-evaluated because of -i
 # pass "declare -i: 5+3 evaluated to → $SEG2_COUNT"
 # pass "declare -r: constant value   → $SEG2_CONST"
@@ -172,16 +264,34 @@
 # pass "declare -a: fruits[1]        → ${SEG2_FRUITS[1]}"
 # pass "declare -A: map[env]         → ${SEG2_MAP[env]}"
 
+cat <<EOF
+Jesse age in next 7 years is $((jesse_age+7))
+
+declare -r: constant value   → $serious_variable
+declare -x: exported var     → $gift_for_child
+declare -a: siblings[1]        → ${jesse_siblings[1]}
+declare -A: my_info[status]         → ${user_info[summary]}
+EOF
+
+
+
 #... Prove -r actually blocks re-assignment
 # if ! (declare -r LOCKED="yes"; LOCKED="no") 2>/dev/null; then
   # pass "declare -r: re-assignment correctly blocked"
 # fi
 
+
+# Prove -r actually blocks re-assignment
+if ! (declare -r jesse="cool"; jesse="not cool") 2>/dev/null; then
+  echo "declare -r: re-assignment correctly blocked"
+fi
+
+
+
 #... ─── POWER: local scope and the footgun it prevents ───────────────────────────
 # section "2-POWER: local — Function Scope & the Global Side-Effect Footgun"
 
-#... [COMMAND MEANING] local = Restricts a variable to the enclosing function's scope,
-#...                   preventing accidental global side effects from nested calls.
+#... [COMMAND MEANING] local = Restricts a variable to the enclosing function's scope, preventing accidental global side effects from nested calls.
 #... [FLAG MEANING]    -i = Integer (same semantics as declare -i, function-scoped).
 #... [FLAG MEANING]    -r = Readonly, function-scoped.
 #... [FLAG MEANING]    -a = Indexed array, function-scoped.
@@ -196,6 +306,26 @@
   # pass "Inside function: LOCAL_VAR=$LOCAL_VAR | GLOBAL_VAR=$GLOBAL_VAR"
 # }
 
+global_variable="I am a global variable"
+
+function_of_scopes(){
+  global_variable='I can be re-assigned'
+
+  local local_variable="I am a local variable"
+
+  local -i local_integer=35
+
+  local -r local_readonly="Non-reassignable variable"
+
+  local -a local_array=("Kaleo" "Linko" "Poppa")
+
+  local -A local_associative_array=( ['status']='charged' [amount]="$local_integer" )
+
+  echo "${local_associative_array[amount]}"
+}
+
+function_of_scopes
+
 # scope_demo
 # pass "After function : GLOBAL_VAR=$GLOBAL_VAR (mutation survived)"
 #... LOCAL_VAR is gone now — that's the whole point of local
@@ -203,36 +333,59 @@
   # pass "After function : LOCAL_VAR is GONE (local scope confirmed)"
 # fi
 
+
+if [[ -z "${local_variable:-}" ]]; then
+  echo "After function : local_variable is GONE (local scope confirmed)"
+fi
+
 #... ─── PRECISION: unset and the set -u interaction ──────────────────────────────
 # section "2-PRECISION: unset + set -u — Strict Variable Hygiene"
 
 #... [COMMAND MEANING] unset = Removes a variable or function from the shell environment.
-#... [WATCH OUT]: Under set -u, referencing a variable AFTER unset causes an immediate
-#...              abort. Use ${var:-} to safely test for existence first.
+#... [WATCH OUT]: Under set -u, referencing a variable AFTER unset causes an immediate abort. Use ${var:-} to safely test for existence first.
 # TMP_SECRET="hunter2"
 # unset TMP_SECRET
 # if [[ -z "${TMP_SECRET:-}" ]]; then
   # pass "unset confirmed: TMP_SECRET is gone. ${TMP_SECRET:-<empty>}"
 # fi
 
+regular_variable="Just chilling out!"
+
+unset regular_variable
+
+if [[ -z "${regular_variable:-}" ]]; then
+  echo "unset confirmed: regular_variable has been ${regular_variable:-"removed"}"
+fi
+
+
+
 #... ─── DEVOPS CONTEXT: Call-stack introspection for structured logging ───────────
 # section "2-DEVOPS: Introspection Variables — \$FUNCNAME, \$BASH_SOURCE, \$LINENO"
 
 #... [WHAT]: Build a log_trace function that prints WHERE in the call stack we are.
-#... [WHY]:  In production scripts that source multiple library files, you NEED to
-#...         know which file, which function, and which line triggered a log event.
+#... [WHY]:  In production scripts that source multiple library files, you NEED to know which file, which function, and which line triggered a log event.
 # log_trace() {
   #... [WHAT ELSE]: BASH_LINENO[0] is the line that *called* this function.
   # echo "  [TRACE] ${BASH_SOURCE[1]:-<main>}:${BASH_LINENO[0]} → ${FUNCNAME[1]:-<main>}() → $*"
 # }
 
+
+
+
 # caller_function() {
   # log_trace "This message came from inside caller_function()"
 # }
 
+function_that_is_calling() {
+  log "This message came from inside function_that_is_calling()"
+}
+
 # caller_function
 # pass "Segment 2 complete — Variables, scope, and introspection."
 
+function_that_is_calling
+
+log 1 "Jesse is sooo cooool!"
 
 #... ============================================================================
 #...  SEGMENT 3 — QUOTING, WORD SPLITTING & PARAMETER EXPANSION
@@ -243,6 +396,11 @@
 # section "3-BASIC: Quoting Mechanics — The Four Forms"
 
 # SEG3_VAR="hello world"
+
+clear
+
+variable_segment_3="Nwachukwu Jesse"
+
 
 #... [WHAT]: Show how each quoting form treats the same content differently.
 #... [WHY]:  Quoting is the #1 source of bash bugs. Missing double-quotes causes
