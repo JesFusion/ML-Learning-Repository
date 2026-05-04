@@ -1,0 +1,28 @@
+{
+    Selecting a Region: The Decision Framework
+
+    When asked "what region should you use?" in an interview, this is the order of decision-making:
+
+    1. Legal/Compliance first: Where does the regulation say data must live? This is non-negotiable.
+    2. Latency second: Where are your users? How close is the region?
+    3. Service availability third: Does that region have every service you need?
+    4. Cost fourth: Some regions are 10–20% cheaper than others for the same services.
+},
+
+{
+
+    Edge Case: A Service Is Not Available in Your Chosen Region
+
+    Classic scenario: you're building in `af-south-1` for data residency compliance, and you discover AWS Bedrock (or another newer AI service) isn't available there. What do you do?
+
+    Options, in order of preference:
+
+    Option 1. Cross-region API calls with private routing: Call the service in the nearest available region over AWS PrivateLink or the AWS backbone. Your data stays encrypted in transit. This works for stateless API calls where the data being processed isn't "at rest" in the other region for more than the request duration.
+
+    Option 2. Service-specific workarounds: Some services have proxies or alternatives. Can you use SageMaker instead of Bedrock? Can you self-host the model on EC2 in your compliant region?
+
+    Option 3. Architecture split: Compliance-sensitive data stays in the compliant region. Non-sensitive processing happens elsewhere, with the results returned. Document this split in your architecture decision records (ADRs) and get legal sign-off.
+
+    Option 4. Lobby the roadmap: Seriously — AWS prioritizes regions based on customer demand signals. Enterprise customers have moved service availability timelines. That's not relevant to the screener, but it's real-world knowledge.
+
+}
