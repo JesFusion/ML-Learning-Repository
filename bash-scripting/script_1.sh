@@ -399,12 +399,12 @@ log 1 "Jesse is sooo cooool!"
 
 clear
 
-variable_segment_3="Nwachukwu Jesse"
+var_3="Nwachukwu Jesse"
 
 
 #... [WHAT]: Show how each quoting form treats the same content differently.
 #... [WHY]:  Quoting is the #1 source of bash bugs. Missing double-quotes causes
-#...         word splitting; missing single-quotes allows unwanted expansion.
+#... word splitting; missing single-quotes allows unwanted expansion.
 
 #... No quotes → word splitting fires; "hello world" becomes TWO arguments
 #... Double quotes → expansion happens, word splitting suppressed
@@ -416,10 +416,20 @@ variable_segment_3="Nwachukwu Jesse"
 # echo "  Double-quoted  : \"$SEG3_VAR\" (expansion ✔, splitting ✘)"
 # echo '  Single-quoted  : '"'"'$SEG3_VAR'"'"' (expansion ✘, literal)'
 
+
+echo "Double-quoted: \"$var_3\" (expansion ✔, splitting ✘)"
+
+echo 'Single quoted: '"'"'$var_3'"'"'(expansion ✘, literal)'
+
+
 #... [FLAG MEANING]    $'...' = ANSI-C quoting; interprets \n, \t, \xNN escape codes.
 # ANSI_DEMO=$'line one\nline two\ttabbed'
 # info "ANSI-C quoting output:"
 # echo "$ANSI_DEMO"
+
+ansi_c_var=$'fist line\nsecond line\ttab'
+
+echo -e "ANSI-C Quoting Output" && echo "$ansi_c_var"
 
 #... ─── POWER: IFS manipulation and nullglob ────────────────────────────────────
 # section "3-POWER: IFS Word Splitting & nullglob"
