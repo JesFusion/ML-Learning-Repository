@@ -25,4 +25,22 @@
 
     Option 4. Lobby the roadmap: Seriously — AWS prioritizes regions based on customer demand signals. Enterprise customers have moved service availability timelines. That's not relevant to the screener, but it's real-world knowledge.
 
-}
+},
+
+{
+    Amazon Resource Names (ARNs) are unique, standardized strings used to identify any resource within the Amazon Web Services (AWS) ecosystem. They are critical for unambiguously specifying resources across different services, accounts, and regions.
+    
+    Standard ARN Format:    
+    ARNs generally follow a specific syntax, with components separated by colons:
+    
+    arn:partition:service:region:account-id:resource-id
+    
+    - arn: A required prefix that indicates the string is an ARN    
+    - partition: The group of resources the ARN is in. For standard regions, this is aws; for China, it’s aws-cn; and for GovCloud, it's aws-us-gov
+    - service: The AWS service name, such as s3, ec2, or iam
+    - region: The specific AWS region (e.g., us-east-1). This is left blank for global resources like IAM
+    - account-id: The 12-digit AWS account number without hyphens
+    - resource-id: The unique identifier for the specific resource (e.g., an S3 bucket name or EC2 instance ID)    
+},
+
+
