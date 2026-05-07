@@ -109,4 +109,49 @@
     -gt: Greater than (>)
     
     -ge: Greater than or equal (>=)
+},
+
+{
+    Bash exposes a set of special variables for debugging and meta-programming:
+
+    - $BASH_VERSION      # "5.1.16(1)-release" — what version of bash is running
+    - $BASH_SOURCE       # array of source filenames in the call stack
+    - $BASH_LINENO       # array of line numbers in the call stack
+    - $FUNCNAME          # array of function names in the call stack
+    - $LINENO            # current line number
+},
+
+{
+    Parameter Expansion:
+    
+    This is one of Bash's most powerful features: manipulating variables without spawning subshells (which means it's free, performance-wise)
+
+
+    1. Defaults and fallbacks:
+
+    - ${var:-default}    # use "default" if var is unset or empty
+    - ${var:=default}    # use "default" AND assign it to var if unset or empty
+    - ${var:?error msg}  # abort with "error msg" if var is unset or empty
+    - ${var:+alt}        # use "alt" if var IS set (opposite of :-)
+
+
+    2. String operations:
+
+    - ${#var}                     # length of string
+    - ${var:2:5}                  # substring: offset 2, length 5
+    - ${var#pattern}              # remove shortest prefix matching pattern
+    - ${var##pattern}             # remove longest prefix matching pattern (greedy)
+    - ${var%pattern}              # remove shortest suffix matching pattern
+    - ${var%%pattern}             # remove longest suffix matching pattern (greedy)
+    - ${var/pattern/replacement}  # replace first match
+    - ${var//pattern/replacement} # replace all matches
+
+    
+    3. Practical example: no basename, dirname, or tr needed:
+
+    path="/etc/nginx/nginx.conf"
+    - ${path##*/}     # "nginx.conf"  — like basename
+    - ${path%/*}      # "/etc/nginx"  — like dirname
+    - ${var^^}        # UPPERCASE entire string (Bash 4+)
+    - ${var,,}        # lowercase entire string (Bash 4+)
 }
