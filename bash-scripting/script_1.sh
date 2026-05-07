@@ -90,14 +90,6 @@ rm -rf "$workspace_folder"
 
 mkdir -p "$workspace_folder"
 
-
-
-#... [WHAT]:  Register the cleanup handler BEFORE doing any work.
-#... [WHY]:   If the script dies at line 12, cleanup still runs. EXIT fires on every
-#...          exit path: normal, set -e triggered, or Ctrl+C.
-#... [WATCH OUT]: Register the trap IMMEDIATELY after creating the resource you want cleaned. A crash between mktemp and the trap leaves garbage behind.
-# trap 'rm -rf "$WORKSPACE"' EXIT
-
 trap 'echo ""' DEBUG
 # trap 'rm -rf "$workspace_folder"' EXIT
 
@@ -105,87 +97,59 @@ trap 'echo ""' DEBUG
 
 cd "$workspace_folder"
 
-#... ─── COLOUR HELPERS (zero-dependency, pure ANSI) ─────────────────────────────
-#... [COMMAND MEANING] printf = Formatted print; used here to emit raw ANSI escape
-#...                   codes for terminal colour without spawning a subshell.
-# BOLD='\033[1m'; CYAN='\033[0;36m'; GREEN='\033[0;32m'
-# YELLOW='\033[0;33m'; RED='\033[0;31m'; RESET='\033[0m'
-
-# banner() {
-  # echo ""
-  # echo -e "${BOLD}${CYAN}================================================================${RESET}"
-  # echo -e "${BOLD}${CYAN}  $*${RESET}"
-  # echo -e "${BOLD}${CYAN}================================================================${RESET}"
-# }
-
-# section() {
-  # echo ""
-  # echo -e "${YELLOW}──────────────────────────────────────────${RESET}"
-  # echo -e "${YELLOW}  ▶  $*${RESET}"
-  # echo -e "${YELLOW}──────────────────────────────────────────${RESET}"
-# }
-
-# pass() { echo -e "  ${GREEN}✔ $*${RESET}"; }
-# info() { echo -e "  ${CYAN}ℹ $*${RESET}"; }
-
-# banner "SANDBOX: $WORKSPACE  |  BASH: $BASH_VERSION"
 
 
+if false; then
 
-cat <<EOF > "shebang_that_was_hardcoded.sh"
+  cat <<EOF > "shebang_that_was_hardcoded.sh"
 #!/bin/bash
 
 echo "I use a hardcoded path. If bash lives elsewhere, I break."
 EOF
 
-cat shebang_that_was_hardcoded.sh
+  cat shebang_that_was_hardcoded.sh
 
-# cat > "$WORKSPACE/portable_shebang.sh" << 'EOF'
-#...!/usr/bin/env bash
-# echo "I ask env to find bash on PATH. I work on any Unix system."
-# EOF
+  # cat > "$WORKSPACE/portable_shebang.sh" << 'EOF'
+  #...!/usr/bin/env bash
+  # echo "I ask env to find bash on PATH. I work on any Unix system."
+  # EOF
 
-cat > "shebang_that_is_portable.sh" << 'EOF'
+  cat > "shebang_that_is_portable.sh" << 'EOF'
 #!/usr/bin/env bash
 
 echo "I ask env to find bash on PATH. I work on any Unix system."
 EOF
 
-cat shebang_that_is_portable.sh
+  cat shebang_that_is_portable.sh
 
-#... [COMMAND MEANING] chmod = Change Mode; modifies the permission bits of a file.
-#... [FLAG MEANING]    +x = Execute bit; allows the file to be run directly as ./file.
-# chmod +x "$WORKSPACE/hardcoded_shebang.sh" "$WORKSPACE/portable_shebang.sh"
-# pass "Both scripts made executable via chmod +x"
-
-chmod +x "shebang_that_is_portable.sh" "shebang_that_was_hardcoded.sh"
+  chmod +x "shebang_that_is_portable.sh" "shebang_that_was_hardcoded.sh"
 
 
 
-echo "Both scripts made executable via chmod +x"
+  echo "Both scripts made executable via chmod +x"
 
 
 
-echo "" > setup_files.txt
+  echo "" > setup_files.txt
 
-for file_for_startup in /etc/profile "$HOME/.bash_profile" "$HOME/.bashrc" "$HOME/.bash_logout"; do
-  if [[ -f "$file_for_startup" ]]; then
+  for file_for_startup in /etc/profile "$HOME/.bash_profile" "$HOME/.bashrc" "$HOME/.bash_logout"; do
+    if [[ -f "$file_for_startup" ]]; then
 
-    cat "$file_for_startup" >> setup_files.txt
+      cat "$file_for_startup" >> setup_files.txt
 
-    echo -e "\n\n===================================== SECTION =====================================\n\n" >> setup_files.txt
+      echo -e "\n\n===================================== SECTION =====================================\n\n" >> setup_files.txt
 
-    echo "EXISTS: $file_for_startup"
+      echo "EXISTS: $file_for_startup"
 
-  else
-    echo "ABSENT: $file_for_startup (would be sourced if it existed)"
-  fi
-done
+    else
+      echo "ABSENT: $file_for_startup (would be sourced if it existed)"
+    fi
+  done
 
 
 
 
-cat <<EOF
+  cat <<EOF
 This script's PID = $$
 
 This script's PPID = $(ps -p $$ -o ppid= --no-headers 2>/dev/null | tr -d ' ' || echo 'N/A')
@@ -193,78 +157,38 @@ This script's PPID = $(ps -p $$ -o ppid= --no-headers 2>/dev/null | tr -d ' ' ||
 PID 1 cmdline =  $(cat /proc/1/comm 2>/dev/null || echo 'N/A')
 EOF
 
-mv "setup_files.txt" "demo_of_shebang.sh"
+  mv "setup_files.txt" "demo_of_shebang.sh"
 
-
-#... ─── DEVOPS CONTEXT: bash vs. bash -s remote execution ───────────────────────
-# section "1-DEVOPS: bash script.sh vs. ./script.sh — When Each Is Correct"
-
-#... [WHAT]: Create a script with a deliberate shebang pointing to a non-existent
-#...         interpreter, then show that `bash script.sh` bypasses it entirely.
-#... [WHY]:  In CI pipelines you often invoke `bash deploy.sh` explicitly. This bypasses the shebang AND the execute bit — useful for running scripts
-#...         downloaded from artifact storage without an explicit chmod +x first.
-# cat > "$WORKSPACE/shebang_demo.sh" << 'EOF'
-#!/totally/fake/path/to/bash
-# echo "My shebang is garbage, but bash invocation still works."
-# EOF
-
-cat <<EOF > "demo_of_shebang.sh"
+  cat <<EOF > "demo_of_shebang.sh"
 #!/totally/fake/path/to/bash
 echo "My shebang is garbage, but bash invocation still works."
 EOF
 
 
-#... [COMMAND MEANING] bash = Invoke the bash interpreter explicitly.
-#... [WHAT ELSE]: Use `env -i bash script.sh` to run with a scrubbed environment.
-# bash "$WORKSPACE/shebang_demo.sh"
-# pass "Segment 1 complete — Unix mental model established."
 
-bash "demo_of_shebang.sh"
+  bash "demo_of_shebang.sh"
 
-env -i bash "demo_of_shebang.sh"
+  env -i bash "demo_of_shebang.sh"
 
-rm -f "demo_of_shebang.sh" "shebang_that_is_portable.sh" "shebang_that_was_hardcoded.sh"
+  rm -f "demo_of_shebang.sh" "shebang_that_is_portable.sh" "shebang_that_was_hardcoded.sh"
 
-#... ============================================================================
-#...  SEGMENT 2 — VARIABLES, ASSIGNMENT, AND SCOPE
-#... ============================================================================
-# banner "SEGMENT 2 — Variables, Assignment & Scope"
 
-#... ─── BASIC: declare flags ─────────────────────────────────────────────────────
-# section "2-BASIC: declare — Typed Variable Definitions"
 
-#... [COMMAND MEANING] declare = Bash builtin that explicitly defines variables with type constraints, scope modifiers, and export flags.
-#... [FLAG MEANING]    -i = Integer; bash automatically evaluates arithmetic on assignment.
-#... [FLAG MEANING]    -r = Readonly; any re-assignment causes an immediate runtime error.
-#... [FLAG MEANING]    -x = Export; marks the variable for child process inheritance.
-#... [FLAG MEANING]    -a = Array (indexed); declares a zero-based integer-keyed array.
-#... [FLAG MEANING]    -A = Associative array; string-keyed hash map. Requires Bash 4+.
-# declare -i  SEG2_COUNT=0
-# declare -r  SEG2_CONST="IMMUTABLE"
-# declare -x  SEG2_EXPORTED="visible_to_children"
-# declare -a  SEG2_FRUITS=("mango" "pawpaw" "banana")
-# declare -A  SEG2_MAP=( [host]="prod-01" [env]="production" )
+  clear
 
-clear
+  declare -i jesse_age=20
 
-declare -i jesse_age=20
+  declare -r serious_variable="Don't you dare re-assign this variable!"
 
-declare -r serious_variable="Don't you dare re-assign this variable!"
+  declare -x gift_for_child="This is for my child"
 
-declare -x gift_for_child="This is for my child"
+  declare -a jesse_siblings=("favour" "caleb" "goodness" "chiedozie")
 
-declare -a jesse_siblings=("favour" "caleb" "goodness" "chiedozie")
+  declare -A user_info=( [name]="Nwachukwu Jesse" [status]="cool" [summary]="Jesse is cool" )
 
-declare -A user_info=( [name]="Nwachukwu Jesse" [status]="cool" [summary]="Jesse is cool" )
 
-# SEG2_COUNT=5+3   # Arithmetic is auto-evaluated because of -i
-# pass "declare -i: 5+3 evaluated to → $SEG2_COUNT"
-# pass "declare -r: constant value   → $SEG2_CONST"
-# pass "declare -x: exported var     → $SEG2_EXPORTED"
-# pass "declare -a: fruits[1]        → ${SEG2_FRUITS[1]}"
-# pass "declare -A: map[env]         → ${SEG2_MAP[env]}"
 
-cat <<EOF
+  cat <<EOF
 Jesse age in next 7 years is $((jesse_age+7))
 
 declare -r: constant value   → $serious_variable
@@ -275,227 +199,230 @@ EOF
 
 
 
-#... Prove -r actually blocks re-assignment
-# if ! (declare -r LOCKED="yes"; LOCKED="no") 2>/dev/null; then
-  # pass "declare -r: re-assignment correctly blocked"
-# fi
+  #... Prove -r actually blocks re-assignment
+  # if ! (declare -r LOCKED="yes"; LOCKED="no") 2>/dev/null; then
+    # pass "declare -r: re-assignment correctly blocked"
+  # fi
 
 
-# Prove -r actually blocks re-assignment
-if ! (declare -r jesse="cool"; jesse="not cool") 2>/dev/null; then
-  echo "declare -r: re-assignment correctly blocked"
+  # Prove -r actually blocks re-assignment
+  if ! (declare -r jesse="cool"; jesse="not cool") 2>/dev/null; then
+    echo "declare -r: re-assignment correctly blocked"
+  fi
+
+
+
+  global_variable="I am a global variable"
+
+  function_of_scopes(){
+    global_variable='I can be re-assigned'
+
+    local local_variable="I am a local variable"
+
+    local -i local_integer=35
+
+    local -r local_readonly="Non-reassignable variable"
+
+    local -a local_array=("Kaleo" "Linko" "Poppa")
+
+    local -A local_associative_array=( ['status']='charged' [amount]="$local_integer" )
+
+    echo "${local_associative_array[amount]}"
+  }
+
+  function_of_scopes
+
+
+
+  if [[ -z "${local_variable:-}" ]]; then
+    echo "After function : local_variable is GONE (local scope confirmed)"
+  fi
+
+
+
+  regular_variable="Just chilling out!"
+
+  unset regular_variable
+
+  if [[ -z "${regular_variable:-}" ]]; then
+    echo "unset confirmed: regular_variable has been ${regular_variable:-"removed"}"
+  fi
+
+
+  function_that_is_calling() {
+    log "This message came from inside function_that_is_calling()"
+  }
+
+  # caller_function
+  # pass "Segment 2 complete — Variables, scope, and introspection."
+
+  function_that_is_calling
+
+  log 1 "Jesse is sooo cooool!"
+
 fi
 
 
 
-#... ─── POWER: local scope and the footgun it prevents ───────────────────────────
-# section "2-POWER: local — Function Scope & the Global Side-Effect Footgun"
-
-#... [COMMAND MEANING] local = Restricts a variable to the enclosing function's scope, preventing accidental global side effects from nested calls.
-#... [FLAG MEANING]    -i = Integer (same semantics as declare -i, function-scoped).
-#... [FLAG MEANING]    -r = Readonly, function-scoped.
-#... [FLAG MEANING]    -a = Indexed array, function-scoped.
-#... [FLAG MEANING]    -A = Associative array, function-scoped.
-
-# GLOBAL_VAR="i_am_global"
-
-# scope_demo() {
-  # local LOCAL_VAR="i_am_local"
-  # local -i LOCAL_COUNTER=10
-  # GLOBAL_VAR="i_was_mutated_inside_the_function"  # This DOES change globally
-  # pass "Inside function: LOCAL_VAR=$LOCAL_VAR | GLOBAL_VAR=$GLOBAL_VAR"
-# }
-
-global_variable="I am a global variable"
-
-function_of_scopes(){
-  global_variable='I can be re-assigned'
-
-  local local_variable="I am a local variable"
-
-  local -i local_integer=35
-
-  local -r local_readonly="Non-reassignable variable"
-
-  local -a local_array=("Kaleo" "Linko" "Poppa")
-
-  local -A local_associative_array=( ['status']='charged' [amount]="$local_integer" )
-
-  echo "${local_associative_array[amount]}"
-}
-
-function_of_scopes
-
-# scope_demo
-# pass "After function : GLOBAL_VAR=$GLOBAL_VAR (mutation survived)"
-#... LOCAL_VAR is gone now — that's the whole point of local
-# if [[ -z "${LOCAL_VAR:-}" ]]; then
-  # pass "After function : LOCAL_VAR is GONE (local scope confirmed)"
-# fi
-
-
-if [[ -z "${local_variable:-}" ]]; then
-  echo "After function : local_variable is GONE (local scope confirmed)"
-fi
-
-#... ─── PRECISION: unset and the set -u interaction ──────────────────────────────
-# section "2-PRECISION: unset + set -u — Strict Variable Hygiene"
-
-#... [COMMAND MEANING] unset = Removes a variable or function from the shell environment.
-#... [WATCH OUT]: Under set -u, referencing a variable AFTER unset causes an immediate abort. Use ${var:-} to safely test for existence first.
-# TMP_SECRET="hunter2"
-# unset TMP_SECRET
-# if [[ -z "${TMP_SECRET:-}" ]]; then
-  # pass "unset confirmed: TMP_SECRET is gone. ${TMP_SECRET:-<empty>}"
-# fi
-
-regular_variable="Just chilling out!"
-
-unset regular_variable
-
-if [[ -z "${regular_variable:-}" ]]; then
-  echo "unset confirmed: regular_variable has been ${regular_variable:-"removed"}"
-fi
-
-
-
-#... ─── DEVOPS CONTEXT: Call-stack introspection for structured logging ───────────
-# section "2-DEVOPS: Introspection Variables — \$FUNCNAME, \$BASH_SOURCE, \$LINENO"
-
-#... [WHAT]: Build a log_trace function that prints WHERE in the call stack we are.
-#... [WHY]:  In production scripts that source multiple library files, you NEED to know which file, which function, and which line triggered a log event.
-# log_trace() {
-  #... [WHAT ELSE]: BASH_LINENO[0] is the line that *called* this function.
-  # echo "  [TRACE] ${BASH_SOURCE[1]:-<main>}:${BASH_LINENO[0]} → ${FUNCNAME[1]:-<main>}() → $*"
-# }
 
 
 
 
-# caller_function() {
-  # log_trace "This message came from inside caller_function()"
-# }
-
-function_that_is_calling() {
-  log "This message came from inside function_that_is_calling()"
-}
-
-# caller_function
-# pass "Segment 2 complete — Variables, scope, and introspection."
-
-function_that_is_calling
-
-log 1 "Jesse is sooo cooool!"
-
-#... ============================================================================
-#...  SEGMENT 3 — QUOTING, WORD SPLITTING & PARAMETER EXPANSION
-#... ============================================================================
-# banner "SEGMENT 3 — Quoting, Word Splitting & Parameter Expansion"
-
-#... ─── BASIC: The four quoting styles ──────────────────────────────────────────
-# section "3-BASIC: Quoting Mechanics — The Four Forms"
-
-# SEG3_VAR="hello world"
+# ===================================== SEGMENT 3 — QUOTING, WORD SPLITTING & PARAMETER EXPANSION =====================================
 
 clear
 
 var_3="Nwachukwu Jesse"
 
 
-#... [WHAT]: Show how each quoting form treats the same content differently.
-#... [WHY]:  Quoting is the #1 source of bash bugs. Missing double-quotes causes
-#... word splitting; missing single-quotes allows unwanted expansion.
-
-#... No quotes → word splitting fires; "hello world" becomes TWO arguments
-#... Double quotes → expansion happens, word splitting suppressed
-#... Single quotes → EVERYTHING is literal, zero expansion
-#... ANSI-C quoting → interprets \n, \t, \xNN escape sequences
-
-#... [COMMAND MEANING] echo = Print arguments to stdout; used here purely to
-#...                   demonstrate expansion behaviour.
-# echo "  Double-quoted  : \"$SEG3_VAR\" (expansion ✔, splitting ✘)"
-# echo '  Single-quoted  : '"'"'$SEG3_VAR'"'"' (expansion ✘, literal)'
-
-
 echo "Double-quoted: \"$var_3\" (expansion ✔, splitting ✘)"
 
-echo 'Single quoted: '"'"'$var_3'"'"'(expansion ✘, literal)'
+echo 'Single quoted: ''$var_3'' (expansion ✘, literal)'
 
-
-#... [FLAG MEANING]    $'...' = ANSI-C quoting; interprets \n, \t, \xNN escape codes.
-# ANSI_DEMO=$'line one\nline two\ttabbed'
-# info "ANSI-C quoting output:"
-# echo "$ANSI_DEMO"
 
 ansi_c_var=$'fist line\nsecond line\ttab'
 
 echo -e "ANSI-C Quoting Output" && echo "$ansi_c_var"
 
-#... ─── POWER: IFS manipulation and nullglob ────────────────────────────────────
-# section "3-POWER: IFS Word Splitting & nullglob"
 
-#... [COMMAND MEANING] IFS = Internal Field Separator; controls where bash splits
-#...                   unquoted variable expansions into separate words.
-#... [WATCH OUT]: Always save and restore IFS. Mutating IFS globally will silently
-#...              break while read loops and for-in loops downstream in your script.
-# SAVED_IFS="$IFS"
-# CSV_LINE="alpha,beta,gamma,delta"
-# IFS=',' read -ra SEG3_FIELDS <<< "$CSV_LINE"
-# IFS="$SAVED_IFS"
-# pass "IFS=',' split: ${#SEG3_FIELDS[@]} fields → [${SEG3_FIELDS[*]}]"
 
-#... [COMMAND MEANING] shopt = Shell Options; enables/disables optional shell behaviours.
-#... [FLAG MEANING]    -s nullglob = Make unmatched globs expand to nothing instead of
-#...                   the literal pattern string, preventing the "/*.ext as $1" bug.
-# shopt -s nullglob
-# SEG3_TMPDIR=$(mktemp -d)
-# SEG3_MATCHES=( "$SEG3_TMPDIR"/*.nonexistent )
-# info "nullglob on empty dir: ${#SEG3_MATCHES[@]} matches (no crash, no literal pattern)"
-# rm -rf "$SEG3_TMPDIR"
-# shopt -u nullglob
+ifs_saved="$IFS"
 
-#... ─── PRECISION: Full parameter expansion showcase ─────────────────────────────
-# section "3-PRECISION: Parameter Expansion — Every Production Form"
+the_csv_line="alpha,beta,gamma,delta"
 
-# FILEPATH="/var/log/nginx/access.log"
-# GREETING=""
-# REQUIRED_VAR="I_EXIST"
+IFS=',' read -ra segment_3_fields <<< "$the_csv_line"
 
-#... [WHAT]: Demonstrate every key expansion form in a single organised block.
-#... [WHY]:  Each of these replaces an external command call (basename, dirname,
-#...         tr, sed) with zero-fork pure bash — critical in tight loops.
+IFS="$ifs_saved"
 
-#... Default / fallback expansions
-#... [WHAT ELSE]: ${var:=default} additionally assigns the default back to var.
-# pass "\${var:-default}  → '${GREETING:-hello from default}' (var is empty)"
-# pass "\${var:+alt}      → '${REQUIRED_VAR:+was set!}' (var IS set)"
-# pass "\${var:?error}    demo: (would abort on unset — skip to preserve demo)"
+log "IFS=',' split: ${#segment_3_fields[@]} fields -> [${segment_3_fields[*]}]"
 
-#... String manipulation
-# pass "\${#FILEPATH}      → length = ${#FILEPATH} characters"
-# pass "\${FILEPATH##*/}   → basename: '${FILEPATH##*/}'"
-# pass "\${FILEPATH%/*}    → dirname:  '${FILEPATH%/*}'"
-# pass "\${FILEPATH#*/}    → strip 1st slash-prefix: '${FILEPATH#*/}'"
 
-#... Substring
-# LONGSTR="production_server_01"
-# pass "\${LONGSTR:12:6}   → '${LONGSTR:12:6}' (offset 12, length 6)"
+export segment_3_temporary_directory=$(mktemp -d)
 
-#... Case modification (Bash 4+)
-# LOWER_HOST="web-server-01"
-# pass "\${var^^}           → '${LOWER_HOST^^}' (all uppercase)"
-# pass "\${var,}            → '${LOWER_HOST^}' wait, ^ capitalises first char only"
-# FIRST_LOW="UPPERCASE_WORD"
-# pass "\${var,,}           → '${FIRST_LOW,,}' (all lowercase)"
-# pass "\${var^}            → '${LOWER_HOST^}' (first char capitalised)"
+echo "PID of main shell = $BASHPID"
 
-#... Global substitution — the zero-fork sed
-# DOTTED="192.168.1.100"
-# pass "\${var//./─}        → '${DOTTED//./-}' (global replace)"
+(
+  echo "PID of sub-shell = $BASHPID"
 
-#... Indirect expansion — bash's pointer dereference
-# PTR_NAME="BASH_VERSION"
-# pass "\${!varname}        → points to $PTR_NAME → '${!PTR_NAME}'"
+  shopt -s nullglob
+
+  segment_3_matches=( "$segment_3_temporary_directory"/*.nonexistent )
+
+  log "nullglob on empty dir: ${#segment_3_matches[@]} matches (no crash, no literal pattern)"
+
+  rm -rf "$segment_3_temporary_directory"
+
+  shopt -u nullglob
+)
+
+
+name="FILEPATH GREETING REQUIRED_VAR I_EXIST"
+
+echo "${name,,}"
+
+
+
+
+the_empty_variable=""
+
+assigned_variable="VARIABLE_EXISTS"
+
+
+# ${var:=default}
+if [ ! -v USER_NAME ]; then
+  unset USER_NAME
+fi
+
+echo "My name is ${USER_NAME:="Jesse"}"
+
+echo "The variable 'USER_NAME' was set to $USER_NAME"
+
+# ${var:-default}
+echo "the variable 'the_greet' is ${the_empty_variable:-"empty"}"
+
+# {var:+alt}
+echo "The variable 'assigned_variable' has already been ${assigned_variable:+"set"}"
+
+# ${var:?error}
+if false; then
+  echo "Error: ${a_variable_that_does_not_exist:?"variable 'a_variable_that_does_not_exist' is unset!"}"
+fi
+
+
+path_to_file="/home/jesfusion/Documents/ml/My-Learning/ML-Learning-Repository/logs/print.log"
+
+
+cat <<EOF
+path_to_file="/home/jesfusion/Documents/ml/My-Learning/ML-Learning-Repository/logs/print.log"
+
+There are ${#path_to_file} characters in the variable 'path_to_file'
+
+The base file is ${path_to_file##*/}
+
+The file-path to the base file is ${path_to_file%/*}
+
+The file-path is ${path_to_file#*/}
+EOF
+
+
+
+
+long_string="What if you are on an older version of Bash?"
+
+host_variable="do not use the $ sign before the variable name when using the -v flag."
+
+strong_quote="WE CAN EITHER LAUGH IN THE FACE OF DEATH OR DIE TRYING NOT TO!!"
+
+cat <<EOF
+long_string="What if you are on an older version of Bash?"
+
+${long_string:5:6}
+
+${long_string: -5:4} is a scripting language
+
+host_variable="do not use the $ sign before the variable name when using the -v flag."
+
+${host_variable^^}
+
+${host_variable^}
+
+strong_quote="WE CAN EITHER LAUGH IN THE FACE OF DEATH OR DIE TRYING NOT TO!!"
+
+${strong_quote,,}
+
+${strong_quote,}
+EOF
+
+
+math_var="2 - 4 - 6 - 8 - 10"
+
+
+ALIAS="LINENO"
+
+cat <<EOF
+${math_var//-/+} = 30
+
+${math_var/-/+} = -18
+
+We are at $ALIAS (line number) ${!ALIAS}
+EOF
+
+
+if false; then
+  All String Operations:
+
+  ${#var}                     # length of string
+  ${var:2:5}                  # substring: offset 2, length 5
+  ${var#pattern}              # remove shortest prefix matching pattern
+  ${var##pattern}             # remove longest prefix matching pattern (greedy)
+  ${var%pattern}              # remove shortest suffix matching pattern
+  ${var%%pattern}             # remove longest suffix matching pattern (greedy)
+  ${var/pattern/replacement}  # replace first match
+  ${var//pattern/replacement} # replace all matches
+
+fi
+
+
 
 #... $@ vs $* — the critical quoting difference
 #... [WHAT ELSE]: "$*" is only useful when you intentionally want all args as one word,
@@ -507,6 +434,77 @@ echo -e "ANSI-C Quoting Output" && echo "$ansi_c_var"
 # demo_args "arg one" "arg two" "arg three"
 
 # pass "Segment 3 complete — Quoting, IFS, and expansion arsenal loaded."
+
+fuse_arguments(){
+  cat <<EOF
+Arguments: $@
+
+${#@} arguments were passed to $FUNCNAME
+
+$*
+
+1 joined string: '$*'
+EOF
+}
+
+fuse_arguments "argument one" "argument two" "argument three"
+
+
+
+
+
+
+
+
+
+
+# ===================================== SEGMENT 4 — THE ENVIRONMENT, PATH, AND CREDENTIAL SAFETY =====================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 #... ============================================================================
