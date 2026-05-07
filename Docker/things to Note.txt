@@ -20,4 +20,18 @@
     We never just write a library (numpy), we must wlays include what version to use (numpy==2.2.6),to avoid our code breaking in the future due to updates from newest versions
 
     Pinned versions guarantee that the code runs the same today as it will in 5 years
+},
+
+{
+    Bind Mount vs. Managed Volume — When to Use Which:
+
+    Injecting a large dataset from your machine => Bind Mount
+    
+    Developing locally and want live code reload => Bind Mount
+    
+    Database persistence in a compose stack => Managed Volume
+    
+    Sharing data between multiple containers => Managed Volume
+    
+    CI/CD where host paths are unpredictable => Managed Volume
 }

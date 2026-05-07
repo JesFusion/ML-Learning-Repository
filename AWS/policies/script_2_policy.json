@@ -1,0 +1,27 @@
+{
+    "Version": "2012-10-17",
+
+    "Statement": [
+        {
+            "Sid":  "AllowScopedS3Access",
+
+            "Effect": "Allow",
+
+            "Action": [
+                "s3:GetObject",
+                "s3:PutObject",
+                "s3:DeleteObject",
+                "s3:ListBucket"
+            ],
+
+            "Resource": [
+
+                # For this to work, you must actually name your S3 buckets following the exact pattern jesse-bucket-[IAM-USERNAME]
+                "arn:   aws:s3:::jesse-bucket-${aws:username}",
+
+                "arn:aws:s3:::jesse-bucket-${aws:username}/*"
+            ]
+        }
+    ]
+
+}

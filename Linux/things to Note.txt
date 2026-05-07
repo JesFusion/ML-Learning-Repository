@@ -204,4 +204,14 @@
 
 {
     ps aux | grep [Command] is used to find all processes running a particular [Command]
+},
+
+{
+    Rules when defining variables:
+
+    1. NO SPACES around the = sign. MY_VAR = "hello" will fail spectacularly
+
+    2. No dollar sign when defining. You only use $ when accessing
+
+    3. By convention, use UPPERCASE for environment variables, lowercase for script-local variables.
 }

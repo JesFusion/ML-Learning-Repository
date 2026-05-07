@@ -4,14 +4,8 @@
 
 # production safety net...
 # Enforces strict execution: '-e' exits on errors, '-u' exits on undefined variables, and '-o pipefail' ensures errors within piped commands aren't masked.
-set -euo pipefail
 
-
-
-
-
-
-
+set -euxo pipefail # The added -x (xtrace) prints every command to the terminal before executing it, which is helpful for debugging but very "noisy" for regular use
 
 
 
