@@ -260,7 +260,7 @@ EOF
 
   log 1 "Jesse is sooo cooool!"
 
-fi
+
 
 
 
@@ -270,188 +270,190 @@ fi
 
 # ===================================== SEGMENT 3 — QUOTING, WORD SPLITTING & PARAMETER EXPANSION =====================================
 
-clear
+  clear
 
-var_3="Nwachukwu Jesse"
 
 
-echo "Double-quoted: \"$var_3\" (expansion ✔, splitting ✘)"
+  var_3="Nwachukwu Jesse"
 
-echo 'Single quoted: ''$var_3'' (expansion ✘, literal)'
 
+  echo "Double-quoted: \"$var_3\" (expansion ✔, splitting ✘)"
 
-ansi_c_var=$'fist line\nsecond line\ttab'
+  echo 'Single quoted: ''$var_3'' (expansion ✘, literal)'
 
-echo -e "ANSI-C Quoting Output" && echo "$ansi_c_var"
 
+  ansi_c_var=$'fist line\nsecond line\ttab'
 
+  echo -e "ANSI-C Quoting Output" && echo "$ansi_c_var"
 
-ifs_saved="$IFS"
 
-the_csv_line="alpha,beta,gamma,delta"
 
-IFS=',' read -ra segment_3_fields <<< "$the_csv_line"
+  ifs_saved="$IFS"
 
-IFS="$ifs_saved"
+  the_csv_line="alpha,beta,gamma,delta"
 
-log "IFS=',' split: ${#segment_3_fields[@]} fields -> [${segment_3_fields[*]}]"
+  IFS=',' read -ra segment_3_fields <<< "$the_csv_line"
 
+  IFS="$ifs_saved"
 
-export segment_3_temporary_directory=$(mktemp -d)
+  log "IFS=',' split: ${#segment_3_fields[@]} fields -> [${segment_3_fields[*]}]"
 
-echo "PID of main shell = $BASHPID"
 
-(
-  echo "PID of sub-shell = $BASHPID"
+  export segment_3_temporary_directory=$(mktemp -d)
 
-  shopt -s nullglob
+  echo "PID of main shell = $BASHPID"
 
-  segment_3_matches=( "$segment_3_temporary_directory"/*.nonexistent )
+  (
+    echo "PID of sub-shell = $BASHPID"
 
-  log "nullglob on empty dir: ${#segment_3_matches[@]} matches (no crash, no literal pattern)"
+    shopt -s nullglob
 
-  rm -rf "$segment_3_temporary_directory"
+    segment_3_matches=( "$segment_3_temporary_directory"/*.nonexistent )
 
-  shopt -u nullglob
-)
+    log "nullglob on empty dir: ${#segment_3_matches[@]} matches (no crash, no literal pattern)"
 
+    rm -rf "$segment_3_temporary_directory"
 
-name="FILEPATH GREETING REQUIRED_VAR I_EXIST"
+    shopt -u nullglob
+  )
 
-echo "${name,,}"
 
+  name="FILEPATH GREETING REQUIRED_VAR I_EXIST"
 
+  echo "${name,,}"
 
 
-the_empty_variable=""
 
-assigned_variable="VARIABLE_EXISTS"
 
+  the_empty_variable=""
 
-# ${var:=default}
-if [ ! -v USER_NAME ]; then
-  unset USER_NAME
-fi
+  assigned_variable="VARIABLE_EXISTS"
 
-echo "My name is ${USER_NAME:="Jesse"}"
 
-echo "The variable 'USER_NAME' was set to $USER_NAME"
+  # ${var:=default}
+  if [ ! -v USER_NAME ]; then
+    unset USER_NAME
+  fi
 
-# ${var:-default}
-echo "the variable 'the_greet' is ${the_empty_variable:-"empty"}"
+  echo "My name is ${USER_NAME:="Jesse"}"
 
-# {var:+alt}
-echo "The variable 'assigned_variable' has already been ${assigned_variable:+"set"}"
+  echo "The variable 'USER_NAME' was set to $USER_NAME"
 
-# ${var:?error}
-if false; then
-  echo "Error: ${a_variable_that_does_not_exist:?"variable 'a_variable_that_does_not_exist' is unset!"}"
-fi
+  # ${var:-default}
+  echo "the variable 'the_greet' is ${the_empty_variable:-"empty"}"
 
+  # {var:+alt}
+  echo "The variable 'assigned_variable' has already been ${assigned_variable:+"set"}"
 
-path_to_file="/home/jesfusion/Documents/ml/My-Learning/ML-Learning-Repository/logs/print.log"
+  # ${var:?error}
+  if false; then
+    echo "Error: ${a_variable_that_does_not_exist:?"variable 'a_variable_that_does_not_exist' is unset!"}"
+  fi
 
 
-cat <<EOF
-path_to_file="/home/jesfusion/Documents/ml/My-Learning/ML-Learning-Repository/logs/print.log"
+  path_to_file="/home/jesfusion/Documents/ml/My-Learning/ML-Learning-Repository/logs/print.log"
 
-There are ${#path_to_file} characters in the variable 'path_to_file'
 
-The base file is ${path_to_file##*/}
-
-The file-path to the base file is ${path_to_file%/*}
-
-The file-path is ${path_to_file#*/}
-EOF
-
-
-
-
-long_string="What if you are on an older version of Bash?"
-
-host_variable="do not use the $ sign before the variable name when using the -v flag."
-
-strong_quote="WE CAN EITHER LAUGH IN THE FACE OF DEATH OR DIE TRYING NOT TO!!"
-
-cat <<EOF
-long_string="What if you are on an older version of Bash?"
-
-${long_string:5:6}
-
-${long_string: -5:4} is a scripting language
-
-host_variable="do not use the $ sign before the variable name when using the -v flag."
-
-${host_variable^^}
-
-${host_variable^}
-
-strong_quote="WE CAN EITHER LAUGH IN THE FACE OF DEATH OR DIE TRYING NOT TO!!"
-
-${strong_quote,,}
-
-${strong_quote,}
-EOF
-
-
-math_var="2 - 4 - 6 - 8 - 10"
-
-
-ALIAS="LINENO"
-
-cat <<EOF
-${math_var//-/+} = 30
-
-${math_var/-/+} = -18
-
-We are at $ALIAS (line number) ${!ALIAS}
-EOF
-
-
-if false; then
-  All String Operations:
-
-  ${#var}                     # length of string
-  ${var:2:5}                  # substring: offset 2, length 5
-  ${var#pattern}              # remove shortest prefix matching pattern
-  ${var##pattern}             # remove longest prefix matching pattern (greedy)
-  ${var%pattern}              # remove shortest suffix matching pattern
-  ${var%%pattern}             # remove longest suffix matching pattern (greedy)
-  ${var/pattern/replacement}  # replace first match
-  ${var//pattern/replacement} # replace all matches
-
-fi
-
-
-
-#... $@ vs $* — the critical quoting difference
-#... [WHAT ELSE]: "$*" is only useful when you intentionally want all args as one word,
-#...              e.g., building a CSV string. "$@" is the correct default everywhere else.
-# demo_args() {
-  # info "  \"\$@\" → ${#@} separately quoted words (correct for passing args)"
-  # info "  \"\$*\" → 1 joined string: '$*'"
-# }
-# demo_args "arg one" "arg two" "arg three"
-
-# pass "Segment 3 complete — Quoting, IFS, and expansion arsenal loaded."
-
-fuse_arguments(){
   cat <<EOF
-Arguments: $@
+  path_to_file="/home/jesfusion/Documents/ml/My-Learning/ML-Learning-Repository/logs/print.log"
 
-${#@} arguments were passed to $FUNCNAME
+  There are ${#path_to_file} characters in the variable 'path_to_file'
 
-$*
+  The base file is ${path_to_file##*/}
 
-1 joined string: '$*'
+  The file-path to the base file is ${path_to_file%/*}
+
+  The file-path is ${path_to_file#*/}
 EOF
-}
-
-fuse_arguments "argument one" "argument two" "argument three"
 
 
 
 
+  long_string="What if you are on an older version of Bash?"
+
+  host_variable="do not use the $ sign before the variable name when using the -v flag."
+
+  strong_quote="WE CAN EITHER LAUGH IN THE FACE OF DEATH OR DIE TRYING NOT TO!!"
+
+  cat <<EOF
+  long_string="What if you are on an older version of Bash?"
+
+  ${long_string:5:6}
+
+  ${long_string: -5:4} is a scripting language
+
+  host_variable="do not use the $ sign before the variable name when using the -v flag."
+
+  ${host_variable^^}
+
+  ${host_variable^}
+
+  strong_quote="WE CAN EITHER LAUGH IN THE FACE OF DEATH OR DIE TRYING NOT TO!!"
+
+  ${strong_quote,,}
+
+  ${strong_quote,}
+EOF
+
+
+  math_var="2 - 4 - 6 - 8 - 10"
+
+
+  ALIAS="LINENO"
+
+  cat <<EOF
+  ${math_var//-/+} = 30
+
+  ${math_var/-/+} = -18
+
+  We are at $ALIAS (line number) ${!ALIAS}
+EOF
+
+
+  if false; then
+    All String Operations:
+
+    ${#var}                     # length of string
+    ${var:2:5}                  # substring: offset 2, length 5
+    ${var#pattern}              # remove shortest prefix matching pattern
+    ${var##pattern}             # remove longest prefix matching pattern (greedy)
+    ${var%pattern}              # remove shortest suffix matching pattern
+    ${var%%pattern}             # remove longest suffix matching pattern (greedy)
+    ${var/pattern/replacement}  # replace first match
+    ${var//pattern/replacement} # replace all matches
+
+  fi
+
+
+
+  #... $@ vs $* — the critical quoting difference
+  #... [WHAT ELSE]: "$*" is only useful when you intentionally want all args as one word,
+  #...              e.g., building a CSV string. "$@" is the correct default everywhere else.
+  # demo_args() {
+    # info "  \"\$@\" → ${#@} separately quoted words (correct for passing args)"
+    # info "  \"\$*\" → 1 joined string: '$*'"
+  # }
+  # demo_args "arg one" "arg two" "arg three"
+
+  # pass "Segment 3 complete — Quoting, IFS, and expansion arsenal loaded."
+
+  fuse_arguments(){
+    cat <<EOF
+  Arguments: $@
+
+  ${#@} arguments were passed to $FUNCNAME
+
+  $*
+
+  1 joined string: '$*'
+EOF
+  }
+
+  fuse_arguments "argument one" "argument two" "argument three"
+
+
+
+fi
 
 
 
@@ -460,19 +462,21 @@ fuse_arguments "argument one" "argument two" "argument three"
 
 # ===================================== SEGMENT 4 — THE ENVIRONMENT, PATH, AND CREDENTIAL SAFETY =====================================
 
+clear
+
+export exported_var="This variable was exported"
+
+declare -x exported_var2="This variable was also exported"
+
+echo -e "Exported variables result: \n\n$(env | grep exported_var)"
 
 
 
 
+check_scope=$(test_scope="Just Here" env | grep test_scope || echo "Absent in current shell")
 
 
-
-
-
-
-
-
-
+echo "$check_scope"
 
 
 
@@ -1050,7 +1054,7 @@ fuse_arguments "argument one" "argument two" "argument three"
 
 # pass "> and >> log lines: $(wc -l < "$SEG9_DIR/out.log") lines written"
 # pass "2> error captured:  $(cat "$SEG9_DIR/err.log")"
-# pass "&> combined log:    $(wc -l < "$SEG9_DIR/combined.log") lines"
+# pass "&> combine7d log:    $(wc -l < "$SEG9_DIR/combined.log") lines"
 
 #... [COMMAND MEANING] 2>&1 = Duplicate FD1 (stdout) into FD2 (stderr).
 #... [WATCH OUT]: Order matters! `cmd >file 2>&1` = both to file.
@@ -1113,7 +1117,8 @@ fuse_arguments "argument one" "argument two" "argument three"
 # pass "Here-string md5: $CHECKSUM_INPUT → $RESULT"
 
 #... ─── DEVOPS: PIPESTATUS and pipefail ─────────────────────────────────────────
-# section "9-DEVOPS: PIPESTATUS — Capturing Every Stage's Exit Code"
+# section "9-DEVOPS: PIPESTATUS — Capturing Every Stage's Exit Code"  
+ 
 
 #... [WHAT]: Run a pipeline and inspect every stage's exit code independently.
 #... [WHY]:  With pipefail enabled, you know the pipeline failed, but not WHERE.

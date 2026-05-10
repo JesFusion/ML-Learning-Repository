@@ -363,7 +363,7 @@ pass "declare -x result: $(env | grep SEG4_ALSO_EXPORTED | head -1)"
 
 # VAR=value command — scoped to a single invocation
 # [COMMAND MEANING] env = Environment; with no args, prints all exported variables.
-#                   With args, runs a command with a modified environment.
+# With args, runs a command with a modified environment.
 # [FLAG MEANING]    -i = Empty environment; strips ALL inherited variables.
 SCOPED_CHECK=$(SCOPE_TEST="only_here" env | grep SCOPE_TEST || echo "ABSENT in parent shell")
 info "VAR=value command scoping: parent shell sees → $SCOPED_CHECK"
