@@ -1,0 +1,29 @@
+[tool.pytest.ini_options]
+
+addopts = [
+    "-v",
+
+    "-s",
+
+    "-m run_this_code or jesse_is_cool",
+
+    "--tb=short",
+
+    "--strict-markers"
+]
+
+
+testpaths = [
+    "Pytest",
+    "FastAPI/fastAPI_test.py"
+]
+
+markers = [
+    "run_this_code: specific tests I want to run (Segment 6.1 and below)",
+
+    'jesse_is_cool: the mark was added because jesse is cool',
+]
+
+pythonpath = ["."]
+
+
