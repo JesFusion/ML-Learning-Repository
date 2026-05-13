@@ -2,391 +2,607 @@
 set -euo pipefail
 
 # ============================================================================
-# FastAPI LEAN-BUT-DEEP CURRICULUM: Production-Ready Full Build
-# ============================================================================
-# This script generates comprehensive, production-ready FastAPI code
-# demonstrating all 20 curriculum segments with pedagogical annotations.
-# 
-# Each segment showcases: Basic Usage → Power Usage → Precision Usage → Enterprise Context
+# FastAPI Lean-but-Deep: 10-Segment Production Learning Path
+# Generated: Comprehensive, executable code for enterprise mastery
 # ============================================================================
 
 WORKSPACE=$(mktemp -d)
+cd "$WORKSPACE"
 trap 'rm -rf "$WORKSPACE"' EXIT
 
-cd "$WORKSPACE"
-echo "🚀 Working in: $WORKSPACE"
+echo "================================================================================"
+echo "FASTAPI MASTERCLASS: Segment Generation Starting"
+echo "Workspace: $WORKSPACE"
+echo "================================================================================"
 
 # Create virtual environment
 python3 -m venv venv
 source venv/bin/activate
-
-# Install dependencies
-pip install --quiet --upgrade pip
-pip install fastapi uvicorn pydantic sqlalchemy aioredis pytest httpx alembic \
-  python-jose passlib python-multipart pyjwt cryptography python-json-logger \
-  structlog opentelemetry-api opentelemetry-sdk prometheus-client tenacity \
-  pybreaker psutil orjson
+pip install -q fastapi uvicorn pydantic sqlalchemy aiosqlite redis aioredis orjson httpx --upgrade
 
 echo ""
-echo "============================================================================"
+echo "================================================================================"
 echo "SEGMENT 1: FastAPI Core Architecture & ASGI Request Lifecycle"
-echo "============================================================================"
+echo "================================================================================"
 
-cat << 'EOF' > segment_1_core_architecture.py
+cat << 'SEGMENT_1_EOF' > segment_1_core_architecture.py
 """
-[WHAT]: ASGI, Starlette, Uvicorn, request/response lifecycle, async/sync boundaries
-[WHY]: Foundation for non-blocking I/O. Knowing ASGI prevents event loop blocking disasters.
+Segment 1: FastAPI Core Architecture & ASGI Request Lifecycle
+=============================================================
+
+This module demonstrates ASGI fundamentals, Starlette's routing engine,
+Uvicorn's event loop management, and proper async/sync execution contexts.
 """
 
+import asyncio
+from contextlib import asynccontextmanager
+from typing import Optional
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
-import asyncio
-from typing import Callable
+import uvicorn
 
-# ========== BASIC USAGE: Lifecycle Hooks ==========
+# [COMPONENT MEANING] FastAPI = The modern Python web framework built on ASGI + Starlette that handles async HTTP routing and dependency injection.
 
-# [COMPONENT MEANING] @app.on_event("startup") = Registers function to run ONCE when app starts
-# [ARGUMENT MEANING] "startup" = Hook type; also "shutdown" available
-app = FastAPI()
+# [WHAT] Lifespan events management (startup/shutdown hooks)
+# [WHY] We need to establish database connections, cache warming, or cleanup resources at application boot and graceful shutdown.
+# [HOW] Using the async context manager approach (lifespan) instead of deprecated @app.on_event().
 
-startup_state = {"initialized": False}
-
-@app.on_event("startup")
-async def startup_event():
-    """Runs once before accepting requests. Async context available."""
-    startup_state["initialized"] = True
-    print("[STARTUP] App initialized")
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Runs once during graceful shutdown. Clean up resources here."""
-    print("[SHUTDOWN] App shutting down")
-
-@app.get("/basic")
-async def basic_endpoint():
-    """[HOW]: Async route yields control to event loop during I/O."""
-    await asyncio.sleep(0.1)  # Non-blocking I/O
-    return {"status": "ok"}
-
-# ========== POWER USAGE: Lifespan Context Manager (FastAPI 0.93+) ==========
-
-# [COMPONENT MEANING] lifespan = Modern async context manager for startup/shutdown
-# More elegant than separate decorators, allows shared state between startup/shutdown
+@asynccontextmanager
 async def lifespan(app: FastAPI):
-    """[WHAT]: Unified startup/shutdown with context manager syntax."""
-    # SETUP PHASE (runs before app accepts requests)
-    print("[LIFESPAN] Starting up")
-    app.state.db_pool = {"initialized": True, "connections": []}
-    yield  # App runs here, receiving requests
-    # TEARDOWN PHASE (runs during shutdown)
-    print("[LIFESPAN] Shutting down")
-    app.state.db_pool["connections"].clear()
-
-app_v2 = FastAPI(lifespan=lifespan)
-
-# ========== PRECISION USAGE: Async/Sync Boundaries & Event Loop Safety ==========
-
-# [WATCH OUT]: Synchronous function in async context BLOCKS event loop
-@app.get("/blocking-trap")
-async def blocking_trap():
-    """DANGEROUS: This blocks the event loop for EVERYONE."""
-    import time
-    time.sleep(1)  # ❌ BLOCKS EVENT LOOP! All other requests wait!
-    return {"status": "slow"}
-
-# [COMPONENT MEANING] run_in_executor() = Offload blocking code to thread pool
-# [ARGUMENT MEANING] None = Uses default ThreadPoolExecutor (default interpreter)
-@app.get("/non-blocking")
-async def non_blocking():
-    """[HOW]: Offload blocking I/O to executor, keep event loop free."""
-    loop = asyncio.get_event_loop()
-    # [WATCH OUT]: Never block in async; always use run_in_executor for sync code
-    result = await loop.run_in_executor(None, lambda: 2 + 2)
-    return {"result": result}
-
-# ========== ENTERPRISE CONTEXT: Custom Request/Response Handling ==========
-
-# [COMPONENT MEANING] Request = Starlette request object with full HTTP context
-# [COMPONENT MEANING] Response = Starlette response builder for custom HTTP output
-@app.get("/custom-response")
-async def custom_response(request: Request) -> Response:
-    """[WHY]: Enterprise apps need custom headers, status codes, and streaming."""
-    # Access request internals
-    client_host = request.client.host if request.client else "unknown"
-    user_agent = request.headers.get("user-agent", "unknown")
+    # [WHAT]: Startup logic runs once before the application accepts requests.
+    print("[STARTUP] Initializing application resources...")
+    # Simulate database connection pool initialization
+    startup_state = {"db": "Connected", "cache": "Warmed", "workers": 4}
+    app.state.startup_data = startup_state
+    print(f"[STARTUP] State initialized: {startup_state}")
     
-    # [WHAT ELSE]: Response types include JSONResponse, FileResponse, StreamingResponse
-    response = JSONResponse(
-        {"host": client_host, "agent": user_agent},
-        status_code=200,
-        headers={"X-Custom-Header": "enterprise-value"}
+    yield  # Application runs here
+    
+    # [WHAT]: Shutdown logic runs once during graceful shutdown, AFTER server stops accepting new connections.
+    print("[SHUTDOWN] Cleaning up application resources...")
+    if hasattr(app.state, "startup_data"):
+        del app.state.startup_data
+    print("[SHUTDOWN] Cleanup complete")
+
+# [COMPONENT MEANING] FastAPI constructor with lifespan = Sets up the application with async context manager for startup/shutdown logic.
+app = FastAPI(title="Segment 1: Core Architecture", lifespan=lifespan)
+
+
+# [WHAT] Basic async endpoint demonstrating event loop cooperation
+# [WHY] Non-blocking I/O is the religion. Async endpoints yield control during I/O, allowing Uvicorn to handle other requests.
+@app.get("/sync-endpoint")
+def sync_endpoint():
+    # [WHAT]: Synchronous function - BLOCKS the event loop thread.
+    # [WATCH OUT]: Never do blocking I/O (time.sleep, requests.get, DB queries) in async contexts without run_in_executor.
+    result = {"message": "I am sync", "blocks_event_loop": True}
+    return JSONResponse(content=result, status_code=200)
+
+@app.get("/async-endpoint")
+async def async_endpoint():
+    # [WHAT]: Async function - YIELDS control to event loop during await.
+    # [HOW]: Uses await to suspend execution, allowing other requests to be processed.
+    await asyncio.sleep(0.1)  # Simulate I/O operation
+    result = {"message": "I am async", "blocks_event_loop": False}
+    return JSONResponse(content=result, status_code=200)
+
+
+# [WHAT] Demonstrating the Request object (Starlette internals exposed).
+# [WHY] Request object provides access to headers, query params, body, and connection metadata.
+@app.post("/inspect-request")
+async def inspect_request(request: Request):
+    # [COMPONENT MEANING] Request = Starlette object representing the incoming HTTP request with full metadata.
+    
+    # [HOW] Extract various request properties
+    method = request.method  # HTTP method (GET, POST, etc.)
+    url = str(request.url)  # Full URL including query params
+    headers = dict(request.headers)  # Headers as dictionary
+    client_host = request.client.host if request.client else "Unknown"
+    path = request.url.path  # Just the path part
+    query_params = dict(request.query_params)  # Query string as dictionary
+    
+    # [WHAT] Reading the request body (must be awaited as it's an I/O operation).
+    body = await request.body()  # Raw bytes
+    
+    return JSONResponse(content={
+        "method": method,
+        "path": path,
+        "headers": headers,
+        "client_host": client_host,
+        "query_params": query_params,
+        "body_bytes_length": len(body),
+    }, status_code=200)
+
+
+# [WHAT] Custom Response object with explicit status and headers.
+# [WHY] Response objects give us fine-grained control over HTTP metadata.
+@app.get("/custom-response")
+async def custom_response():
+    # [COMPONENT MEANING] Response = Starlette object for building custom HTTP responses with status codes and headers.
+    
+    # [HOW] Create a Response with explicit status code and custom headers
+    response = Response(
+        content="Custom response body",
+        status_code=201,  # Explicit status code
+        headers={"X-Custom-Header": "MyValue", "X-Powered-By": "FastAPI-Segment1"}
     )
     return response
 
-# Demonstrates async/sync correctness
-@app.get("/async-correct")
-async def async_correct():
-    """[HOW]: Async handler can safely call other async functions."""
-    result = await asyncio.sleep(0)
-    return {"status": "async-safe"}
 
-@app.post("/sync-for-cpu")
-def sync_for_cpu():
-    """[WATCH OUT]: CPU-bound work should be SYNC (decorated as 'def', not 'async def')."""
-    # Pure CPU computation; no I/O, so async overhead is wasted
-    return {"cpu_work": sum(range(1000))}
+# [WHAT] Demonstrating async context and event loop state.
+# [WHY] Understanding the event loop is critical for debugging async issues and preventing blocking.
+@app.get("/event-loop-info")
+async def event_loop_info():
+    # [COMPONENT MEANING] asyncio.get_event_loop() = Retrieves the currently running event loop instance.
+    
+    loop = asyncio.get_event_loop()
+    
+    return JSONResponse(content={
+        "loop_is_running": loop.is_running(),
+        "loop_type": type(loop).__name__,
+        "message": "This endpoint is running INSIDE the event loop (Uvicorn's context)",
+    }, status_code=200)
+
+
+# [WHAT] Demonstrating the run_in_executor pattern for blocking I/O.
+# [WHY] Some libraries (requests, psycopg2) are blocking. We must offload them to thread pool without choking the event loop.
+@app.get("/blocking-safe")
+async def blocking_safe():
+    # [COMPONENT MEANING] loop.run_in_executor() = Method to execute blocking synchronous code in a thread pool without blocking the event loop.
+    
+    def blocking_operation():
+        # [WHAT]: This simulates a blocking I/O operation (like a DB query or HTTP request).
+        # [HOW]: This runs in a separate thread, NOT blocking the event loop.
+        import time
+        time.sleep(0.5)  # Simulate blocking operation
+        return {"blocking_result": "Completed in background thread"}
+    
+    loop = asyncio.get_event_loop()
+    # [ARGUMENT MEANING] run_in_executor = Schedules blocking_operation to run in the default ThreadPoolExecutor.
+    result = await loop.run_in_executor(None, blocking_operation)
+    
+    return JSONResponse(content=result, status_code=200)
+
+
+# [WHAT] Demonstrating multiple HTTP methods on the same endpoint.
+# [WHY] RESTful APIs need different handlers for different HTTP verbs with proper semantics.
+@app.get("/resource/{resource_id}")
+async def get_resource(resource_id: int):
+    # [WHAT]: GET retrieves a resource (idempotent, no side effects).
+    return JSONResponse(content={"action": "GET", "resource_id": resource_id}, status_code=200)
+
+@app.post("/resource")
+async def create_resource():
+    # [WHAT]: POST creates a new resource (idempotent in the general sense, but creates new state).
+    return JSONResponse(content={"action": "POST", "new_id": 99}, status_code=201)
+
+@app.put("/resource/{resource_id}")
+async def update_resource_full(resource_id: int):
+    # [WHAT]: PUT replaces the entire resource (idempotent).
+    return JSONResponse(content={"action": "PUT", "resource_id": resource_id}, status_code=200)
+
+@app.patch("/resource/{resource_id}")
+async def update_resource_partial(resource_id: int):
+    # [WHAT]: PATCH partially updates a resource.
+    return JSONResponse(content={"action": "PATCH", "resource_id": resource_id}, status_code=200)
+
+@app.delete("/resource/{resource_id}")
+async def delete_resource(resource_id: int):
+    # [WHAT]: DELETE removes a resource.
+    return JSONResponse(content={"action": "DELETE", "resource_id": resource_id, "deleted": True}, status_code=204)
+
+
+# [WHAT] Edge case: Blocking the event loop (ANTIPATTERN - DO NOT DO THIS).
+# [WHY] Demonstrating what happens when you don't use async properly.
+@app.get("/blocking-bad")
+def blocking_bad():
+    # [WATCH OUT]: This is a SYNCHRONOUS endpoint that does blocking I/O.
+    # For a single request, it blocks the event loop for this duration.
+    # If requests pile up, they queue and the server becomes unresponsive.
+    import time
+    time.sleep(1)  # BLOCKING - NEVER DO THIS IN PRODUCTION
+    return JSONResponse(content={"message": "This blocked the event loop"}, status_code=200)
+
+
+# [WHAT] Health check endpoint (common in production).
+# [WHY] Kubernetes and load balancers use health checks to determine if the app is alive.
+@app.get("/health")
+async def health():
+    # [WHAT]: Lightweight liveness probe.
+    # [HOW]: Return early with minimal processing.
+    return JSONResponse(content={"status": "healthy", "service": "segment-1"}, status_code=200)
+
 
 if __name__ == "__main__":
-    import uvicorn
-    # [COMPONENT MEANING] uvicorn.run() = Starts ASGI server with event loop management
-    # [ARGUMENT MEANING] --host 0.0.0.0 = Listen on all interfaces
-    # [ARGUMENT MEANING] --port 8000 = Standard FastAPI port
-    # uvicorn.run(app, host="0.0.0.0", port=8000, reload=False)
-    pass
-EOF
+    print("\n[INFO] Starting Uvicorn server on http://localhost:8001")
+    print("[INFO] Visit http://localhost:8001/docs for interactive API documentation")
+    print("[INFO] Try these endpoints:")
+    print("  - GET /sync-endpoint")
+    print("  - GET /async-endpoint")
+    print("  - POST /inspect-request (send JSON body)")
+    print("  - GET /custom-response")
+    print("  - GET /event-loop-info")
+    print("  - GET /blocking-safe")
+    print("  - GET /resource/42")
+    print("  - GET /health")
+    print("\n")
+    
+    # [COMPONENT MEANING] uvicorn.run() = Entry point that starts the ASGI server with Uvicorn.
+    uvicorn.run(
+        app=app,
+        host="127.0.0.1",
+        port=8001,
+        workers=1,  # Single worker for learning (production uses more)
+        log_level="info"
+    )
+SEGMENT_1_EOF
 
-echo "✓ Segment 1: Core Architecture (segment_1_core_architecture.py)"
+echo "[✓] Segment 1 generated: segment_1_core_architecture.py"
+
 
 echo ""
-echo "============================================================================"
+echo "================================================================================"
 echo "SEGMENT 2: Request Validation with Pydantic Deep-Dive"
-echo "============================================================================"
+echo "================================================================================"
 
-cat << 'EOF' > segment_2_pydantic_validation.py
+cat << 'SEGMENT_2_EOF' > segment_2_pydantic_validation.py
 """
-[WHAT]: BaseModel, field validation, custom validators, polymorphic unions, edge cases
-[WHY]: Pydantic is the production-ready validator. Strict mode prevents data corruption.
+Segment 2: Request Validation with Pydantic Deep-Dive
+====================================================
+
+This module demonstrates Pydantic v2 BaseModel, field validators, 
+model validators, complex nested models, discriminated unions, and edge cases.
 """
 
-from fastapi import FastAPI, HTTPException, Path, Query, Body, Header, Cookie
-from pydantic import BaseModel, Field, field_validator, model_validator, ValidationInfo, constr, conint
-from typing import Optional, Union, Annotated, Literal
+from typing import Literal, Optional, Union
+from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict, ValidationInfo
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse
 import re
+import uvicorn
 
-app = FastAPI()
+app = FastAPI(title="Segment 2: Pydantic Validation")
 
-# ========== BASIC USAGE: Simple BaseModel & Field Validation ==========
 
-# [COMPONENT MEANING] BaseModel = Pydantic root class for defining request/response schemas
-# [ARGUMENT MEANING] Field(default, description, ...) = Attach validation rules and metadata
-class UserCreate(BaseModel):
-    """[HOW]: Pydantic auto-validates on instantiation."""
-    username: str = Field(..., min_length=3, max_length=50, description="Username must be 3-50 chars")
-    email: str = Field(..., pattern=r"^[^@]+@[^@]+\.[^@]+$", description="Valid email required")
-    age: int = Field(default=None, ge=0, le=150, description="Age must be 0-150")
-
-@app.post("/basic-validation")
-async def basic_validation(user: UserCreate):
-    """[WATCH OUT]: Pydantic validates before route executes. Invalid data returns 422."""
-    return {"status": "validated", "user": user}
-
-# ========== POWER USAGE: Custom Validators & Context ==========
-
-# [COMPONENT MEANING] @field_validator = Decorator for custom field-level validation
-# [ARGUMENT MEANING] mode="before" = Run BEFORE type coercion; mode="after" = RUN AFTER
-class AdvancedUser(BaseModel):
-    username: str = Field(..., min_length=3)
-    password: str = Field(..., min_length=8)
-    password_confirm: str
+# [WHAT] Basic Pydantic BaseModel with Field constraints.
+# [WHY] Pydantic validates incoming data, rejecting invalid requests at the framework boundary.
+class User(BaseModel):
+    # [COMPONENT MEANING] BaseModel = Pydantic's core class for defining data schemas with automatic validation and serialization.
     
-    @field_validator("username", mode="before")
+    # [ARGUMENT MEANING] Field() = Pydantic function for adding validation constraints and metadata to model fields.
+    user_id: int = Field(ge=1, description="User ID must be >= 1")
+    # [ARGUMENT MEANING] ge = Field constraint meaning "greater than or equal to" for numeric validation.
+    
+    username: str = Field(min_length=3, max_length=50, description="Username length must be 3-50 chars")
+    # [ARGUMENT MEANING] min_length/max_length = Field constraints requiring minimum/maximum character count.
+    
+    email: str = Field(regex=r"^[\w\.-]+@[\w\.-]+\.\w+$", description="Valid email format required")
+    # [ARGUMENT MEANING] regex = Field constraint that enforces a regular expression pattern on string fields.
+    
+    age: Optional[int] = Field(default=None, gt=0, le=150, description="Age between 0 and 150")
+    # [ARGUMENT MEANING] gt/le = Field constraints meaning "greater than" (exclusive) and "less than or equal to".
+    
+    score: float = Field(default=0.0, multiple_of=0.5, description="Score must be multiple of 0.5")
+    # [ARGUMENT MEANING] multiple_of = Field constraint requiring the value to be a multiple of a specified number.
+
+
+# [WHAT] Custom field validator (runs on individual field).
+# [WHY] Sometimes regex or built-in constraints aren't enough; we need custom logic.
+class Product(BaseModel):
+    product_id: int = Field(ge=1)
+    name: str = Field(min_length=1, max_length=100)
+    price: float = Field(gt=0)
+    sku: str = Field(min_length=5)
+    
+    # [COMPONENT MEANING] field_validator = Decorator (Pydantic v2) for creating custom field-level validation logic with access to field value.
+    @field_validator("sku")
     @classmethod
-    def username_alphanumeric(cls, v: str) -> str:
-        """[WHAT]: Pre-validation; coerce or reject before type checking."""
-        if not re.match(r"^[a-zA-Z0-9_]+$", v):
-            raise ValueError("Username must be alphanumeric + underscore")
-        return v.lower()  # Normalize to lowercase
+    def validate_sku(cls, value: str) -> str:
+        # [WHAT]: Custom validation for SKU format (must start with 'SKU-' followed by digits).
+        # [HOW]: Check the value and raise ValueError if invalid.
+        if not value.startswith("SKU-"):
+            raise ValueError("SKU must start with 'SKU-'")
+        if not value[4:].isdigit():
+            raise ValueError("SKU suffix must contain only digits")
+        return value.upper()  # Normalize to uppercase
     
-    @field_validator("password", mode="after")
+    @field_validator("price")
     @classmethod
-    def password_strong(cls, v: str) -> str:
-        """[HOW]: Post-validation; password is already string after type coercion."""
-        if not any(c.isupper() for c in v):
-            raise ValueError("Password must contain uppercase letter")
-        if not any(c.isdigit() for c in v):
-            raise ValueError("Password must contain digit")
-        return v
+    def validate_price(cls, value: float) -> float:
+        # [WHAT]: Custom validation ensuring price has at most 2 decimal places.
+        if len(str(value).split(".")[-1]) > 2:
+            raise ValueError("Price must have at most 2 decimal places")
+        return round(value, 2)
+
+
+# [WHAT] Model-level validator with access to multiple fields.
+# [WHY] Sometimes validation requires comparing multiple fields (e.g., start_date < end_date).
+class DateRange(BaseModel):
+    event_name: str
+    start_date: str = Field(regex=r"^\d{4}-\d{2}-\d{2}$", description="YYYY-MM-DD format")
+    end_date: str = Field(regex=r"^\d{4}-\d{2}-\d{2}$", description="YYYY-MM-DD format")
     
-    # [COMPONENT MEANING] @model_validator = Cross-field validation for coherence
+    # [COMPONENT MEANING] model_validator = Decorator (Pydantic v2) for creating model-level validation that can access multiple fields simultaneously.
     @model_validator(mode="after")
-    def passwords_match(self) -> "AdvancedUser":
-        """[WHAT]: Access multiple fields; validate relationships."""
-        if self.password != self.password_confirm:
-            raise ValueError("Passwords do not match")
+    # [ARGUMENT MEANING] mode="after" = Validation mode parameter that runs validation after type coercion and field validation.
+    def validate_date_range(self):
+        # [WHAT]: Ensure end_date > start_date.
+        # [HOW]: Access multiple fields and compare them.
+        if self.end_date <= self.start_date:
+            raise ValueError("end_date must be after start_date")
         return self
 
-@app.post("/advanced-validation")
-async def advanced_validation(user: AdvancedUser):
-    return {"status": "validated", "username": user.username}
 
-# ========== PRECISION USAGE: Polymorphic Models & Discriminator ==========
+# [WHAT] Polymorphic models using discriminated unions.
+# [WHY] APIs need to accept different request types based on a discriminator field.
+class EmailNotification(BaseModel):
+    type: Literal["email"]
+    recipient: str = Field(regex=r"^[\w\.-]+@[\w\.-]+\.\w+$")
+    subject: str
 
-# [COMPONENT MEANING] discriminator = Field that determines which Union member to use
-# [ARGUMENT MEANING] discriminator="type" = Field "type" decides shape of payload
-class Cat(BaseModel):
-    pet_type: Literal["cat"] = "cat"
-    meows: int
+class SMSNotification(BaseModel):
+    type: Literal["sms"]
+    phone_number: str = Field(regex=r"^\+\d{1,3}\d{6,14}$")
+    message: str
 
-class Dog(BaseModel):
-    pet_type: Literal["dog"] = "dog"
-    barks: float
+class PushNotification(BaseModel):
+    type: Literal["push"]
+    device_id: str
+    title: str
 
-class Hamster(BaseModel):
-    pet_type: Literal["hamster"] = "hamster"
-    fur_color: str
+# [COMPONENT MEANING] discriminator = Parameter for creating polymorphic unions where a specific field determines which model to use.
+# [ARGUMENT MEANING] Literal["email"/"sms"/"push"] = Union type that enforces the exact type value.
+Notification = Union[EmailNotification, SMSNotification, PushNotification]
 
-# [WHAT]: Discriminated union picks correct model based on "pet_type" field
-Pet = Annotated[Union[Cat, Dog, Hamster], Field(discriminator="pet_type")]
 
-class PetStore(BaseModel):
-    pet: Pet
-    owner: str
+# [WHAT] Complex nested models demonstrating composition.
+# [WHY] Real APIs have nested data structures (user with addresses, orders, etc.).
+class Address(BaseModel):
+    street: str = Field(min_length=1)
+    city: str = Field(min_length=1)
+    country: str = Field(min_length=2, max_length=2, description="ISO 3166-1 alpha-2 country code")
+    zip_code: str = Field(regex=r"^\d{5}(-\d{4})?$", description="US format with optional +4")
 
-@app.post("/polymorphic")
-async def polymorphic_endpoint(store: PetStore):
-    """[HOW]: Pydantic uses discriminator to pick correct Union member."""
-    return {"owner": store.owner, "pet_type": store.pet.pet_type}
+class Order(BaseModel):
+    order_id: int = Field(ge=1)
+    total: float = Field(gt=0)
+    items: list[str] = Field(min_length=1, max_length=100, description="List of item names")
 
-# ========== ENTERPRISE CONTEXT: Path/Query/Body Validation ==========
-
-# [COMPONENT MEANING] Path() = Extract & validate URL path parameters
-# [COMPONENT MEANING] Query() = Extract & validate query string parameters
-# [COMPONENT MEANING] Header() = Extract & validate HTTP headers
-# [ARGUMENT MEANING] alias="user-id" = External name differs from Python name
-class QueryFilter(BaseModel):
-    search: str = Field(default="", min_length=0, max_length=100)
-    limit: int = Field(default=10, ge=1, le=100)
-
-@app.get("/search/{item_id}")
-async def search_with_filters(
-    item_id: Annotated[int, Path(ge=1, description="Item ID must be positive")] = 1,
-    query: QueryFilter = Query(),
-    x_token: Annotated[str, Header(description="API token")] = None
-):
-    """[WHY]: Enterprise apps need strict parameter validation across all input sources."""
-    return {"item_id": item_id, "query": query, "has_token": x_token is not None}
-
-# [COMPONENT MEANING] ConfigDict(extra="forbid") = Reject unknown fields
-class StrictPayload(BaseModel):
-    model_config = {"extra": "forbid"}
+class UserProfile(BaseModel):
+    user_id: int = Field(ge=1)
     name: str
-    value: int
+    email: str
+    addresses: list[Address] = Field(min_length=1, max_length=5, description="1-5 addresses allowed")
+    orders: list[Order] = Field(default_factory=list)
 
-@app.post("/strict")
-async def strict_endpoint(payload: StrictPayload):
-    """[WATCH OUT]: ConfigDict(extra='forbid') raises error on unknown fields."""
-    return payload
 
-# [COMPONENT MEANING] constr() = Inline constrained string type
-# [COMPONENT MEANING] conint() = Inline constrained integer type
-UsernameType = constr(pattern=r"^[a-z0-9]{3,20}$")  # type: ignore
-PortType = conint(ge=1, le=65535)  # type: ignore
+# [WHAT] Model configuration for strict validation.
+# [WHY] Control how extra fields are handled and other validation behavior.
+class StrictProduct(BaseModel):
+    # [COMPONENT MEANING] model_config = Pydantic v2 configuration dictionary for model-level settings like extra field handling.
+    # [ARGUMENT MEANING] ConfigDict(extra="forbid") = Configuration that raises validation errors when extra fields are present in input data.
+    model_config = ConfigDict(extra="forbid")
+    
+    name: str
+    price: float
 
-@app.post("/constrained")
-async def constrained_types(username: UsernameType, port: PortType):
-    """[HOW]: Constrained types embed validation in type definition."""
-    return {"username": username, "port": port}
+class LooseProduct(BaseModel):
+    # [ARGUMENT MEANING] ConfigDict(extra="ignore") = Configuration that silently strips extra fields not defined in the model.
+    model_config = ConfigDict(extra="ignore")
+    
+    name: str
+    price: float
+
+
+# [WHAT] Field aliases for mapping external field names to Python-safe names.
+# [WHY] APIs sometimes have kebab-case or camelCase parameters that don't map to Python snake_case.
+class UserInput(BaseModel):
+    # [ARGUMENT MEANING] alias = Parameter to map external field names (like "user-name") to internal Python-safe names (like "user_name").
+    user_id: int = Field(alias="userId")
+    first_name: str = Field(alias="firstName")
+    last_name: str = Field(alias="lastName")
+    
+    # [WHAT]: Allow both the alias and the original field name.
+    model_config = ConfigDict(populate_by_name=True)
+
+
+# [WHAT] Default and default_factory for optional fields.
+# [WHY] Provide sensible defaults or dynamic defaults for optional fields.
+class Task(BaseModel):
+    title: str
+    # [ARGUMENT MEANING] default = Parameter specifying the default value if the field is not provided in the request.
+    priority: int = Field(default=5, ge=1, le=10)
+    # [ARGUMENT MEANING] default_factory = Parameter accepting a callable that generates default values dynamically (useful for mutable defaults).
+    tags: list[str] = Field(default_factory=list)
+
+
+# [WHAT] Constrained types for inline validation.
+# [WHY] Sometimes defining a custom class is overkill; constrained types are quick shortcuts.
+# [WATCH OUT]: constr() and conint() are somewhat discouraged in Pydantic v2; prefer Field() instead.
+from pydantic import constr, conint
+
+class SimpleUser(BaseModel):
+    # [COMPONENT MEANING] constr() = Pydantic function creating a constrained string type with validation rules inline.
+    username: constr(min_length=3, max_length=50)  # type: ignore
+    # [COMPONENT MEANING] conint() = Pydantic function creating a constrained integer type with validation rules inline.
+    age: conint(ge=0, le=150)  # type: ignore
+
+
+# ============================================================================
+# ENDPOINTS DEMONSTRATING VALIDATION
+# ============================================================================
+
+@app.post("/users", status_code=201)
+async def create_user(user: User):
+    # [WHAT]: Pydantic automatically validates the incoming request body against the User model.
+    # [HOW]: If validation fails, FastAPI returns a 422 Unprocessable Entity response.
+    return JSONResponse(content={"message": f"User {user.username} created", "user": user.model_dump()}, status_code=201)
+
+
+@app.post("/products", status_code=201)
+async def create_product(product: Product):
+    # [WHAT]: Product model with custom field validators.
+    return JSONResponse(content={"message": f"Product {product.name} created", "product": product.model_dump()}, status_code=201)
+
+
+@app.post("/events", status_code=201)
+async def create_event(event: DateRange):
+    # [WHAT]: DateRange model with model-level validator.
+    return JSONResponse(content={"message": f"Event {event.event_name} created", "event": event.model_dump()}, status_code=201)
+
+
+@app.post("/notifications", status_code=201)
+async def send_notification(notification: Notification):
+    # [WHAT]: Polymorphic request body using discriminated union.
+    # [HOW]: Pydantic automatically selects the correct model based on the 'type' field.
+    return JSONResponse(content={"message": "Notification sent", "data": notification.model_dump()}, status_code=201)
+
+
+@app.post("/user-profiles", status_code=201)
+async def create_profile(profile: UserProfile):
+    # [WHAT]: Complex nested model with lists of nested objects.
+    return JSONResponse(content={"message": f"Profile for {profile.name} created", "profile": profile.model_dump()}, status_code=201)
+
+
+@app.post("/strict-products", status_code=201)
+async def create_strict_product(product: StrictProduct):
+    # [WHAT]: StrictProduct forbids extra fields; sending unknown fields causes 422 error.
+    return JSONResponse(content={"message": "Strict product created", "product": product.model_dump()}, status_code=201)
+
+
+@app.post("/loose-products", status_code=201)
+async def create_loose_product(product: LooseProduct):
+    # [WHAT]: LooseProduct ignores extra fields silently.
+    return JSONResponse(content={"message": "Loose product created", "product": product.model_dump()}, status_code=201)
+
+
+@app.post("/user-input", status_code=201)
+async def create_user_input(user: UserInput):
+    # [WHAT]: Aliases allow external camelCase to map to internal snake_case.
+    return JSONResponse(content={"message": "User input received", "user": user.model_dump(by_alias=True)}, status_code=201)
+
+
+@app.post("/tasks", status_code=201)
+async def create_task(task: Task):
+    # [WHAT]: Task with default and default_factory fields.
+    return JSONResponse(content={"message": f"Task '{task.title}' created", "task": task.model_dump()}, status_code=201)
+
+
+@app.get("/validation-schema")
+async def get_schema():
+    # [WHAT]: Return the JSON schema of the User model.
+    # [HOW]: Pydantic generates OpenAPI/JSON schema automatically.
+    return JSONResponse(content=User.model_json_schema())
+
 
 if __name__ == "__main__":
-    pass
-EOF
+    print("\n[INFO] Starting Uvicorn server on http://localhost:8002")
+    print("[INFO] Try these endpoints with POST requests:")
+    print("  - POST /users (with User model)")
+    print("  - POST /products (with Product model)")
+    print("  - POST /events (with DateRange model)")
+    print("  - POST /notifications (with Notification union)")
+    print("  - POST /user-profiles (with UserProfile nested model)")
+    print("  - POST /strict-products (forbids extra fields)")
+    print("  - POST /loose-products (ignores extra fields)")
+    print("  - POST /user-input (with field aliases)")
+    print("  - POST /tasks (with defaults)")
+    print("  - GET /validation-schema (view JSON schema)")
+    print("\n")
+    
+    uvicorn.run(app=app, host="127.0.0.1", port=8002, workers=1, log_level="info")
+SEGMENT_2_EOF
 
-echo "✓ Segment 2: Pydantic Validation (segment_2_pydantic_validation.py)"
+echo "[✓] Segment 2 generated: segment_2_pydantic_validation.py"
+
 
 echo ""
-echo "============================================================================"
+echo "================================================================================"
 echo "SEGMENT 3: Response Models & Serialization Strategies"
-echo "============================================================================"
+echo "================================================================================"
 
-cat << 'EOF' > segment_3_response_models.py
+cat << 'SEGMENT_3_EOF' > segment_3_response_models.py
 """
-[WHAT]: response_model, exclude_unset/none/defaults, custom serializers, streaming
-[WHY]: Clean response contracts. Exclude noise. Serialize non-JSON types properly.
+Segment 3: Response Models & Serialization Strategies
+===================================================
+
+This module demonstrates response_model, serialization strategies, 
+custom JSON encoders, streaming, and multiple response types.
 """
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import JSONResponse, StreamingResponse, FileResponse, ORJSONResponse
-from pydantic import BaseModel, field_serializer
-from datetime import datetime, timedelta
+from typing import Optional, Union, List
+from datetime import datetime
 from decimal import Decimal
-from typing import Optional, Union
+from pydantic import BaseModel, Field, field_serializer
+from fastapi import FastAPI
+from fastapi.responses import JSONResponse, ORJSONResponse, StreamingResponse, FileResponse
 import json
-from io import BytesIO
+import uvicorn
+import io
 
-app = FastAPI()
+app = FastAPI(title="Segment 3: Response Models")
 
-# ========== BASIC USAGE: response_model with Exclusion ==========
 
-# [COMPONENT MEANING] response_model = Route parameter validating outgoing response
+# [WHAT] Basic response model for shape enforcement.
+# [WHY] Response models validate and serialize outgoing data, ensuring API contracts.
 class UserResponse(BaseModel):
-    id: int
+    user_id: int
     username: str
     email: str
+    # [ARGUMENT MEANING] response_model = Decorator parameter that validates and serializes response data against a Pydantic model.
     created_at: datetime
-    is_admin: bool = False
 
-class UserFull(BaseModel):
-    id: int
+
+class UserWithSensitive(BaseModel):
+    user_id: int
     username: str
     email: str
-    password_hash: str  # Never return this!
-    created_at: datetime
-    is_admin: bool = False
+    password_hash: str  # Sensitive field to exclude from some responses
+    api_key: str  # Another sensitive field
 
-@app.get("/user/{user_id}", response_model=UserResponse)
-async def get_user(user_id: int):
-    """[WHAT]: response_model filters response; password_hash never leaves server."""
-    user_full = UserFull(
-        id=user_id,
-        username="john",
-        email="john@example.com",
-        password_hash="bcrypt$2y$12$xxx",  # ❌ Never returned
-        created_at=datetime.now(),
-        is_admin=False
-    )
-    return user_full  # FastAPI extracts only UserResponse fields
 
-# [COMPONENT MEANING] response_model_exclude_unset = Omit fields not explicitly set
-class UserPartial(BaseModel):
-    id: int
+# [WHAT] Models for demonstration of response filtering.
+class PublicUserResponse(BaseModel):
+    user_id: int
     username: str
-    bio: Optional[str] = None
-    follower_count: int = 0
+    email: str
 
-@app.get("/user/{user_id}/minimal", response_model=UserPartial, response_model_exclude_unset=True)
-async def get_user_minimal(user_id: int):
-    """[HOW]: exclude_unset omits 'follower_count' if not explicitly set."""
-    return {"id": user_id, "username": "john"}  # Missing fields omitted from JSON
 
-# ========== POWER USAGE: Custom Serializers & JSON Encoders ==========
-
-# [COMPONENT MEANING] @field_serializer = Custom serialization per field
-class Order(BaseModel):
-    order_id: int
-    total_price: Decimal
+# [WHAT] Complex response with nested objects.
+# [WHY] Real APIs return nested data structures.
+class CommentResponse(BaseModel):
+    comment_id: int
+    text: str
     created_at: datetime
+
+class PostResponse(BaseModel):
+    post_id: int
+    title: str
+    content: str
+    author_id: int
+    comments: List[CommentResponse] = Field(default_factory=list)
+
+
+# [WHAT] Response with special types requiring custom serialization.
+# [WHY] JSON doesn't natively support datetime, Decimal, etc.
+class PriceData(BaseModel):
+    product_id: int
+    price: Decimal  # JSON doesn't natively serialize Decimal
+    timestamp: datetime  # JSON doesn't natively serialize datetime
     
-    @field_serializer("total_price")
+    # [COMPONENT MEANING] field_serializer = Pydantic v2 decorator for custom serialization logic on specific fields.
+    @field_serializer("price")
     def serialize_price(self, value: Decimal) -> str:
-        """[HOW]: Serialize Decimal as string with 2 decimal places."""
-        return f"${value:.2f}"
+        # [WHAT]: Convert Decimal to string to avoid JSON precision issues.
+        return str(value)
     
-    @field_serializer("created_at")
+    @field_serializer("timestamp")
     def serialize_timestamp(self, value: datetime) -> str:
-        """[WHAT]: Custom datetime serialization (ISO 8601)."""
+        # [WHAT]: Convert datetime to ISO format string.
         return value.isoformat()
 
-@app.get("/order/{order_id}", response_model=Order)
-async def get_order(order_id: int):
-    return Order(
-        order_id=order_id,
-        total_price=Decimal("123.45"),
-        created_at=datetime.now()
-    )
 
-# ========== PRECISION USAGE: Multiple Response Models with Union ==========
-
-# [COMPONENT MEANING] Union[Model1, Model2] = Route returns one of multiple types
+# [WHAT] Union response type for different response shapes.
+# [WHY] An endpoint might return different response types based on conditions.
 class SuccessResponse(BaseModel):
     status: str = "success"
     data: dict
@@ -396,2731 +612,2241 @@ class ErrorResponse(BaseModel):
     error_code: int
     message: str
 
-@app.get("/risky/{item_id}", response_model=Union[SuccessResponse, ErrorResponse])
-async def risky_endpoint(item_id: int):
-    """[WATCH OUT]: Union response_model requires explicit type union."""
-    if item_id > 100:
-        return SuccessResponse(data={"item": item_id})
-    else:
-        return ErrorResponse(error_code=404, message="Not found")
+# [COMPONENT MEANING] Union = Python typing construct for declaring multiple possible response models based on runtime conditions.
 
-# ========== ENTERPRISE CONTEXT: Streaming & Performance ==========
 
-# [COMPONENT MEANING] StreamingResponse = Send large data without buffering
-async def generate_csv():
-    """[HOW]: Generator yields chunks; client receives incrementally."""
-    yield b"id,name,email\n"
-    for i in range(10000):
-        yield f"{i},user{i},user{i}@example.com\n".encode()
+# ============================================================================
+# ENDPOINTS DEMONSTRATING RESPONSE MODELS
+# ============================================================================
 
-@app.get("/export/csv")
-async def export_csv():
-    """[WHAT]: Stream large datasets without loading into memory."""
-    return StreamingResponse(generate_csv(), media_type="text/csv")
+@app.post("/users", response_model=UserResponse, status_code=201)
+# [ARGUMENT MEANING] response_model = Enforces outgoing data against UserResponse, filtering unknown fields.
+async def create_user():
+    # [WHAT]: Return data with extra fields; response_model filters them out.
+    user_data = {
+        "user_id": 1,
+        "username": "alice",
+        "email": "alice@example.com",
+        "created_at": datetime.now(),
+        "internal_note": "This field is NOT in UserResponse, so it gets removed",
+    }
+    return user_data
 
-# [COMPONENT MEANING] ORJSONResponse = High-performance JSON using orjson
-@app.get("/fast-json", response_class=ORJSONResponse)
-async def fast_json():
-    """[WHY]: orjson is 2-3x faster than standard json for large responses."""
-    return {"data": [{"id": i, "value": i * 2} for i in range(1000)]}
 
-# [COMPONENT MEANING] status_code = HTTP status for successful response
-@app.post("/resource", status_code=201, response_model=UserResponse)
-async def create_resource(username: str):
-    """[WHAT]: status_code=201 indicates resource created (not 200)."""
-    return {"id": 1, "username": username, "email": "new@example.com", "created_at": datetime.now()}
+@app.get("/users/{user_id}", response_model=PublicUserResponse)
+async def get_user(user_id: int):
+    # [WHAT]: Return only public fields, excluding sensitive data.
+    full_user = {
+        "user_id": user_id,
+        "username": "alice",
+        "email": "alice@example.com",
+        "password_hash": "super_secret_hash",  # Excluded by response_model
+        "api_key": "secret_key_12345",  # Also excluded
+    }
+    return full_user
 
-# [COMPONENT MEANING] response_model_exclude_none = Omit None fields
-class ProductResponse(BaseModel):
-    id: int
-    name: str
-    description: Optional[str] = None
-    discount: Optional[float] = None
 
-@app.get("/product/{product_id}", response_model=ProductResponse, response_model_exclude_none=True)
+@app.get("/users", response_model=List[UserResponse])
+async def list_users():
+    # [WHAT]: Return a list of UserResponse objects.
+    return [
+        {"user_id": 1, "username": "alice", "email": "alice@example.com", "created_at": datetime.now()},
+        {"user_id": 2, "username": "bob", "email": "bob@example.com", "created_at": datetime.now()},
+    ]
+
+
+@app.get("/posts/{post_id}", response_model=PostResponse)
+async def get_post(post_id: int):
+    # [WHAT]: Return nested response model.
+    return {
+        "post_id": post_id,
+        "title": "FastAPI is awesome",
+        "content": "ASGI is the future...",
+        "author_id": 1,
+        "comments": [
+            {"comment_id": 101, "text": "Great post!", "created_at": datetime.now()},
+            {"comment_id": 102, "text": "I learned so much", "created_at": datetime.now()},
+        ],
+    }
+
+
+@app.get("/products/{product_id}", response_model=PriceData)
 async def get_product(product_id: int):
-    """[HOW]: exclude_none prevents {"discount": null} in response."""
-    return {"id": product_id, "name": "Widget", "description": None, "discount": None}
+    # [WHAT]: Return Decimal and datetime, which get serialized via @field_serializer.
+    return {
+        "product_id": product_id,
+        "price": Decimal("19.99"),
+        "timestamp": datetime.now(),
+    }
+
+
+# [WHAT] response_model with exclude_unset filtering.
+# [WHY] Don't include fields that weren't explicitly set by the endpoint.
+@app.post("/profile", response_model=UserResponse, response_model_exclude_unset=True)
+# [ARGUMENT MEANING] response_model_exclude_unset = Parameter that excludes fields from the response if they weren't explicitly set.
+async def create_profile():
+    # [WHAT]: Only fields that are explicitly set appear in response.
+    return {
+        "user_id": 1,
+        "username": "alice",
+        "email": "alice@example.com",
+        "created_at": datetime.now(),
+    }
+
+
+# [WHAT] response_model with exclude_none filtering.
+# [WHY] Don't include null fields in the response.
+class OptionalUserResponse(BaseModel):
+    user_id: int
+    username: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
+
+@app.get("/user-optional/{user_id}", response_model=OptionalUserResponse, response_model_exclude_none=True)
+# [ARGUMENT MEANING] response_model_exclude_none = Parameter that excludes fields from the response if their value is None.
+async def get_optional_user(user_id: int):
+    # [WHAT]: Only non-None fields appear in response.
+    return {
+        "user_id": user_id,
+        "username": "alice",
+        "email": None,  # Excluded from response
+        "phone": None,  # Excluded from response
+    }
+
+
+# [WHAT] response_model with exclude_defaults filtering.
+# [WHY] Don't include fields with their default values.
+class ConfigResponse(BaseModel):
+    setting_id: int
+    enabled: bool = True  # Has a default
+    timeout: int = 30  # Has a default
+
+@app.get("/config/{config_id}", response_model=ConfigResponse, response_model_exclude_defaults=True)
+# [ARGUMENT MEANING] response_model_exclude_defaults = Parameter that excludes fields from the response if they contain their default value.
+async def get_config(config_id: int):
+    return {
+        "setting_id": config_id,
+        "enabled": True,  # Equals default, will be excluded
+        "timeout": 45,  # Different from default, will be included
+    }
+
+
+# [WHAT] response_model with include and exclude sets.
+# [WHY] Whitelist or blacklist specific fields.
+@app.get("/user-filtered/{user_id}", response_model=UserWithSensitive, response_model_exclude={"password_hash", "api_key"})
+# [ARGUMENT MEANING] response_model_exclude = Parameter accepting a set of field names to exclude from the response.
+async def get_user_filtered(user_id: int):
+    return {
+        "user_id": user_id,
+        "username": "alice",
+        "email": "alice@example.com",
+        "password_hash": "should_not_appear",
+        "api_key": "should_not_appear",
+    }
+
+
+# [WHAT] Using ORJSONResponse for high-performance serialization.
+# [WHY] orjson is significantly faster than standard json for large payloads.
+@app.get("/fast-data", response_class=ORJSONResponse)
+# [COMPONENT MEANING] ORJSONResponse = High-performance JSON response class using the orjson library for faster serialization.
+async def get_fast_data():
+    # [WHAT]: Returns via ORJSONResponse instead of default JSON encoder.
+    return {
+        "data": list(range(1000)),
+        "timestamp": datetime.now().isoformat(),
+    }
+
+
+# [WHAT] Union response type based on runtime conditions.
+# [WHY] Different error scenarios return different response shapes.
+@app.get("/conditional/{resource_id}", response_model=Union[SuccessResponse, ErrorResponse])
+async def get_conditional(resource_id: int):
+    # [WHAT]: Return different response shapes based on resource_id.
+    if resource_id > 0:
+        return SuccessResponse(data={"resource_id": resource_id, "message": "Found"})
+    else:
+        return ErrorResponse(error_code=404, message="Resource not found")
+
+
+# [WHAT] Streaming response for large datasets.
+# [WHY] Don't load entire dataset into memory; stream it to the client.
+@app.get("/stream-data", response_class=StreamingResponse)
+# [COMPONENT MEANING] StreamingResponse = FastAPI response class for streaming large datasets or real-time data without loading everything into memory.
+async def stream_data():
+    def generate():
+        # [WHAT]: Generator function that yields JSON lines.
+        for i in range(1000):
+            yield json.dumps({"id": i, "value": i ** 2}) + "\n"
+    
+    return StreamingResponse(content=generate(), media_type="application/x-ndjson")
+
+
+# [WHAT] File response for serving downloads.
+# [WHY] Efficiently serve file downloads without loading into memory.
+@app.get("/download-file", response_class=FileResponse)
+# [COMPONENT MEANING] FileResponse = Response class for efficiently serving file downloads with proper headers.
+async def download_file():
+    # [WHAT]: Return a file response (must exist on disk in real scenario).
+    return FileResponse(path="/etc/hostname", filename="data.txt", media_type="text/plain")
+
+
+# [WHAT] Custom JSON encoder via model_dump().
+# [WHY] When response_model doesn't meet your serialization needs.
+@app.get("/custom-serialize")
+async def custom_serialize():
+    # [COMPONENT MEANING] model_dump() = Pydantic v2 method to convert model instance to a dictionary for manual serialization.
+    price_data = PriceData(product_id=1, price=Decimal("99.99"), timestamp=datetime.now())
+    serialized = price_data.model_dump()  # Convert to dict
+    return JSONResponse(content=serialized)
+
+
+# [WHAT] Direct JSON string via model_dump_json().
+# [WHY] When you need the JSON string directly.
+@app.get("/json-string")
+async def json_string():
+    # [COMPONENT MEANING] model_dump_json() = Pydantic v2 method to convert model instance directly to a JSON string.
+    user = UserResponse(user_id=1, username="alice", email="alice@example.com", created_at=datetime.now())
+    json_str = user.model_dump_json()
+    return JSONResponse(content=json.loads(json_str))
+
+
+@app.get("/health")
+async def health():
+    return JSONResponse(content={"status": "ok"})
+
 
 if __name__ == "__main__":
-    pass
-EOF
+    print("\n[INFO] Starting Uvicorn server on http://localhost:8003")
+    print("[INFO] Try these endpoints:")
+    print("  - POST /users")
+    print("  - GET /users")
+    print("  - GET /users/{user_id}")
+    print("  - GET /posts/{post_id}")
+    print("  - GET /products/{product_id}")
+    print("  - GET /user-optional/{user_id}")
+    print("  - GET /config/{config_id}")
+    print("  - GET /user-filtered/{user_id}")
+    print("  - GET /fast-data")
+    print("  - GET /conditional/{resource_id}")
+    print("  - GET /stream-data")
+    print("  - GET /download-file")
+    print("  - GET /custom-serialize")
+    print("  - GET /json-string")
+    print("\n")
+    
+    uvicorn.run(app=app, host="127.0.0.1", port=8003, workers=1, log_level="info")
+SEGMENT_3_EOF
 
-echo "✓ Segment 3: Response Models (segment_3_response_models.py)"
+echo "[✓] Segment 3 generated: segment_3_response_models.py"
+
 
 echo ""
-echo "============================================================================"
+echo "================================================================================"
 echo "SEGMENT 4: Dependency Injection System Mastery"
-echo "============================================================================"
+echo "================================================================================"
 
-cat << 'EOF' > segment_4_dependency_injection.py
+cat << 'SEGMENT_4_EOF' > segment_4_dependency_injection.py
 """
-[WHAT]: Depends(), caching, generator dependencies, testing overrides
-[WHY]: DI decouples components. Caching prevents redundant execution. Testing becomes easy.
+Segment 4: Dependency Injection System Mastery
+==============================================
+
+This module demonstrates FastAPI's Depends() system, sub-dependency trees,
+generator dependencies (setup/teardown), callable classes, and testing overrides.
 """
 
-from fastapi import FastAPI, Depends, HTTPException
-from typing import Generator, Annotated, Optional
-import asyncio
+from typing import Optional, Generator
+from fastapi import FastAPI, Depends, HTTPException, Header
+from fastapi.responses import JSONResponse
+import uvicorn
 
-app = FastAPI()
+app = FastAPI(title="Segment 4: Dependency Injection")
 
-# ========== BASIC USAGE: Simple Dependency ==========
 
-# [COMPONENT MEANING] Depends() = Declare dependency to be injected
-# [ARGUMENT MEANING] use_cache=True = Default; cache result within single request
-async def get_db_connection() -> str:
-    """[WHAT]: Simulated async database connection."""
-    print("[DB] Opening connection")
-    await asyncio.sleep(0.1)
-    return "db_connection_object"
+# [WHAT] Simple dependency function.
+# [WHY] DI decouples business logic from infrastructure concerns (DB, auth, logging).
+def get_query_param(skip: int = 0, limit: int = 10) -> dict:
+    # [COMPONENT MEANING] Depends() = FastAPI function that declares a dependency to be resolved and injected by the framework.
+    # [WHAT]: FastAPI automatically extracts query parameters and passes them to dependencies.
+    return {"skip": skip, "limit": limit}
 
-@app.get("/basic-di")
-async def basic_di(db: Annotated[str, Depends(get_db_connection)]):
-    """[HOW]: FastAPI injects result of get_db_connection()."""
-    return {"db": db}
-
-# ========== POWER USAGE: Generator Dependencies (Setup/Teardown) ==========
-
-# [COMPONENT MEANING] yield = Separate setup from teardown in dependencies
-# [ARGUMENT MEANING] Code before yield = setup; code after = teardown
-async def get_db_session() -> Generator[str, None, None]:
-    """[WHY]: Generator allows cleanup (close connection, rollback) after request."""
-    print("[SESSION] Opening")
-    session = "session_object"
-    try:
-        yield session  # Route handler receives session
-    finally:
-        print("[SESSION] Closing")
-        # Cleanup happens here automatically
-
-@app.get("/generator-di")
-async def generator_di(session: Annotated[str, Depends(get_db_session)]):
-    """[HOW]: FastAPI manages setup/teardown automatically."""
-    return {"session": session}
-
-# ========== PRECISION USAGE: Caching & Nesting ==========
-
-# [COMPONENT MEANING] use_cache=False = Fresh execution every time
-class AuthUser:
-    def __init__(self, name: str):
-        self.name = name
-
-async def get_current_user(token: str) -> AuthUser:
-    """[WHAT]: Dependency resolves token to user."""
-    if not token:
-        raise HTTPException(status_code=401)
-    return AuthUser(name="john")
-
-async def get_user_permissions(user: Annotated[AuthUser, Depends(get_current_user)]) -> list[str]:
-    """[HOW]: Sub-dependency receives result of parent dependency."""
-    return ["read", "write"] if user.name == "john" else ["read"]
-
-@app.get("/with-sub-dependencies")
-async def with_sub_deps(
-    permissions: Annotated[list[str], Depends(get_user_permissions)]
-):
-    """[WATCH OUT]: Dependency graph resolved recursively; caching prevents re-execution."""
-    return {"permissions": permissions}
-
-# ========== ENTERPRISE CONTEXT: Class-Based Dependencies & Overrides ==========
-
-# [COMPONENT MEANING] Class as dependency = Callable with __call__ method
-class PaginationParams:
-    """[WHY]: Reusable dependency class for common pagination logic."""
-    def __init__(self, skip: int = 0, limit: int = 10):
-        self.skip = max(0, skip)
-        self.limit = min(100, limit)  # Cap limit at 100
 
 @app.get("/items")
-async def list_items(pagination: Annotated[PaginationParams, Depends()]):
-    """[HOW]: FastAPI instantiates PaginationParams with query params."""
-    return {"skip": pagination.skip, "limit": pagination.limit, "items": []}
+async def list_items(pagination: dict = Depends(get_query_param)):
+    # [WHAT]: The pagination dict is resolved by get_query_param dependency.
+    # [HOW]: Depends(get_query_param) tells FastAPI to call that function and inject the result.
+    return JSONResponse(content={"pagination": pagination, "items": []})
 
-# [COMPONENT MEANING] app.dependency_overrides = Replace dependency for testing
-# [ARGUMENT MEANING] {original_dep: mock_dep} = Override mapping
-async def mock_db():
-    return "mock_connection"
 
-def test_with_override():
-    """[WHAT]: Testing requires replacing real DB with mock."""
-    app.dependency_overrides[get_db_connection] = mock_db
-    # Now all routes using get_db_connection receive mock_db instead
-    app.dependency_overrides.clear()  # Clean up after test
+# [WHAT] Dependency with sub-dependencies (dependency tree).
+# [WHY] Complex dependencies often compose simpler ones.
+def get_database_connection():
+    # [WHAT]: Simulates a database connection object.
+    return {"connection": "PostgreSQL://localhost", "status": "connected"}
 
-# [COMPONENT MEANING] dependencies=[...] on route = Apply dependencies to single route
-@app.get("/protected", dependencies=[Depends(get_current_user)])
-async def protected_route():
-    """[HOW]: Current user is validated but not explicitly in signature."""
-    return {"status": "authorized"}
+def get_user_repository(db: dict = Depends(get_database_connection)):
+    # [WHAT]: Uses db dependency internally.
+    # [HOW]: Depends(get_database_connection) injects the DB connection.
+    return {"db": db, "user_table": "users"}
 
-# [COMPONENT MEANING] dependencies=[...] on router = Apply to all routes in router
-from fastapi import APIRouter
-router = APIRouter(dependencies=[Depends(get_current_user)])
+@app.get("/users")
+async def list_users(user_repo: dict = Depends(get_user_repository)):
+    # [WHAT]: User repo depends on DB connection. FastAPI resolves the entire tree.
+    # [HOW]: FastAPI calls get_database_connection(), then passes result to get_user_repository().
+    return JSONResponse(content={"user_repo": user_repo})
 
-@router.get("/admin/users")
-async def admin_list_users():
-    """[WHAT]: All routes in this router require get_current_user."""
-    return {"users": []}
 
-app.include_router(router)
+# [WHAT] Dependency caching: FastAPI calls the dependency once per request.
+# [WHY] Avoid redundant calls; all downstream endpoints share the same dependency instance.
+def get_current_user(authorization: str = Header(None)) -> dict:
+    # [WHAT]: Validates the authorization header and returns user info.
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing or invalid authorization")
+    
+    token = authorization.replace("Bearer ", "")
+    # Simulate token validation
+    return {"user_id": 1, "username": "alice", "token": token}
 
-# ========== ADVANCED: Context Variables in Dependencies ==========
+@app.get("/profile")
+async def get_profile(user: dict = Depends(get_current_user)):
+    # [WHAT]: get_current_user is called once and cached for this request.
+    return JSONResponse(content={"profile": {"user": user, "email": "alice@example.com"}})
 
-async def get_request_id(x_request_id: Optional[str] = None) -> str:
-    """[WHY]: Request-scoped state (e.g., correlation ID) via DI."""
-    return x_request_id or "no-request-id"
+@app.get("/settings")
+async def get_settings(user: dict = Depends(get_current_user)):
+    # [WHAT]: SAME dependency instance is injected here (caching within request).
+    # [HOW]: FastAPI's Depends() mechanism caches results per request.
+    return JSONResponse(content={"user_id": user["user_id"], "settings": {}})
 
-@app.get("/correlation")
-async def with_correlation(
-    request_id: Annotated[str, Depends(get_request_id)]
+
+# [WHAT] Generator dependency for setup/teardown (context managers).
+# [WHY] Manage resource lifecycle: open connections on startup, close on cleanup.
+def get_db_session() -> Generator[dict, None, None]:
+    # [COMPONENT MEANING] Generator dependency = A dependency function that yields (provides) a resource and handles cleanup after the endpoint returns.
+    # [WHAT]: Setup phase: open database session.
+    print("[SETUP] Opening database session")
+    session = {"connection_id": "conn_12345", "active": True}
+    
+    yield session  # Provide the session to the endpoint
+    
+    # [WHAT]: Teardown phase: close database session.
+    print("[TEARDOWN] Closing database session")
+    session["active"] = False
+
+@app.get("/records")
+async def get_records(db_session: dict = Depends(get_db_session)):
+    # [WHAT]: db_session is provided by the generator.
+    # [HOW]: FastAPI calls the generator, yields the session, endpoint runs, then cleanup runs.
+    return JSONResponse(content={"records": [], "session_id": db_session["connection_id"]})
+
+
+# [WHAT] Callable class as a dependency.
+# [WHY] Complex dependencies benefit from class structure and state.
+class RateLimiter:
+    # [COMPONENT MEANING] Callable class as dependency = A class whose __call__ method is treated as a dependency function.
+    
+    def __init__(self, max_calls: int = 10):
+        self.max_calls = max_calls
+        self.call_count = 0
+    
+    def __call__(self, user_id: int) -> dict:
+        # [WHAT]: __call__ makes the instance callable, allowing it to be used as a dependency.
+        self.call_count += 1
+        if self.call_count > self.max_calls:
+            raise HTTPException(status_code=429, detail="Rate limit exceeded")
+        return {"user_id": user_id, "remaining": self.max_calls - self.call_count}
+
+rate_limiter = RateLimiter(max_calls=5)
+
+@app.get("/api-call")
+async def api_call(rate_limit: dict = Depends(rate_limiter)):
+    # [WHAT]: rate_limiter instance is used as a dependency.
+    return JSONResponse(content={"message": "API call successful", "rate_limit": rate_limit})
+
+
+# [WHAT] Dependency with multiple request methods.
+# [WHY] Some dependencies apply globally (APIRouter or FastAPI constructor).
+class AuthContext:
+    def __init__(self, user_id: int, is_admin: bool = False):
+        self.user_id = user_id
+        self.is_admin = is_admin
+
+def get_auth_context(authorization: str = Header(None)) -> AuthContext:
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    # Simulate token parsing
+    return AuthContext(user_id=1, is_admin=True)
+
+@app.get("/admin-only")
+async def admin_only(auth: AuthContext = Depends(get_auth_context)):
+    if not auth.is_admin:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return JSONResponse(content={"message": "Admin action executed"})
+
+
+# [WHAT] Overriding dependencies for testing.
+# [WHY] In tests, replace real dependencies (DB, external APIs) with mocks.
+def get_real_api() -> dict:
+    # [WHAT]: Real API call in production.
+    return {"data": "from-real-api", "latency_ms": 500}
+
+async def test_mock_api() -> dict:
+    # [WHAT]: Mock API for testing.
+    return {"data": "from-mock", "latency_ms": 1}
+
+@app.get("/external-data")
+async def get_external_data(api: dict = Depends(get_real_api)):
+    return JSONResponse(content={"result": api})
+
+# Override for testing
+def override_dependencies():
+    # [WHAT]: app.dependency_overrides is a dict that maps original dependencies to test replacements.
+    # [HOW]: Call this before testing to swap real dependencies with mocks.
+    app.dependency_overrides[get_real_api] = test_mock_api
+
+
+# [WHAT] Multiple dependencies on same endpoint.
+# [WHY] Real endpoints often need auth, rate limiting, logging, etc.
+async def get_request_id(x_request_id: str = Header(None)) -> str:
+    if not x_request_id:
+        raise HTTPException(status_code=400, detail="X-Request-ID header required")
+    return x_request_id
+
+@app.post("/process")
+async def process_data(
+    auth: AuthContext = Depends(get_auth_context),
+    rate_limit: dict = Depends(rate_limiter),
+    request_id: str = Depends(get_request_id),
 ):
-    """[HOW]: Dependency receives query param as request-scoped state."""
-    return {"request_id": request_id}
+    # [WHAT]: Three dependencies are resolved and injected.
+    # [HOW]: FastAPI resolves them in the correct order (respecting sub-dependencies).
+    return JSONResponse(content={
+        "user_id": auth.user_id,
+        "rate_limit": rate_limit,
+        "request_id": request_id,
+    })
+
+
+# [WHAT] Dependency with optional values.
+# [WHY] Some dependencies might be optional (e.g., optional authentication).
+def get_optional_user(authorization: str = Header(None)) -> Optional[dict]:
+    if not authorization:
+        return None
+    return {"user_id": 1, "username": "alice"}
+
+@app.get("/public-with-optional-auth")
+async def public_endpoint(user: Optional[dict] = Depends(get_optional_user)):
+    # [WHAT]: User can be None if not authenticated.
+    if user:
+        return JSONResponse(content={"message": f"Hello {user['username']}"})
+    else:
+        return JSONResponse(content={"message": "Hello anonymous user"})
+
+
+@app.get("/health")
+async def health():
+    return JSONResponse(content={"status": "ok"})
+
 
 if __name__ == "__main__":
-    pass
-EOF
+    print("\n[INFO] Starting Uvicorn server on http://localhost:8004")
+    print("[INFO] Try these endpoints:")
+    print("  - GET /items?skip=0&limit=10")
+    print("  - GET /users")
+    print("  - GET /profile (with Authorization: Bearer token header)")
+    print("  - GET /settings (with Authorization: Bearer token header)")
+    print("  - GET /records (demonstrates generator setup/teardown)")
+    print("  - GET /api-call (multiple times to test rate limiting)")
+    print("  - GET /admin-only (with Authorization: Bearer token header)")
+    print("  - GET /external-data")
+    print("  - POST /process (with headers: Authorization, X-Request-ID)")
+    print("  - GET /public-with-optional-auth")
+    print("\n")
+    
+    uvicorn.run(app=app, host="127.0.0.1", port=8004, workers=1, log_level="info")
+SEGMENT_4_EOF
 
-echo "✓ Segment 4: Dependency Injection (segment_4_dependency_injection.py)"
+echo "[✓] Segment 4 generated: segment_4_dependency_injection.py"
 
-# Continuing with remaining segments...
 
 echo ""
-echo "============================================================================"
+echo "================================================================================"
 echo "SEGMENT 5: Database Integration with SQLAlchemy Async"
-echo "============================================================================"
+echo "================================================================================"
 
-cat << 'EOF' > segment_5_sqlalchemy_async.py
+cat << 'SEGMENT_5_EOF' > segment_5_database_integration.py
 """
-[WHAT]: AsyncEngine, AsyncSession, connection pooling, N+1 prevention, transactions
-[WHY]: Async DB prevents event loop blocking. Pooling maximizes throughput.
+Segment 5: Database Integration with SQLAlchemy Async
+=====================================================
+
+This module demonstrates AsyncEngine, AsyncSession, query optimization,
+session-per-request pattern, transaction management, and connection pooling.
 """
 
-from fastapi import FastAPI, Depends
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine, async_sessionmaker
-from sqlalchemy import Column, Integer, String, DateTime, select, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, DateTime, select, ForeignKey
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import declarative_base, relationship
-from sqlalchemy.pool import NullPool, QueuePool
-from sqlalchemy.orm import selectinload, joinedload
-from typing import Annotated, AsyncGenerator
+from sqlalchemy.pool import NullPool
 from datetime import datetime
-import asyncio
+from typing import AsyncGenerator
+from fastapi import FastAPI, Depends
+from fastapi.responses import JSONResponse
+import uvicorn
 
-app = FastAPI()
+app = FastAPI(title="Segment 5: Database Integration")
 
-# ========== BASIC USAGE: AsyncEngine & AsyncSession Setup ==========
-
-# [COMPONENT MEANING] create_async_engine() = Factory for async database engine
-# [ARGUMENT MEANING] "sqlite+aiosqlite:///" = Async SQLite URL (in-memory)
-# [ARGUMENT MEANING] pool_size = Max persistent connections; max_overflow = burst overflow
-engine: AsyncEngine = create_async_engine(
-    "sqlite+aiosqlite:///:memory:",
-    echo=False,  # Set to True to log SQL
-    pool_size=10,  # Persistent connections
-    max_overflow=5,  # Additional connections during load
-    pool_pre_ping=True  # Validate connections before checkout
-)
-
-# [COMPONENT MEANING] async_sessionmaker = Factory for AsyncSession instances
-async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-
+# [COMPONENT MEANING] declarative_base() = SQLAlchemy factory creating the base class for all ORM models.
 Base = declarative_base()
 
-# ========== MODEL DEFINITIONS ==========
 
+# [WHAT] Database models (ORM classes).
+# [WHY] Decouples database schema from Python code via the SQLAlchemy ORM.
 class User(Base):
     __tablename__ = "users"
-    id: int = Column(Integer, primary_key=True)
-    username: str = Column(String(50), unique=True)
-    email: str = Column(String(100))
-    created_at: datetime = Column(DateTime, default=datetime.utcnow)
-    posts: list["Post"] = relationship("Post", back_populates="author")
+    
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True)
+    email = Column(String, unique=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    posts = relationship("Post", back_populates="author")
 
 class Post(Base):
     __tablename__ = "posts"
-    id: int = Column(Integer, primary_key=True)
-    title: str = Column(String(200))
-    user_id: int = Column(Integer, ForeignKey("users.id"))
-    created_at: datetime = Column(DateTime, default=datetime.utcnow)
-    author: User = relationship("User", back_populates="posts")
+    
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, index=True)
+    content = Column(String)
+    author_id = Column(Integer, ForeignKey("users.id"))
+    created_at = Column(DateTime, default=datetime.utcnow)
+    author = relationship("User", back_populates="posts")
 
-# ========== BASIC USAGE: Session Dependency ==========
 
-async def get_session() -> AsyncGenerator[AsyncSession, None]:
-    """[WHAT]: Session-per-request pattern using async generator."""
-    async with async_session() as session:
-        try:
-            yield session
-        finally:
-            await session.close()  # Return to pool
+# [COMPONENT MEANING] create_async_engine() = Factory creating an async SQLAlchemy engine for non-blocking database operations.
+# [WHAT] Create async engine with connection pooling.
+# [WHY] AsyncEngine is required for async/await patterns; connection pooling reuses connections efficiently.
+DATABASE_URL = "sqlite+aiosqlite:///:memory:"  # In-memory SQLite for demo; use PostgreSQL in production
 
-@app.get("/user/{user_id}")
-async def get_user(user_id: int, session: Annotated[AsyncSession, Depends(get_session)]):
-    """[HOW]: Dependency provides fresh session; auto-closed after response."""
-    stmt = select(User).where(User.id == user_id)
-    result = await session.execute(stmt)
-    user = result.scalars().first()
-    return {"user": user}
-
-# ========== POWER USAGE: Query Optimization & Eager Loading ==========
-
-# [COMPONENT MEANING] selectinload() = Load relationships in separate SELECT with IN clause
-# [ARGUMENT MEANING] selectinload(User.posts) = Fetch user.posts in second query
-@app.get("/user/{user_id}/posts-optimized")
-async def get_user_with_posts(user_id: int, session: Annotated[AsyncSession, Depends(get_session)]):
-    """[WHY]: selectinload prevents N+1 query: 1 user + N posts = N+1 queries."""
-    stmt = select(User).where(User.id == user_id).options(selectinload(User.posts))
-    result = await session.execute(stmt)
-    user = result.scalars().unique().first()
-    return {"user": user, "post_count": len(user.posts) if user else 0}
-
-# [COMPONENT MEANING] joinedload() = Load relationships via SQL JOIN in single query
-# [WATCH OUT]: joinedload can cause cartesian product if not careful with multiple relationships
-@app.get("/user/{user_id}/posts-joined")
-async def get_user_with_posts_joined(user_id: int, session: Annotated[AsyncSession, Depends(get_session)]):
-    """[HOW]: joinedload uses JOIN; fewer queries but potentially larger result set."""
-    stmt = select(User).where(User.id == user_id).options(joinedload(User.posts))
-    result = await session.execute(stmt)
-    user = result.scalars().unique().first()
-    return {"user": user}
-
-# ========== PRECISION USAGE: Transactions & Isolation ==========
-
-async def create_user_with_posts(session: AsyncSession, username: str) -> User:
-    """[WHAT]: Multi-statement transaction; all-or-nothing."""
-    try:
-        user = User(username=username, email=f"{username}@example.com")
-        session.add(user)
-        await session.flush()  # Get auto-generated ID without commit
-        
-        post = Post(title="First Post", user_id=user.id)
-        session.add(post)
-        
-        await session.commit()  # Atomic: both created or both rolled back
-        return user
-    except Exception as e:
-        await session.rollback()
-        raise
-
-@app.post("/user")
-async def create_user(username: str, session: Annotated[AsyncSession, Depends(get_session)]):
-    """[HOW]: Transactions ensure data consistency across multiple operations."""
-    user = await create_user_with_posts(session, username)
-    return {"id": user.id, "username": user.username}
-
-# ========== ENTERPRISE CONTEXT: Connection Pool Tuning ==========
-
-# [COMPONENT MEANING] pool_recycle = Force reconnect after N seconds (MySQL timeout)
-# [ARGUMENT MEANING] 3600 = Recycle connections older than 1 hour
-enterprise_engine = create_async_engine(
-    "sqlite+aiosqlite:///:memory:",
-    pool_size=20,  # Production: tune to DB connection limit / worker count
-    max_overflow=10,  # Buffer for traffic spikes
-    pool_pre_ping=True,  # Detect stale connections
-    pool_recycle=3600,  # MySQL default: 8-hour timeout
-    echo=False
+engine = create_async_engine(
+    DATABASE_URL,
+    # [ARGUMENT MEANING] echo=True = Log all SQL statements for debugging.
+    echo=True,
+    # [ARGUMENT MEANING] pool_size = Maximum number of persistent connections in the pool.
+    pool_size=20,
+    # [ARGUMENT MEANING] max_overflow = Maximum overflow connections beyond pool_size.
+    max_overflow=10,
+    # [ARGUMENT MEANING] pool_pre_ping = Test connections before using them to detect stale connections.
+    pool_pre_ping=True,
+    # [ARGUMENT MEANING] pool_recycle = Recycle connections after this many seconds (prevents timeout issues).
+    pool_recycle=3600,
+    # [ARGUMENT MEANING] poolclass = Use NullPool to avoid connection pooling (SQLite limitation).
+    poolclass=NullPool,  # SQLite doesn't handle concurrent connections well
 )
 
-# [WATCH OUT]: pool exhaustion under high concurrency causes request queuing
-@app.get("/check-pool")
-async def check_pool_status():
-    """[WHY]: Monitor pool state to prevent exhaustion under load."""
-    # In production: log pool size, overflow, checkedout connections
-    return {"pool_size": enterprise_engine.pool.size(), "overflow": engine.pool.overflow()}
+# [COMPONENT MEANING] async_sessionmaker = Factory creating async session instances with given engine and options.
+AsyncSessionLocal = async_sessionmaker(
+    engine,
+    class_=AsyncSession,
+    # [ARGUMENT MEANING] expire_on_commit = Expire objects after commit to prevent lazy-loading issues.
+    expire_on_commit=False,
+)
+
+
+# [WHAT] Dependency for session-per-request pattern.
+# [WHY] Each HTTP request gets its own DB session; automatic cleanup on request end.
+async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
+    # [COMPONENT MEANING] AsyncSession = SQLAlchemy async session providing context for ORM operations.
+    async with AsyncSessionLocal() as session:
+        try:
+            yield session
+            # [WHAT]: Commit any pending changes.
+            # [WATCH OUT]: In production, use explicit transaction management to avoid unexpected commits.
+            await session.commit()
+        except Exception as e:
+            # [WHAT]: Rollback on any exception.
+            await session.rollback()
+            raise
+        finally:
+            # [WHAT]: Close the session.
+            await session.close()
+
+
+# [WHAT] Initialize database tables.
+# [WHY] Create schema before running the app (in real apps, use Alembic migrations).
+async def init_db():
+    async with engine.begin() as conn:
+        # [WHAT]: Create all tables defined in Base.metadata.
+        await conn.run_sync(Base.metadata.create_all)
+
+
+# [WHAT] Startup event to initialize database.
+@app.on_event("startup")
+async def startup():
+    print("[STARTUP] Initializing database...")
+    await init_db()
+    print("[STARTUP] Database ready")
+
+
+@app.on_event("shutdown")
+async def shutdown():
+    print("[SHUTDOWN] Closing database engine...")
+    await engine.dispose()
+    print("[SHUTDOWN] Database closed")
+
+
+# ============================================================================
+# ENDPOINTS DEMONSTRATING DATABASE OPERATIONS
+# ============================================================================
+
+@app.post("/users", status_code=201)
+async def create_user(username: str, email: str, db: AsyncSession = Depends(get_db_session)):
+    # [WHAT]: Create a new user and insert into database.
+    # [HOW]: Create ORM object, add to session, commit.
+    user = User(username=username, email=email)
+    db.add(user)
+    # [COMPONENT MEANING] session.commit() = Persists changes to the database and begins a new transaction.
+    await db.commit()
+    # [WHAT]: Refresh the object to get the generated ID.
+    await db.refresh(user)
+    return JSONResponse(content={"user_id": user.id, "username": user.username}, status_code=201)
+
+
+@app.get("/users")
+async def list_users(db: AsyncSession = Depends(get_db_session)):
+    # [WHAT]: Query all users from database.
+    # [HOW]: Use SQLAlchemy select() for type-safe, async queries.
+    # [COMPONENT MEANING] select(User) = Creates a SELECT statement for the User model.
+    stmt = select(User)
+    # [ARGUMENT MEANING] scalars() = Execute statement and return scalar results (objects, not row tuples).
+    result = await db.execute(stmt)
+    users = result.scalars().all()
+    return JSONResponse(content={"users": [{"id": u.id, "username": u.username, "email": u.email} for u in users]})
+
+
+@app.get("/users/{user_id}")
+async def get_user(user_id: int, db: AsyncSession = Depends(get_db_session)):
+    # [WHAT]: Query a single user by ID.
+    # [HOW]: Use where() to filter results.
+    stmt = select(User).where(User.id == user_id)
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        return JSONResponse(content={"error": "User not found"}, status_code=404)
+    
+    return JSONResponse(content={"id": user.id, "username": user.username, "email": user.email})
+
+
+@app.post("/users/{user_id}/posts", status_code=201)
+async def create_post(user_id: int, title: str, content: str, db: AsyncSession = Depends(get_db_session)):
+    # [WHAT]: Create a post for a user.
+    # [HOW]: First verify user exists, then create post with foreign key relationship.
+    stmt = select(User).where(User.id == user_id)
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        return JSONResponse(content={"error": "User not found"}, status_code=404)
+    
+    post = Post(title=title, content=content, author_id=user_id)
+    db.add(post)
+    await db.commit()
+    await db.refresh(post)
+    
+    return JSONResponse(content={"post_id": post.id, "title": post.title}, status_code=201)
+
+
+@app.get("/users/{user_id}/posts")
+async def get_user_posts(user_id: int, db: AsyncSession = Depends(get_db_session)):
+    # [WHAT]: Get all posts for a user.
+    # [HOW]: Query posts with where() filter.
+    stmt = select(Post).where(Post.author_id == user_id)
+    result = await db.execute(stmt)
+    posts = result.scalars().all()
+    
+    return JSONResponse(content={
+        "user_id": user_id,
+        "posts": [{"id": p.id, "title": p.title, "content": p.content} for p in posts]
+    })
+
+
+@app.get("/posts-with-authors")
+async def get_posts_with_authors(db: AsyncSession = Depends(get_db_session)):
+    # [WHAT]: Get posts WITH their authors (demonstrates relationship loading).
+    # [WATCH OUT]: Without explicit join strategy, this causes N+1 query problem.
+    # [COMPONENT MEANING] selectinload() = Query optimization that loads related objects in a separate query.
+    from sqlalchemy.orm import selectinload
+    
+    stmt = select(Post).options(selectinload(Post.author))
+    result = await db.execute(stmt)
+    posts = result.scalars().unique().all()
+    
+    return JSONResponse(content={
+        "posts": [
+            {"id": p.id, "title": p.title, "author": p.author.username}
+            for p in posts
+        ]
+    })
+
+
+@app.put("/users/{user_id}", status_code=200)
+async def update_user(user_id: int, username: str, email: str, db: AsyncSession = Depends(get_db_session)):
+    # [WHAT]: Update an existing user.
+    # [HOW]: Query, modify attributes, commit.
+    stmt = select(User).where(User.id == user_id)
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        return JSONResponse(content={"error": "User not found"}, status_code=404)
+    
+    user.username = username
+    user.email = email
+    await db.commit()
+    await db.refresh(user)
+    
+    return JSONResponse(content={"id": user.id, "username": user.username, "email": user.email})
+
+
+@app.delete("/users/{user_id}", status_code=200)
+async def delete_user(user_id: int, db: AsyncSession = Depends(get_db_session)):
+    # [WHAT]: Delete a user.
+    # [HOW]: Query, delete from session, commit.
+    stmt = select(User).where(User.id == user_id)
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        return JSONResponse(content={"error": "User not found"}, status_code=404)
+    
+    await db.delete(user)
+    await db.commit()
+    
+    return JSONResponse(content={"message": f"User {user_id} deleted"})
+
+
+@app.get("/health")
+async def health():
+    return JSONResponse(content={"status": "ok"})
+
 
 if __name__ == "__main__":
-    pass
-EOF
+    print("\n[INFO] Starting Uvicorn server on http://localhost:8005")
+    print("[INFO] Try these endpoints:")
+    print("  - POST /users?username=alice&email=alice@example.com")
+    print("  - GET /users")
+    print("  - GET /users/1")
+    print("  - POST /users/1/posts?title=Post1&content=Content1")
+    print("  - GET /users/1/posts")
+    print("  - GET /posts-with-authors")
+    print("  - PUT /users/1?username=alice_updated&email=alice_new@example.com")
+    print("  - DELETE /users/1")
+    print("\n")
+    
+    uvicorn.run(app=app, host="127.0.0.1", port=8005, workers=1, log_level="info")
+SEGMENT_5_EOF
 
-echo "✓ Segment 5: SQLAlchemy Async (segment_5_sqlalchemy_async.py)"
+echo "[✓] Segment 5 generated: segment_5_database_integration.py"
+
 
 echo ""
-echo "============================================================================"
+echo "================================================================================"
 echo "SEGMENT 6: Authentication & Authorization Implementation"
-echo "============================================================================"
+echo "================================================================================"
 
-cat << 'EOF' > segment_6_authentication.py
+cat << 'SEGMENT_6_EOF' > segment_6_authentication.py
 """
-[WHAT]: OAuth2, JWT, password hashing, token refresh, RBAC, scopes
-[WHY]: Production auth prevents unauthorized access. JWT is stateless. Scopes enforce least privilege.
+Segment 6: Authentication & Authorization Implementation
+=======================================================
+
+This module demonstrates OAuth2, JWT, password hashing, token lifecycle,
+role-based access control (RBAC), and secure validation patterns.
 """
 
-from fastapi import FastAPI, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm, HTTPBearer, HTTPAuthCredentials
+from datetime import datetime, timedelta
+from typing import Optional
+from fastapi import FastAPI, Depends, HTTPException, Header
+from fastapi.responses import JSONResponse
+from fastapi.security import HTTPBearer, HTTPAuthCredentials
 from pydantic import BaseModel
-from passlib.context import CryptContext
 import jwt
-from datetime import datetime, timedelta, timezone
-from typing import Annotated, Optional
-import os
+import uvicorn
+from passlib.context import CryptContext
 
-app = FastAPI()
+app = FastAPI(title="Segment 6: Authentication & Authorization")
 
-# ========== SETUP: Hashing & JWT Configuration ==========
-
-# [COMPONENT MEANING] CryptContext = Secure password hashing with pluggable algorithms
-# [ARGUMENT MEANING] schemes=["bcrypt"] = Use bcrypt as primary; auto-upgrade from argon2
+# [COMPONENT MEANING] CryptContext = Passlib utility for hashing and verifying passwords securely.
+# [WHAT] Configure password hashing with Argon2 (recommended over bcrypt for newer systems).
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-in-production")  # ❌ Never hardcode
-ALGORITHM = "HS256"  # [WATCH OUT]: ALGORITHM="RS256" preferred for distributed systems
+# JWT configuration
+SECRET_KEY = "your-secret-key-change-in-production"  # In production, load from environment
+ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-# ========== BASIC USAGE: Password Hashing ==========
 
-# [COMPONENT MEANING] hash() = Generate bcrypt hash from plaintext password
-# [ARGUMENT MEANING] Bcrypt cost is auto-tuned; takes ~100ms per hash (security feature)
+# [WHAT] Pydantic models for request/response payloads.
+class UserCredentials(BaseModel):
+    username: str
+    password: str
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+
+class UserInfo(BaseModel):
+    user_id: int
+    username: str
+    roles: list[str]
+
+
+# [WHAT] In-memory user store (in production, use database).
+USERS_DB = {
+    "alice": {
+        "user_id": 1,
+        "username": "alice",
+        "password_hash": pwd_context.hash("alice_secure_password"),  # Hash: "alice_secure_password"
+        "roles": ["user", "admin"],
+    },
+    "bob": {
+        "user_id": 2,
+        "username": "bob",
+        "password_hash": pwd_context.hash("bob_secure_password"),
+        "roles": ["user"],
+    },
+}
+
+# [WHAT] Token blacklist for revocation (in production, use Redis or database).
+TOKEN_BLACKLIST = set()
+
+
+# ============================================================================
+# PASSWORD HASHING
+# ============================================================================
+
 def hash_password(password: str) -> str:
-    """[HOW]: Never store plaintext. Always hash with random salt."""
+    # [COMPONENT MEANING] pwd_context.hash() = Hashes a password using the configured algorithm (bcrypt).
+    # [WHAT]: One-way cryptographic hash. Cannot be reversed.
     return pwd_context.hash(password)
 
-# [COMPONENT MEANING] verify() = Constant-time comparison; prevents timing attacks
-def verify_password(plaintext: str, hashed: str) -> bool:
-    """[WATCH OUT]: Timing attack: == operator leaks hash byte-by-byte. Use verify()."""
-    return pwd_context.verify(plaintext, hashed)
+def verify_password(plain_password: str, password_hash: str) -> bool:
+    # [COMPONENT MEANING] pwd_context.verify() = Securely compares a plain password to its hash.
+    # [WHAT]: Constant-time comparison to prevent timing attacks.
+    return pwd_context.verify(plain_password, password_hash)
 
-# ========== POWER USAGE: JWT Token Management ==========
 
-class TokenPayload(BaseModel):
-    sub: str  # Subject (user ID)
-    exp: datetime  # Expiration
-    iat: datetime  # Issued at
-    scopes: list[str] = []  # OAuth2 scopes
+# ============================================================================
+# JWT TOKEN GENERATION & VALIDATION
+# ============================================================================
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    """[WHAT]: Sign JWT with payload and secret key."""
-    to_encode = data.copy()
+def create_access_token(user_id: int, username: str, roles: list[str]) -> str:
+    # [WHAT] Create a JWT access token with claims.
+    # [WHY] JWT is stateless; the token itself carries user info and signature.
     
-    if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
-    else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+    payload = {
+        "sub": username,  # Subject (standard JWT claim)
+        "user_id": user_id,
+        "roles": roles,
+        "iat": datetime.utcnow(),  # Issued at
+        "exp": datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),  # Expiration
+    }
     
-    to_encode.update({"exp": expire, "iat": datetime.now(timezone.utc)})
-    
-    # [COMPONENT MEANING] jwt.encode() = Create signed token
-    # [ARGUMENT MEANING] algorithm="HS256" = HMAC SHA-256 symmetric signing
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+    # [COMPONENT MEANING] jwt.encode() = Encodes claims into a JWT token with signature.
+    # [ARGUMENT MEANING] algorithm="HS256" = HMAC-SHA256 symmetric signing (HS256 for secrets, RS256 for public keys).
+    token = jwt.encode(payload=payload, key=SECRET_KEY, algorithm=ALGORITHM)
+    return token
 
-def decode_access_token(token: str) -> dict:
-    """[HOW]: Verify signature and extract payload."""
+def verify_access_token(token: str) -> dict:
+    # [WHAT] Decode and validate a JWT token.
+    # [WHY] Verify the signature hasn't been tampered with and the token hasn't expired.
+    
     try:
-        # [COMPONENT MEANING] jwt.decode() = Verify signature; reject if tampered
-        # [ARGUMENT MEANING] algorithms=["HS256"] = Accept only this algorithm (prevent confusion attacks)
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        # [COMPONENT MEANING] jwt.decode() = Validates JWT signature and returns claims dictionary.
+        # [ARGUMENT MEANING] algorithms = List of allowed algorithms (prevents algorithm confusion attacks).
+        payload = jwt.decode(token=token, key=SECRET_KEY, algorithms=[ALGORITHM])
         return payload
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-# ========== PRECISION USAGE: OAuth2 Password Flow ==========
 
-# [COMPONENT MEANING] OAuth2PasswordBearer = Security scheme for password flow
-# [ARGUMENT MEANING] tokenUrl="/token" = Swagger UI uses this endpoint for login
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", scopes={"read": "Read data", "write": "Write data"})
+# ============================================================================
+# DEPENDENCY FUNCTIONS FOR AUTH
+# ============================================================================
 
-class User(BaseModel):
-    username: str
-    scopes: list[str] = []
-
-# Simulated user database
-fake_users_db = {
-    "john": {
-        "username": "john",
-        "password_hash": hash_password("secret123"),
-        "scopes": ["read", "write"]
-    }
-}
-
-async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> User:
-    """[WHAT]: Dependency that validates JWT and returns current user."""
-    payload = decode_access_token(token)
-    username = payload.get("sub")
+def get_current_user(authorization: str = Header(None)) -> dict:
+    # [WHAT] Extract user from Authorization header.
+    # [WHY] Standard Bearer token authentication.
     
-    if not username or username not in fake_users_db:
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
+    
+    token = authorization.replace("Bearer ", "")
+    
+    # [WHAT] Check if token is blacklisted (revoked).
+    if token in TOKEN_BLACKLIST:
+        raise HTTPException(status_code=401, detail="Token has been revoked")
+    
+    # [WHAT] Verify and decode token.
+    payload = verify_access_token(token)
+    
+    username = payload.get("sub")
+    if not username or username not in USERS_DB:
+        raise HTTPException(status_code=401, detail="Invalid token claims")
+    
+    user = USERS_DB[username]
+    return {"user_id": user["user_id"], "username": username, "roles": user["roles"]}
+
+
+def require_admin(user: dict = Depends(get_current_user)) -> dict:
+    # [WHAT] Dependency that ensures user has "admin" role.
+    # [WHY] Role-based access control (RBAC).
+    
+    if "admin" not in user["roles"]:
+        raise HTTPException(status_code=403, detail="Admin role required")
+    
+    return user
+
+
+def require_user(user: dict = Depends(get_current_user)) -> dict:
+    # [WHAT] Dependency ensuring basic "user" role.
+    
+    if "user" not in user["roles"]:
+        raise HTTPException(status_code=403, detail="User role required")
+    
+    return user
+
+
+# ============================================================================
+# AUTHENTICATION ENDPOINTS
+# ============================================================================
+
+@app.post("/token", response_model=TokenResponse)
+async def login(credentials: UserCredentials):
+    # [WHAT] OAuth2 Password flow: exchange username/password for access token.
+    # [WHY] Client authenticates and receives a token for subsequent requests.
+    
+    # [WHAT] Validate credentials against user database.
+    user = USERS_DB.get(credentials.username)
+    if not user or not verify_password(credentials.password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
-    user_dict = fake_users_db[username]
-    return User(username=username, scopes=user_dict["scopes"])
-
-@app.post("/token")
-async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]) -> dict:
-    """[HOW]: Password flow endpoint. Return access token on success."""
-    user_dict = fake_users_db.get(form_data.username)
+    # [WHAT] Generate access token.
+    access_token = create_access_token(
+        user_id=user["user_id"],
+        username=user["username"],
+        roles=user["roles"]
+    )
     
-    if not user_dict or not verify_password(form_data.password, user_dict["password_hash"]):
-        raise HTTPException(status_code=401, detail="Incorrect credentials")
+    return TokenResponse(
+        access_token=access_token,
+        expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,  # In seconds
+    )
+
+
+@app.post("/register", status_code=201)
+async def register(credentials: UserCredentials):
+    # [WHAT] User registration endpoint.
+    # [WHY] Allow new users to create accounts.
     
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token({"sub": form_data.username}, access_token_expires)
+    if credentials.username in USERS_DB:
+        raise HTTPException(status_code=400, detail="Username already exists")
     
-    return {"access_token": access_token, "token_type": "bearer"}
+    # [WHAT] Hash password before storing.
+    password_hash = hash_password(credentials.password)
+    
+    # [WHAT] Create new user entry.
+    new_user_id = len(USERS_DB) + 1
+    USERS_DB[credentials.username] = {
+        "user_id": new_user_id,
+        "username": credentials.username,
+        "password_hash": password_hash,
+        "roles": ["user"],  # New users get basic role
+    }
+    
+    return JSONResponse(
+        content={"message": f"User {credentials.username} registered", "user_id": new_user_id},
+        status_code=201
+    )
 
-@app.get("/user/me")
-async def read_current_user(current_user: Annotated[User, Depends(get_current_user)]) -> User:
-    """[WHAT]: Protected endpoint. Requires valid JWT."""
-    return current_user
 
-# ========== ENTERPRISE CONTEXT: Role-Based Access Control ==========
+@app.post("/logout", status_code=200)
+async def logout(user: dict = Depends(get_current_user), authorization: str = Header(None)):
+    # [WHAT] Token revocation endpoint.
+    # [WHY] Allow users to explicitly log out (revoke their token).
+    
+    token = authorization.replace("Bearer ", "")
+    # [WHAT] Add token to blacklist.
+    TOKEN_BLACKLIST.add(token)
+    
+    return JSONResponse(content={"message": "Logged out successfully"})
 
-# [COMPONENT MEANING] SecurityScopes = Access required scopes for current request
-from fastapi.security import SecurityScopes
 
-async def get_current_admin_user(
-    security_scopes: SecurityScopes,
-    current_user: Annotated[User, Depends(get_current_user)]
-) -> User:
-    """[WHY]: RBAC ensures user has required scopes/permissions."""
-    if "admin" not in current_user.scopes:
-        raise HTTPException(status_code=403, detail="Not authorized")
-    return current_user
+# ============================================================================
+# PROTECTED ENDPOINTS
+# ============================================================================
 
-@app.delete("/admin/user/{username}")
-async def delete_user(
-    username: str,
-    admin: Annotated[User, Depends(get_current_admin_user)]
-) -> dict:
-    """[HOW]: Only admin-scoped users can access this endpoint."""
-    return {"deleted": username}
+@app.get("/profile")
+async def get_profile(user: dict = Depends(get_current_user)):
+    # [WHAT] Protected endpoint: requires valid token.
+    # [WHY] get_current_user dependency enforces authentication.
+    
+    return JSONResponse(content={
+        "user_id": user["user_id"],
+        "username": user["username"],
+        "roles": user["roles"],
+    })
 
-# [COMPONENT MEANING] HTTPBearer = Security scheme for Bearer tokens (alternative to OAuth2)
-http_bearer = HTTPBearer()
 
-async def verify_bearer_token(credentials: HTTPAuthCredentials = Depends(http_bearer)) -> dict:
-    """[WHAT]: Parse Authorization: Bearer <token> header."""
-    token = credentials.credentials
-    payload = decode_access_token(token)
-    return payload
+@app.get("/admin-panel")
+async def admin_panel(user: dict = Depends(require_admin)):
+    # [WHAT] Admin-only endpoint: requires authentication + admin role.
+    # [WHY] Role-based access control via dependency.
+    
+    return JSONResponse(content={
+        "message": f"Welcome admin {user['username']}",
+        "admin_data": {"users_count": len(USERS_DB), "features": ["all"]},
+    })
 
-@app.get("/bearer")
-async def bearer_example(payload: Annotated[dict, Depends(verify_bearer_token)]):
-    """[HOW]: HTTPBearer extracts token from Authorization header."""
-    return {"user": payload.get("sub")}
+
+@app.get("/user-data")
+async def get_user_data(user: dict = Depends(require_user)):
+    # [WHAT] User-only endpoint: requires user role.
+    
+    return JSONResponse(content={
+        "message": f"Hello {user['username']}",
+        "data": {"preferences": {}, "settings": {}},
+    })
+
+
+@app.post("/change-password")
+async def change_password(
+    old_password: str,
+    new_password: str,
+    user: dict = Depends(get_current_user)
+):
+    # [WHAT] Endpoint to change user password.
+    # [WHY] Allow users to update their credentials.
+    
+    user_data = USERS_DB[user["username"]]
+    
+    # [WHAT] Verify old password before allowing change.
+    if not verify_password(old_password, user_data["password_hash"]):
+        raise HTTPException(status_code=401, detail="Current password incorrect")
+    
+    # [WHAT] Hash new password.
+    user_data["password_hash"] = hash_password(new_password)
+    
+    return JSONResponse(content={"message": "Password changed successfully"})
+
+
+@app.get("/health")
+async def health():
+    return JSONResponse(content={"status": "ok"})
+
 
 if __name__ == "__main__":
-    pass
-EOF
+    print("\n[INFO] Starting Uvicorn server on http://localhost:8006")
+    print("[INFO] Test accounts (password = username + '_secure_password'):")
+    print("  - alice (admin)")
+    print("  - bob (user)")
+    print("[INFO] Try these endpoints:")
+    print("  - POST /register (register new user)")
+    print("  - POST /token (login to get access token)")
+    print("  - GET /profile (requires Authorization: Bearer <token>)")
+    print("  - GET /admin-panel (requires admin role)")
+    print("  - GET /user-data (requires user role)")
+    print("  - POST /change-password (requires authentication)")
+    print("  - POST /logout (revoke token)")
+    print("\n")
+    
+    uvicorn.run(app=app, host="127.0.0.1", port=8006, workers=1, log_level="info")
+SEGMENT_6_EOF
 
-echo "✓ Segment 6: Authentication (segment_6_authentication.py)"
+echo "[✓] Segment 6 generated: segment_6_authentication.py"
+
 
 echo ""
-echo "============================================================================"
+echo "================================================================================"
 echo "SEGMENT 7: Security Hardening & OWASP Defense"
-echo "============================================================================"
+echo "================================================================================"
 
-cat << 'EOF' > segment_7_security_hardening.py
+cat << 'SEGMENT_7_EOF' > segment_7_security_hardening.py
 """
-[WHAT]: CORS, headers, TLS, injection prevention, rate limiting
-[WHY]: OWASP top 10. Defense in depth. Headers are cheap security wins.
+Segment 7: Security Hardening & OWASP Defense
+==============================================
+
+This module demonstrates CORS, security headers, injection prevention,
+TrustedHostMiddleware, GZipMiddleware, and OWASP defense patterns.
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
-from fastapi.responses import JSONResponse
 from starlette.requests import Request
+import uvicorn
 import re
+import html
 
-app = FastAPI()
+app = FastAPI(title="Segment 7: Security Hardening")
 
-# ========== BASIC USAGE: CORS Configuration ==========
 
-# [COMPONENT MEANING] CORSMiddleware = Handle CORS preflight and headers
-# [ARGUMENT MEANING] allow_origins = List of allowed origin domains
-# [WATCH OUT]: allow_origins=["*"] allows any origin; use explicit list in production
+# ============================================================================
+# CORS (Cross-Origin Resource Sharing) CONFIGURATION
+# ============================================================================
+
+# [WHAT] CORS middleware for controlling cross-origin requests.
+# [WHY] Prevent unauthorized cross-origin access while allowing legitimate partners.
+# [COMPONENT MEANING] CORSMiddleware = Middleware that validates Origin header and adds CORS response headers.
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://example.com", "https://app.example.com"],  # Explicit whitelist
-    allow_credentials=True,  # Allow cookies/auth headers in CORS
+    # [ARGUMENT MEANING] allow_origins = List of origins allowed to make cross-origin requests. Use ["*"] sparingly; be specific in production.
+    allow_origins=["http://localhost:3000", "https://example.com"],
+    # [ARGUMENT MEANING] allow_credentials = Allow credentials (cookies, Authorization) in cross-origin requests.
+    allow_credentials=True,
+    # [ARGUMENT MEANING] allow_methods = HTTP methods allowed in CORS requests.
     allow_methods=["GET", "POST", "PUT", "DELETE"],
-    allow_headers=["Authorization", "Content-Type"],
-    max_age=600  # Preflight cache 10 minutes
+    # [ARGUMENT MEANING] allow_headers = Custom headers allowed in CORS requests.
+    allow_headers=["Content-Type", "Authorization"],
+    # [ARGUMENT MEANING] expose_headers = Headers exposed to the client in the response.
+    expose_headers=["X-Total-Count"],
+    # [ARGUMENT MEANING] max_age = Cache preflight response for this many seconds.
+    max_age=600,
 )
 
-# ========== POWER USAGE: Security Headers & TLS ==========
+# [WHAT] TrustedHostMiddleware validates Host header to prevent host header injection.
+# [WHY] Attackers can manipulate the Host header to bypass security controls or cause caching issues.
+# [COMPONENT MEANING] TrustedHostMiddleware = Middleware that validates the Host header against a whitelist.
 
-# [COMPONENT MEANING] TrustedHostMiddleware = Validate Host header to prevent injection
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=["example.com", "*.example.com"])
+app.add_middleware(
+    TrustedHostMiddleware,
+    # [ARGUMENT MEANING] allowed_hosts = List of valid host patterns. Use wildcards carefully.
+    allowed_hosts=["localhost", "127.0.0.1", "example.com", "*.example.com"],
+)
 
-# [COMPONENT MEANING] GZipMiddleware = Compress responses to reduce bandwidth
-app.add_middleware(GZipMiddleware, minimum_size=1000)
+# [WHAT] GZipMiddleware for response compression.
+# [WHY] Reduces bandwidth usage for large responses.
+# [COMPONENT MEANING] GZipMiddleware = Middleware that compresses responses with gzip when client supports it.
 
-# [COMPONENT MEANING] Security headers = Browser-enforced protections
-@app.middleware("http")
-async def add_security_headers(request: Request, call_next):
-    """[WHAT]: Add HTTP security headers to every response."""
-    response = await call_next(request)
-    
-    # [ARGUMENT MEANING] Strict-Transport-Security = Enforce HTTPS for future requests
-    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-    
-    # [ARGUMENT MEANING] Content-Security-Policy = Restrict resource loading (prevent XSS)
-    response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline'"
-    
-    # [ARGUMENT MEANING] X-Content-Type-Options = Prevent MIME sniffing
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    
-    # [ARGUMENT MEANING] X-Frame-Options = Prevent clickjacking
-    response.headers["X-Frame-Options"] = "DENY"
-    
-    return response
+app.add_middleware(
+    GZipMiddleware,
+    # [ARGUMENT MEANING] minimum_size = Only compress responses larger than this many bytes.
+    minimum_size=1000,
+)
 
-# ========== PRECISION USAGE: Input Validation & Injection Prevention ==========
 
-@app.get("/search")
-async def search(q: str):
-    """[HOW]: Validate input to prevent SQL/NoSQL/Command injection."""
-    # ❌ BAD: Search using raw SQL
-    # query = f"SELECT * FROM users WHERE name LIKE '%{q}%'"  # SQL injection!
-    
-    # ✓ GOOD: Use parameterized queries (FastAPI + SQLAlchemy do this)
-    if len(q) > 100:
-        raise HTTPException(status_code=400, detail="Query too long")
-    
-    # Only allow alphanumeric and spaces
-    if not re.match(r"^[a-zA-Z0-9\s]+$", q):
-        raise HTTPException(status_code=400, detail="Invalid characters in query")
-    
-    return {"query": q, "results": []}
+# ============================================================================
+# SECURITY HEADERS MIDDLEWARE
+# ============================================================================
 
-# ========== ENTERPRISE CONTEXT: Rate Limiting & Request Logging ==========
-
-from collections import defaultdict
-from datetime import datetime, timedelta
-import asyncio
-
-# Simple in-memory rate limiter (use Redis in production)
-request_counts = defaultdict(list)
-
-class RateLimitMiddleware(BaseHTTPMiddleware):
-    """[WHAT]: Token bucket algorithm preventing abuse."""
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    # [WHAT] Custom middleware adding OWASP security headers to every response.
+    # [WHY] Security headers instruct browsers to enforce protections.
     
     async def dispatch(self, request: Request, call_next):
-        client_ip = request.client.host if request.client else "unknown"
-        now = datetime.utcnow()
-        
-        # Clean old requests (older than 1 minute)
-        request_counts[client_ip] = [
-            req_time for req_time in request_counts[client_ip]
-            if now - req_time < timedelta(minutes=1)
-        ]
-        
-        # [HOW]: Allow 60 requests per minute per IP
-        if len(request_counts[client_ip]) >= 60:
-            return JSONResponse(
-                {"detail": "Rate limit exceeded"},
-                status_code=429,
-                headers={"Retry-After": "60"}
-            )
-        
-        request_counts[client_ip].append(now)
-        
         response = await call_next(request)
-        response.headers["X-RateLimit-Limit"] = "60"
-        response.headers["X-RateLimit-Remaining"] = str(60 - len(request_counts[client_ip]))
+        
+        # [ARGUMENT MEANING] Content-Security-Policy = HTTP header restricting resource loading sources to prevent XSS attacks.
+        response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline'"
+        
+        # [ARGUMENT MEANING] Strict-Transport-Security = HTTP header enforcing HTTPS connections to prevent protocol downgrade attacks.
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        
+        # [ARGUMENT MEANING] X-Content-Type-Options = HTTP header preventing MIME type sniffing attacks with "nosniff" value.
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        
+        # [ARGUMENT MEANING] X-Frame-Options = HTTP header preventing clickjacking by controlling iframe embedding with "DENY" or "SAMEORIGIN".
+        response.headers["X-Frame-Options"] = "DENY"
+        
+        # [WHAT] Legacy XSS header (deprecated but sometimes required for legacy compliance).
+        response.headers["X-XSS-Protection"] = "1; mode=block"
         
         return response
 
-app.add_middleware(RateLimitMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
 
-# ========== mTLS (Mutual TLS) for Service-to-Service ==========
 
-@app.get("/api/internal")
-async def internal_api(request: Request):
-    """[WHAT]: Endpoints accessible only with mTLS client certificate."""
-    # In production: verify request.client.sslObject certificate chain
-    client_cert = request.headers.get("X-Client-Cert")
-    
-    if not client_cert:
-        raise HTTPException(status_code=403, detail="Client certificate required")
-    
-    return {"authenticated": True}
+# ============================================================================
+# INPUT VALIDATION & SANITIZATION
+# ============================================================================
 
-# [WATCH OUT]: CORS bypass via null origin or subdomain regex
-# Always validate Origin header explicitly; never use regex that matches too broadly
-@app.options("/api/resource")
-async def preflight_check(request: Request):
-    """[HOW]: Handle CORS preflight properly."""
-    origin = request.headers.get("Origin")
+def sanitize_html(user_input: str) -> str:
+    # [WHAT] Escape HTML special characters to prevent XSS.
+    # [WHY] User input can contain malicious script tags.
+    return html.escape(user_input)
+
+def validate_email(email: str) -> bool:
+    # [WHAT] Validate email format to prevent injection attacks.
+    # [WHY] Malformed input can bypass downstream validation.
+    pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+    return bool(re.match(pattern, email))
+
+def prevent_sql_injection(query: str) -> str:
+    # [WHAT] Basic sanitization (in production, use parameterized queries).
+    # [WHY] Prevent SQL injection attacks.
+    # [WATCH OUT]: This is a simplified example. Always use ORM parameterized queries in production.
+    dangerous_chars = [";", "--", "/*", "*/", "xp_", "sp_"]
+    for char in dangerous_chars:
+        if char in query.lower():
+            raise ValueError(f"Suspicious pattern detected: {char}")
+    return query
+
+
+# ============================================================================
+# ENDPOINTS WITH SECURITY MEASURES
+# ============================================================================
+
+@app.get("/secure-data")
+async def get_secure_data():
+    # [WHAT] Endpoint demonstrating security headers in response.
+    # [WHY] All responses include OWASP security headers via middleware.
+    return JSONResponse(content={"message": "This response has security headers"})
+
+
+@app.post("/user-comment")
+async def create_comment(comment: str):
+    # [WHAT] Accept user comment and sanitize it.
+    # [WHY] Prevent XSS attacks from stored comments.
     
-    # ❌ BAD: if origin.endswith(".example.com")  # Matches evil.com.example.com
-    # ✓ GOOD: explicit whitelist
-    allowed = ["https://app.example.com", "https://admin.example.com"]
+    # [WHAT] Sanitize HTML.
+    sanitized = sanitize_html(comment)
     
-    if origin not in allowed:
-        raise HTTPException(status_code=403, detail="CORS not allowed")
+    return JSONResponse(content={"comment": sanitized, "safe": True})
+
+
+@app.post("/contact")
+async def create_contact(name: str, email: str):
+    # [WHAT] Contact form with email validation.
+    # [WHY] Prevent injection attacks via invalid email addresses.
     
-    return {"allowed": True}
+    if not validate_email(email):
+        return JSONResponse(content={"error": "Invalid email format"}, status_code=400)
+    
+    return JSONResponse(content={"message": f"Contact from {name} received"}, status_code=201)
+
+
+@app.post("/search")
+async def search(query: str):
+    # [WHAT] Search endpoint with SQL injection prevention.
+    # [WHY] Prevent attackers from injecting SQL commands.
+    
+    try:
+        safe_query = prevent_sql_injection(query)
+        # In production, use parameterized queries with ORM/database driver
+        return JSONResponse(content={"query": safe_query, "results": []})
+    except ValueError as e:
+        return JSONResponse(content={"error": str(e)}, status_code=400)
+
+
+@app.get("/cors-test")
+async def cors_test():
+    # [WHAT] Endpoint to test CORS behavior.
+    # [WHY] Verify cross-origin requests are properly controlled.
+    return JSONResponse(content={"message": "CORS is configured"})
+
+
+@app.get("/security-headers")
+async def check_security_headers():
+    # [WHAT] Endpoint describing security headers.
+    return JSONResponse(content={
+        "security_headers": {
+            "Content-Security-Policy": "Restricts script and resource loading",
+            "Strict-Transport-Security": "Forces HTTPS",
+            "X-Content-Type-Options": "Prevents MIME sniffing",
+            "X-Frame-Options": "Prevents clickjacking",
+        }
+    })
+
+
+@app.get("/health")
+async def health():
+    return JSONResponse(content={"status": "ok"})
+
 
 if __name__ == "__main__":
-    pass
-EOF
+    print("\n[INFO] Starting Uvicorn server on http://localhost:8007")
+    print("[INFO] Security features enabled:")
+    print("  - CORS middleware (configured origins only)")
+    print("  - TrustedHostMiddleware (Host header validation)")
+    print("  - GZipMiddleware (response compression)")
+    print("  - Security headers (CSP, HSTS, X-*, etc.)")
+    print("  - Input validation & sanitization")
+    print("[INFO] Try these endpoints:")
+    print("  - GET /secure-data")
+    print("  - POST /user-comment (test XSS prevention)")
+    print("  - POST /contact (test email validation)")
+    print("  - POST /search (test SQL injection prevention)")
+    print("  - GET /cors-test")
+    print("  - GET /security-headers")
+    print("\n")
+    
+    uvicorn.run(app=app, host="127.0.0.1", port=8007, workers=1, log_level="info")
+SEGMENT_7_EOF
 
-echo "✓ Segment 7: Security Hardening (segment_7_security_hardening.py)"
+echo "[✓] Segment 7 generated: segment_7_security_hardening.py"
 
-# Continue with remaining segments...
 
 echo ""
-echo "============================================================================"
+echo "================================================================================"
 echo "SEGMENT 8: Alembic Migrations & Schema Evolution"
-echo "============================================================================"
+echo "================================================================================"
 
-cat << 'EOF' > segment_8_alembic_migrations.py
+cat << 'SEGMENT_8_EOF' > segment_8_alembic_migrations.py
 """
-[WHAT]: Alembic CLI, migration files, data migrations, zero-downtime strategies
-[WHY]: Track schema changes. Backward-compatible migrations prevent downtime.
+Segment 8: Alembic Migrations & Schema Evolution
+================================================
+
+This module demonstrates Alembic setup, migration workflows, data migrations,
+zero-downtime strategies, and migration testing patterns.
+
+NOTE: This is a demonstration of Alembic patterns. Full Alembic setup
+requires the alembic init command and separate migration files.
 """
 
-# This segment is CLI-heavy; code demonstrates migration patterns
-# In real usage: alembic init project; alembic revision --autogenerate -m "message"
+from sqlalchemy import Column, Integer, String, DateTime, create_engine, inspect
+from sqlalchemy.orm import declarative_base, sessionmaker
+from datetime import datetime
+from typing import List
 
-migration_patterns = {
-    "basic_usage": """
-# Example Alembic migration file: alembic/versions/001_initial.py
+Base = declarative_base()
 
-from alembic import op
-import sqlalchemy as sa
 
-revision = "001"
-down_revision = None
-
-def upgrade():
-    # [COMPONENT MEANING] op.create_table() = Create new table in migration
-    op.create_table(
-        'users',
-        sa.Column('id', sa.Integer, primary_key=True),
-        sa.Column('username', sa.String(50), unique=True),
-        sa.Column('created_at', sa.DateTime, server_default=sa.func.now())
-    )
+# [WHAT] Initial schema version (before migration).
+class User(Base):
+    __tablename__ = "users"
     
-    # [WHAT]: Add index for performance
-    op.create_index('ix_users_username', 'users', ['username'])
+    id = Column(Integer, primary_key=True)
+    username = Column(String, unique=True)
+    email = Column(String, unique=True)
 
-def downgrade():
-    # [COMPONENT MEANING] op.drop_table() = Remove table during rollback
-    op.drop_table('users')
-    """,
+
+# [WHAT] Evolved schema with new field (after migration).
+class UserV2(Base):
+    __tablename__ = "users"
     
-    "data_migration": """
-# Alembic data migration: Add default values to new column
+    id = Column(Integer, primary_key=True)
+    username = Column(String, unique=True)
+    email = Column(String, unique=True)
+    created_at = Column(DateTime, default=datetime.utcnow)  # NEW FIELD
 
-def upgrade():
-    # [HOW]: Add new column, then backfill existing rows
-    op.add_column('users', sa.Column('status', sa.String, nullable=True))
+
+# ============================================================================
+# ALEMBIC MIGRATION EXAMPLES (CONCEPTUAL)
+# ============================================================================
+
+"""
+Example Alembic workflow:
+
+1. INITIALIZE ALEMBIC:
+   $ alembic init alembic
+   
+   This creates:
+   - alembic/env.py (runtime environment)
+   - alembic/script.py.mako (migration template)
+   - alembic.ini (configuration)
+
+2. AUTOGENERATE MIGRATIONS:
+   $ alembic revision --autogenerate -m "Add created_at field to users"
+   
+   This compares the current database schema to SQLAlchemy models and 
+   generates a migration file.
+
+3. MIGRATION FILE STRUCTURE:
+   
+   from alembic import op
+   import sqlalchemy as sa
+   
+   revision = 'abc123'
+   down_revision = 'xyz789'
+   branch_labels = None
+   depends_on = None
+   
+   def upgrade():
+       # [COMPONENT MEANING] op.add_column() = Alembic operation adding a new column to an existing table.
+       op.add_column('users', sa.Column('created_at', sa.DateTime(), nullable=True))
+   
+   def downgrade():
+       # [COMPONENT MEANING] op.drop_column() = Alembic operation removing a column from an existing table.
+       op.drop_column('users', 'created_at')
+
+4. APPLY MIGRATIONS:
+   $ alembic upgrade head
+   
+   Applies all pending migrations to the database.
+
+5. ROLLBACK MIGRATIONS:
+   $ alembic downgrade -1
+   
+   Reverts the last migration.
+"""
+
+
+# ============================================================================
+# MIGRATION PATTERNS
+# ============================================================================
+
+class MigrationPatterns:
+    """
+    Demonstrates various migration patterns and considerations.
+    """
     
-    # [WATCH OUT]: Raw SQL for data migration; ensure it's idempotent
-    op.execute("UPDATE users SET status = 'active' WHERE status IS NULL")
+    # [WHAT] Zero-downtime migration pattern.
+    # [WHY] Large tables can lock the database during schema changes.
+    # [HOW] Use backward-compatible changes and multi-step migrations.
     
-    # Now make it non-nullable
-    op.alter_column('users', 'status', nullable=False)
-
-def downgrade():
-    op.drop_column('users', 'status')
-    """,
+    """
+    Pattern: Adding a NOT NULL column to large table
     
-    "zero_downtime": """
-# Zero-downtime migration: Multi-step for backward compatibility
+    Step 1: Add column as nullable
+        ALTER TABLE users ADD COLUMN status VARCHAR DEFAULT 'active' NULL;
+    
+    Step 2: Backfill existing rows
+        UPDATE users SET status = 'active' WHERE status IS NULL;
+    
+    Step 3: Add NOT NULL constraint
+        ALTER TABLE users MODIFY COLUMN status VARCHAR NOT NULL;
+    
+    This avoids table locks and allows rollback between steps.
+    """
+    
+    # [WHAT] Renaming a column without downtime.
+    # [WHY] Direct column rename can break code that uses the old name.
+    # [HOW] Create new column, migrate data, drop old column.
+    
+    """
+    Pattern: Renaming column 'email' to 'email_address'
+    
+    Step 1: Add new column
+        ALTER TABLE users ADD COLUMN email_address VARCHAR;
+    
+    Step 2: Migrate data
+        UPDATE users SET email_address = email WHERE email IS NOT NULL;
+    
+    Step 3: Update application to use new column
+        # Deploy new code that reads/writes email_address
+    
+    Step 4: Drop old column
+        ALTER TABLE users DROP COLUMN email;
+    
+    This allows the old and new columns to coexist during deployment.
+    """
+    
+    # [WHAT] Data migration (transform data, not schema).
+    # [WHY] Sometimes you need to transform existing data.
+    # [HOW] Use op.execute() for raw SQL within migration.
+    
+    """
+    Pattern: Data migration with op.execute()
+    
+    def upgrade():
+        # Transform email to lowercase
+        op.execute('UPDATE users SET email = LOWER(email)')
+    
+    def downgrade():
+        # Impossible to restore original case, so raise error
+        raise NotImplementedError()
+    """
 
-# Step 1 (v1.0): Existing code still uses 'email' column
-def upgrade_1_0():
-    # Add new column, keep old one
-    op.add_column('users', sa.Column('email_normalized', sa.String, nullable=True))
 
-# Step 2 (v1.1): Code reads from both, writes to both
-def upgrade_1_1():
-    # Backfill new column
-    op.execute("UPDATE users SET email_normalized = email")
-    op.alter_column('users', 'email_normalized', nullable=False)
+# ============================================================================
+# DATABASE SCHEMA INSPECTION (PROGRAMMATIC)
+# ============================================================================
 
-# Step 3 (v1.2): Code reads from new column, deprecate old
-def upgrade_1_2():
-    # Old code can still work; new code prefers email_normalized
+def inspect_schema(database_url: str) -> dict:
+    # [WHAT] Programmatically inspect database schema.
+    # [WHY] Useful for testing migrations and debugging schema issues.
+    
+    engine = create_engine(database_url)
+    inspector = inspect(engine)
+    
+    schema_info = {
+        "tables": inspector.get_table_names(),
+        "columns_by_table": {},
+    }
+    
+    for table_name in inspector.get_table_names():
+        columns = inspector.get_columns(table_name)
+        schema_info["columns_by_table"][table_name] = [
+            {"name": col["name"], "type": str(col["type"])}
+            for col in columns
+        ]
+    
+    return schema_info
+
+
+# ============================================================================
+# MIGRATION TESTING PATTERNS
+# ============================================================================
+
+def test_migration_forward():
+    # [WHAT] Test that upgrade() succeeds.
+    # [WHY] Catch migration errors before production.
+    
+    """
+    Test pattern:
+    
+    1. Create test database
+    2. Run migrations to N-1 version
+    3. Apply migration N
+    4. Verify schema changes
+    5. Verify data integrity
+    6. Clean up
+    """
     pass
 
-# Step 4 (v2.0): Remove old column
-def upgrade_2_0():
-    op.drop_column('users', 'email')
-    """,
+def test_migration_backward():
+    # [WHAT] Test that downgrade() succeeds.
+    # [WHY] Ensure rollback works if migration causes issues.
     
-    "alembic_ini": """
-# alembic.ini configuration snippet
-[alembic]
-sqlalchemy.url = driver://user:pass@localhost/dbname
-script_location = alembic
-""",
-}
+    """
+    Test pattern:
+    
+    1. Create test database
+    2. Run all migrations
+    3. Run downgrade -1
+    4. Verify schema reverted
+    5. Verify no data loss
+    6. Clean up
+    """
+    pass
 
-print("[SEGMENT 8] Alembic migration patterns documented")
-print(migration_patterns["basic_usage"])
+
+# ============================================================================
+# ALEMBIC CLI COMMANDS REFERENCE
+# ============================================================================
+
+"""
+COMMON ALEMBIC COMMANDS:
+
+[FastAPI-8.A] | alembic init
+    Creates initial Alembic directory structure (env.py, migrations/, alembic.ini)
+
+[FastAPI-8.B] | alembic revision --autogenerate -m "message"
+    Compares models to database and auto-generates migration file
+
+[FastAPI-8.C] | alembic upgrade head
+    Applies all pending migrations to bring database to latest schema
+
+[FastAPI-8.D] | alembic downgrade -1
+    Reverts the last migration
+
+[FastAPI-8.E] | alembic current
+    Shows the current database revision
+
+[FastAPI-8.F] | alembic history
+    Displays migration history with revision IDs
+
+[FastAPI-8.G] | upgrade() function
+    Defined in migration files; defines schema changes for forward migration
+
+[FastAPI-8.H] | downgrade() function
+    Defined in migration files; defines schema changes for backward migration
+
+[FastAPI-8.I] | op.create_table()
+    Alembic operation creating a new database table with columns and constraints
+
+[FastAPI-8.J] | op.drop_table()
+    Alembic operation removing a database table and all its data
+
+[FastAPI-8.K] | op.add_column()
+    Alembic operation adding a new column to an existing table
+
+[FastAPI-8.L] | op.drop_column()
+    Alembic operation removing a column from an existing table
+
+[FastAPI-8.M] | op.alter_column()
+    Alembic operation modifying column properties like type, nullable, or default value
+
+[FastAPI-8.N] | op.create_index()
+    Alembic operation creating a database index for query performance optimization
+
+[FastAPI-8.O] | op.execute()
+    Alembic operation executing raw SQL for complex data migrations not supported by built-in operations
+
+[FastAPI-8.P] | env.py
+    Alembic file configuring database connection and migration runtime environment
+
+[FastAPI-8.Q] | alembic.ini
+    Alembic configuration file containing database URL and migration settings
+
+[FastAPI-8.R] | revision attribute
+    Migration file attribute containing the unique revision ID
+
+[FastAPI-8.S] | down_revision attribute
+    Migration file attribute pointing to the previous migration revision
+
+[FastAPI-8.T] | branch_labels attribute
+    Migration file attribute for creating named branches in migration history
+"""
+
 
 if __name__ == "__main__":
-    pass
-EOF
+    print("\n" + "="*80)
+    print("SEGMENT 8: Alembic Migrations & Schema Evolution")
+    print("="*80)
+    print("\nThis segment is conceptual and demonstrates Alembic patterns.")
+    print("\nTo use Alembic in a real project:")
+    print("  1. Install: pip install alembic sqlalchemy")
+    print("  2. Initialize: alembic init alembic")
+    print("  3. Configure DATABASE_URL in alembic.ini")
+    print("  4. Create migrations: alembic revision --autogenerate -m 'message'")
+    print("  5. Apply migrations: alembic upgrade head")
+    print("  6. Check status: alembic current")
+    print("  7. Rollback: alembic downgrade -1")
+    print("\nKey concepts:")
+    print("  - Alembic separates schema changes from data migrations")
+    print("  - Zero-downtime migrations use backward-compatible multi-step changes")
+    print("  - Always test migrations in development before production")
+    print("  - Use op.execute() for complex data transformations")
+    print("\n")
+SEGMENT_8_EOF
 
-echo "✓ Segment 8: Alembic Migrations (segment_8_alembic_migrations.py)"
+echo "[✓] Segment 8 generated: segment_8_alembic_migrations.py"
+
 
 echo ""
-echo "============================================================================"
+echo "================================================================================"
 echo "SEGMENT 9: Asynchronous Programming & Concurrency Control"
-echo "============================================================================"
+echo "================================================================================"
 
-cat << 'EOF' > segment_9_async_concurrency.py
+cat << 'SEGMENT_9_EOF' > segment_9_async_concurrency.py
 """
-[WHAT]: asyncio.create_task, gather, wait_for, locks, semaphores, BackgroundTasks
-[WHY]: Non-blocking concurrency scales to thousands of concurrent connections.
+Segment 9: Asynchronous Programming & Concurrency Control
+=========================================================
+
+This module demonstrates asyncio fundamentals, concurrent execution patterns,
+BackgroundTasks, task retries, and concurrency primitives (Lock, Semaphore, etc.).
 """
 
-from fastapi import FastAPI, BackgroundTasks
 import asyncio
 from typing import List
+from fastapi import FastAPI, BackgroundTasks
+from fastapi.responses import JSONResponse
+import uvicorn
 import time
 
-app = FastAPI()
+app = FastAPI(title="Segment 9: Async & Concurrency")
 
-# ========== BASIC USAGE: Concurrent Tasks ==========
 
-# [COMPONENT MEANING] asyncio.gather() = Run multiple coroutines concurrently
-# [ARGUMENT MEANING] *coros = Variable args; waits for all to complete
-async def fetch_data(item_id: int) -> dict:
-    """Simulate async I/O (database query, HTTP request, etc.)."""
-    await asyncio.sleep(0.1)  # Non-blocking
-    return {"item_id": item_id, "data": f"data_{item_id}"}
+# ============================================================================
+# ASYNCIO FUNDAMENTALS
+# ============================================================================
 
-@app.get("/concurrent/{user_id}")
-async def concurrent_fetch(user_id: int):
-    """[WHAT]: Fetch multiple items concurrently."""
-    item_ids = [1, 2, 3, 4, 5]
+async def slow_operation(operation_id: int, duration: int = 2) -> dict:
+    # [WHAT] Async function that yields control during sleep.
+    # [WHY] Allows other requests to be processed while this waits.
+    print(f"[Operation {operation_id}] Starting ({duration}s)")
+    # [COMPONENT MEANING] asyncio.sleep() = Non-blocking sleep function that yields control to the event loop.
+    await asyncio.sleep(duration)
+    print(f"[Operation {operation_id}] Completed")
+    return {"operation_id": operation_id, "duration": duration}
+
+
+async def fetch_user(user_id: int) -> dict:
+    # [WHAT] Simulate fetching user from API.
+    await asyncio.sleep(0.5)  # Simulate I/O delay
+    return {"user_id": user_id, "name": f"User {user_id}"}
+
+async def fetch_posts(user_id: int) -> list:
+    # [WHAT] Simulate fetching posts for user.
+    await asyncio.sleep(0.3)  # Simulate I/O delay
+    return [{"post_id": 1, "title": "Post 1"}, {"post_id": 2, "title": "Post 2"}]
+
+async def fetch_comments(post_id: int) -> list:
+    # [WHAT] Simulate fetching comments for post.
+    await asyncio.sleep(0.2)
+    return [{"comment_id": 1, "text": "Great!"}, {"comment_id": 2, "text": "Thanks!"}]
+
+
+# ============================================================================
+# ENDPOINTS: ASYNCIO PATTERNS
+# ============================================================================
+
+@app.get("/single-operation")
+async def single_operation():
+    # [WHAT] Single async operation.
+    result = await slow_operation(operation_id=1, duration=1)
+    return JSONResponse(content=result)
+
+
+@app.get("/concurrent-operations")
+async def concurrent_operations():
+    # [WHAT] Run multiple operations concurrently.
+    # [WHY] Sequential execution takes 3 seconds; concurrent takes ~2 seconds.
+    # [COMPONENT MEANING] asyncio.gather() = Function running multiple coroutines concurrently and collecting their results in order.
     
-    # Sequential (BAD): 5 * 0.1s = 0.5s total
-    # results = [await fetch_data(item_id) for item_id in item_ids]
+    # [WATCH OUT]: Sequential (slow)
+    # result1 = await slow_operation(1)
+    # result2 = await slow_operation(2)
+    # result3 = await slow_operation(3)
+    # Total: 6 seconds
     
-    # Concurrent (GOOD): 0.1s total (all at same time)
-    # [HOW]: gather() waits for all tasks
-    results = await asyncio.gather(*[fetch_data(item_id) for item_id in item_ids])
+    # [HOW]: Concurrent (fast)
+    results = await asyncio.gather(
+        slow_operation(operation_id=1, duration=2),
+        slow_operation(operation_id=2, duration=2),
+        slow_operation(operation_id=3, duration=2),
+    )
+    # Total: ~2 seconds (overlapping)
     
-    return {"user_id": user_id, "items": results}
+    return JSONResponse(content={"results": results})
 
-# ========== POWER USAGE: Task Creation & Timeout ==========
 
-# [COMPONENT MEANING] asyncio.create_task() = Schedule coroutine on event loop
-# [COMPONENT MEANING] asyncio.wait_for() = Enforce timeout on async operation
-async def long_operation() -> str:
-    """[WHAT]: Operation that might timeout."""
-    await asyncio.sleep(10)
-    return "done"
+@app.get("/user-profile/{user_id}")
+async def get_user_profile(user_id: int):
+    # [WHAT] Fetch user, posts, and comments concurrently.
+    # [HOW] Gather multiple async operations.
+    
+    user, posts = await asyncio.gather(
+        fetch_user(user_id),
+        fetch_posts(user_id),
+    )
+    
+    return JSONResponse(content={"user": user, "posts": posts})
 
-@app.get("/timeout-example")
-async def timeout_example():
-    """[HOW]: wait_for() raises TimeoutError if timeout exceeded."""
+
+@app.get("/timeout-demo")
+async def timeout_demo():
+    # [WHAT] Demonstrate asyncio.wait_for() timeout.
+    # [WHY] Prevent hanging requests; fail fast if operation takes too long.
+    # [COMPONENT MEANING] asyncio.wait_for() = Function enforcing a timeout on an async operation, raising TimeoutError if exceeded.
+    
     try:
-        # [WATCH OUT]: Timeout too strict = false negatives; too loose = slow errors
-        result = await asyncio.wait_for(long_operation(), timeout=5.0)
-        return {"result": result}
+        result = await asyncio.wait_for(
+            slow_operation(operation_id=1, duration=5),
+            timeout=2.0  # Timeout after 2 seconds
+        )
+        return JSONResponse(content=result)
     except asyncio.TimeoutError:
-        return {"error": "Operation timed out"}
+        return JSONResponse(
+            content={"error": "Operation timed out"},
+            status_code=504
+        )
 
-# ========== PRECISION USAGE: Synchronization Primitives ==========
 
-# [COMPONENT MEANING] asyncio.Lock = Mutex preventing concurrent access
-# [COMPONENT MEANING] asyncio.Semaphore = Limit N concurrent tasks
-# [COMPONENT MEANING] asyncio.Event = Signal between coroutines
+@app.get("/create-task-demo")
+async def create_task_demo():
+    # [WHAT] Schedule a task concurrently using create_task().
+    # [WHY] Fire off a task without waiting for it; useful for background work.
+    # [COMPONENT MEANING] asyncio.create_task() = Function scheduling a coroutine to run concurrently on the event loop.
+    
+    # [HOW]: Create task (runs concurrently)
+    task = asyncio.create_task(slow_operation(operation_id=1, duration=2))
+    
+    # Return immediately; task continues in background
+    return JSONResponse(content={"message": "Task created", "task_id": "task_1"})
 
-lock = asyncio.Lock()
-semaphore = asyncio.Semaphore(3)  # Max 3 concurrent access
-event = asyncio.Event()
 
-shared_resource = {"count": 0}
+# ============================================================================
+# CONCURRENCY PRIMITIVES
+# ============================================================================
 
+# [COMPONENT MEANING] asyncio.Lock = Async-safe mutex lock preventing race conditions in shared resource access.
+shared_counter = 0
+counter_lock = asyncio.Lock()
+
+async def increment_counter_safe():
+    # [WHAT] Safely increment counter using Lock.
+    # [WHY] Prevent race conditions in concurrent access.
+    global shared_counter
+    
+    async with counter_lock:
+        # Critical section: only one coroutine at a time
+        temp = shared_counter
+        await asyncio.sleep(0.01)  # Simulate some work
+        shared_counter = temp + 1
+
+@app.get("/increment-with-lock")
 async def increment_with_lock():
-    """[WHAT]: Lock prevents race condition on shared_resource."""
-    async with lock:
-        # Critical section; only one coroutine at a time
-        shared_resource["count"] += 1
-        await asyncio.sleep(0.01)
+    # [WHAT] Demonstrate Lock preventing race conditions.
+    
+    # Run 10 increments concurrently (safely)
+    await asyncio.gather(*[increment_counter_safe() for _ in range(10)])
+    
+    return JSONResponse(content={"counter": shared_counter})
 
-@app.get("/lock-example")
-async def lock_example():
-    """[HOW]: Create 10 concurrent tasks; lock ensures atomicity."""
-    await asyncio.gather(*[increment_with_lock() for _ in range(10)])
-    return {"count": shared_resource["count"]}  # Always 10, never race condition
 
-async def limited_access():
-    """[WHAT]: Semaphore limits to N concurrent accessors."""
+# [COMPONENT MEANING] asyncio.Semaphore = Async-safe semaphore limiting concurrent access to a resource with a maximum count.
+semaphore = asyncio.Semaphore(3)  # Allow max 3 concurrent accesses
+
+async def limited_resource_access(request_id: int):
+    # [WHAT] Access a limited resource (e.g., connection pool).
+    # [WHY] Prevent overwhelming the resource with too many concurrent accesses.
+    
     async with semaphore:
+        print(f"[Request {request_id}] Accessing limited resource")
+        await asyncio.sleep(1)
+        print(f"[Request {request_id}] Releasing resource")
+        return f"Request {request_id} completed"
+
+@app.get("/limited-resource")
+async def limited_resource():
+    # [WHAT] Queue multiple requests for a limited resource.
+    
+    results = await asyncio.gather(*[
+        limited_resource_access(i) for i in range(10)
+    ])
+    
+    return JSONResponse(content={"results": results})
+
+
+# [COMPONENT MEANING] asyncio.Queue = Async-safe queue for producer-consumer patterns between concurrent tasks.
+task_queue: asyncio.Queue = asyncio.Queue()
+
+async def producer(item_id: int):
+    # [WHAT] Produce items and add to queue.
+    for i in range(5):
+        await task_queue.put(f"Item {item_id}-{i}")
         await asyncio.sleep(0.1)
-        return "processed"
 
-@app.get("/semaphore-example")
-async def semaphore_example():
-    """[HOW]: Semaphore(3) limits to 3 concurrent tasks."""
-    tasks = [limited_access() for _ in range(10)]
-    results = await asyncio.gather(*tasks)
-    return {"processed": len(results)}
+async def consumer(consumer_id: int):
+    # [WHAT] Consume items from queue.
+    for _ in range(5):
+        item = await task_queue.get()
+        print(f"[Consumer {consumer_id}] Processing {item}")
+        await asyncio.sleep(0.2)
+        task_queue.task_done()
 
-# ========== ENTERPRISE CONTEXT: BackgroundTasks & Task Queues ==========
+@app.get("/queue-demo")
+async def queue_demo():
+    # [WHAT] Demonstrate producer-consumer pattern with Queue.
+    
+    # Create 2 producers and 2 consumers
+    await asyncio.gather(
+        producer(1),
+        producer(2),
+        consumer(1),
+        consumer(2),
+    )
+    
+    return JSONResponse(content={"message": "Queue demo completed"})
 
-# [COMPONENT MEANING] BackgroundTasks = Fire-and-forget tasks after response sent
-# [ARGUMENT MEANING] add_task(func, *args) = Queue function to run in background
+
+# ============================================================================
+# BACKGROUND TASKS
+# ============================================================================
 
 def send_email(email: str, subject: str):
-    """[WATCH OUT]: This blocks! Use BackgroundTasks for non-critical work."""
-    time.sleep(1)  # Simulate slow email send
-    print(f"[EMAIL] Sent to {email}: {subject}")
+    # [WHAT] Synchronous task (simulating email sending).
+    print(f"[SEND EMAIL] To: {email}, Subject: {subject}")
+    time.sleep(2)  # Simulate email sending
+    print(f"[SEND EMAIL] Sent to {email}")
 
-@app.post("/user")
-async def create_user(username: str, email: str, background_tasks: BackgroundTasks):
-    """[HOW]: Email sent after response returned. User doesn't wait."""
-    # Immediate response to client
-    background_tasks.add_task(send_email, email, f"Welcome, {username}!")
+async def send_email_async(email: str, subject: str):
+    # [WHAT] Async version of email sending.
+    print(f"[SEND EMAIL ASYNC] To: {email}, Subject: {subject}")
+    await asyncio.sleep(2)  # Simulate email sending
+    print(f"[SEND EMAIL ASYNC] Sent to {email}")
+
+@app.post("/register")
+async def register(email: str, background_tasks: BackgroundTasks):
+    # [WHAT] Register user and send confirmation email in background.
+    # [WHY] Don't make client wait for email delivery.
+    # [COMPONENT MEANING] BackgroundTasks = FastAPI class for scheduling fire-and-forget tasks after the response is sent.
     
-    return {"username": username, "message": "User created"}
-
-# [COMPONENT MEANING] asyncio.create_task() = For internal async work, not HTTP response
-@app.get("/background-task")
-async def background_task_example():
-    """[WHAT]: Create_task() schedules coroutine to run concurrently."""
-    async def background_work():
-        await asyncio.sleep(5)
-        print("[BACKGROUND] Finished after response")
+    # [ARGUMENT MEANING] background_tasks.add_task() = Method queuing a function to run in the background after response delivery.
+    background_tasks.add_task(send_email, email=email, subject="Welcome!")
     
-    # Schedule without awaiting; runs concurrently
-    task = asyncio.create_task(background_work())
+    return JSONResponse(content={"message": "Registration successful, confirmation email sent"}, status_code=201)
+
+
+# ============================================================================
+# RETRY LOGIC WITH EXPONENTIAL BACKOFF
+# ============================================================================
+
+async def unreliable_api_call(attempt: int = 1, max_retries: int = 3) -> dict:
+    # [WHAT] Simulate API call that might fail.
+    # [WHY] Demonstrate retry logic with backoff.
     
-    # ❌ Don't return immediately without cleanup!
-    # ✓ Store task in app state or use BackgroundTasks instead
-    return {"task_started": task.get_name()}
-
-# ========== Celery for Distributed Task Queues ==========
-
-celery_patterns = {
-    "basic": """
-from celery import Celery
-
-app_celery = Celery('myapp', broker='redis://localhost:6379')
-
-@app_celery.task
-def send_email_task(email, subject):
-    # [WHAT]: Distributed task; runs on worker process
-    send_email(email, subject)
-    """,
+    import random
+    if random.random() < 0.7:  # 70% chance of failure
+        raise ConnectionError(f"API call failed on attempt {attempt}")
     
-    "with_retry": """
-@app_celery.task(bind=True, max_retries=3)
-def risky_task(self, data):
+    return {"data": "Success"}
+
+async def call_with_retries(max_retries: int = 3, backoff: float = 1.0) -> dict:
+    # [WHAT] Call unreliable API with retries and exponential backoff.
+    # [WHY] Increase resilience by retrying transient failures.
+    
+    for attempt in range(1, max_retries + 1):
+        try:
+            print(f"[RETRY] Attempt {attempt}/{max_retries}")
+            return await unreliable_api_call(attempt=attempt)
+        except ConnectionError as e:
+            if attempt == max_retries:
+                raise
+            
+            # [WHAT]: Exponential backoff: 1s, 2s, 4s, etc.
+            wait_time = backoff * (2 ** (attempt - 1))
+            print(f"[RETRY] Failed, retrying in {wait_time}s")
+            await asyncio.sleep(wait_time)
+
+@app.get("/retry-demo")
+async def retry_demo():
+    # [WHAT] Demonstrate retry logic.
+    
     try:
-        result = do_something_risky(data)
-        return result
-    except Exception as exc:
-        # [HOW]: Exponential backoff: 60s, then 120s, then 240s
-        self.retry(exc=exc, countdown=2 ** self.request.retries * 60)
-    """,
-}
+        result = await call_with_retries(max_retries=3, backoff=0.5)
+        return JSONResponse(content=result)
+    except ConnectionError:
+        return JSONResponse(content={"error": "All retries exhausted"}, status_code=503)
 
-print("[SEGMENT 9] Celery patterns demonstrated")
+
+@app.get("/health")
+async def health():
+    return JSONResponse(content={"status": "ok"})
+
 
 if __name__ == "__main__":
-    pass
-EOF
+    print("\n[INFO] Starting Uvicorn server on http://localhost:8009")
+    print("[INFO] Try these endpoints:")
+    print("  - GET /single-operation")
+    print("  - GET /concurrent-operations (demonstrates gathering)")
+    print("  - GET /user-profile/1 (concurrent fetch)")
+    print("  - GET /timeout-demo (demonstrates timeouts)")
+    print("  - GET /create-task-demo")
+    print("  - GET /increment-with-lock (demonstrates Lock)")
+    print("  - GET /limited-resource (demonstrates Semaphore)")
+    print("  - GET /queue-demo (demonstrates Queue)")
+    print("  - POST /register?email=test@example.com (background task)")
+    print("  - GET /retry-demo (demonstrates retry logic)")
+    print("\n")
+    
+    uvicorn.run(app=app, host="127.0.0.1", port=8009, workers=1, log_level="info")
+SEGMENT_9_EOF
 
-echo "✓ Segment 9: Async & Concurrency (segment_9_async_concurrency.py)"
+echo "[✓] Segment 9 generated: segment_9_async_concurrency.py"
+
 
 echo ""
-echo "============================================================================"
+echo "================================================================================"
 echo "SEGMENT 10: API Performance Optimization & Caching"
-echo "============================================================================"
+echo "================================================================================"
 
-cat << 'EOF' > segment_10_caching_performance.py
+cat << 'SEGMENT_10_EOF' > segment_10_caching_performance.py
 """
-[WHAT]: HTTP caching headers, Redis, cache strategies, compression, serialization
-[WHY]: Caching is the #1 performance optimization. Reduces database load 100x.
+Segment 10: API Performance Optimization & Caching
+=================================================
+
+This module demonstrates HTTP caching headers, Redis integration,
+cache strategies, and response compression.
 """
 
-from fastapi import FastAPI, Response
-from fastapi.responses import ORJSONResponse
+from fastapi import FastAPI, Header
+from fastapi.responses import JSONResponse, ORJSONResponse
+from fastapi.middleware.gzip import GZipMiddleware
+from datetime import datetime, timedelta
+import uvicorn
 import hashlib
 import json
-from datetime import datetime, timedelta
 
-app = FastAPI()
+app = FastAPI(title="Segment 10: Caching & Performance")
 
-# ========== BASIC USAGE: HTTP Caching Headers ==========
-
-# [COMPONENT MEANING] Cache-Control = Browser/CDN caching directive
-# [ARGUMENT MEANING] max-age=3600 = Cache for 1 hour
-# [ARGUMENT MEANING] public = Proxy can cache; private = browser only
-@app.get("/public-data", response_class=ORJSONResponse)
-async def public_data():
-    """[WHAT]: Static data cached aggressively."""
-    return Response(
-        content=json.dumps({"data": "static"}),
-        media_type="application/json",
-        headers={
-            "Cache-Control": "public, max-age=3600",  # Cache 1 hour
-            "ETag": f'"{hashlib.md5(b"static").hexdigest()}"'
-        }
-    )
-
-# [COMPONENT MEANING] ETag = Hash of response content
-# [COMPONENT MEANING] If-None-Match = Client sends ETag; server returns 304 if unchanged
-@app.get("/with-etag")
-async def with_etag(request: Request):
-    """[HOW]: Client caches ETag; on next request, server skips response body if unchanged."""
-    from starlette.requests import Request
-    
-    response_data = {"timestamp": "2024-01-01T00:00:00Z"}
-    etag = hashlib.md5(json.dumps(response_data).encode()).hexdigest()
-    
-    # Client sends If-None-Match header with cached ETag
-    if request.headers.get("If-None-Match") == f'"{etag}"':
-        return Response(status_code=304)  # Not Modified; use cached response
-    
-    return Response(
-        content=json.dumps(response_data),
-        media_type="application/json",
-        headers={"ETag": f'"{etag}"'}
-    )
-
-# ========== POWER USAGE: Redis Caching ==========
-
-# Simulated Redis client
-class MockRedis:
-    def __init__(self):
-        self.store = {}
-    
-    async def get(self, key: str):
-        return self.store.get(key)
-    
-    async def set(self, key: str, value: str, ex: int = None):
-        self.store[key] = value
-    
-    async def delete(self, key: str):
-        self.store.pop(key, None)
-
-redis = MockRedis()
-
-# [COMPONENT MEANING] aioredis = Async Redis client
-# [ARGUMENT MEANING] set(key, value, ex=60) = Cache with 60s TTL
-@app.get("/cached-user/{user_id}")
-async def cached_user(user_id: int):
-    """[WHY]: Redis cache prevents repeated database queries."""
-    cache_key = f"user:{user_id}"
-    
-    # Try cache first
-    cached = await redis.get(cache_key)
-    if cached:
-        return json.loads(cached)
-    
-    # Cache miss; fetch from DB
-    user_data = {"id": user_id, "name": f"User {user_id}"}
-    
-    # Store in cache for 5 minutes
-    # [HOW]: Set TTL to balance freshness vs load
-    await redis.set(cache_key, json.dumps(user_data), ex=300)
-    
-    return user_data
-
-# ========== PRECISION USAGE: Cache Invalidation & Stampede ==========
-
-# [WATCH OUT]: Cache stampede = Multiple requests on expired key cause thundering herd
-# Solution: probabilistic early expiration or locking
-
-@app.get("/cache-with-lock/{item_id}")
-async def cache_with_lock(item_id: int):
-    """[HOW]: Probabilistic expiration prevents stampede."""
-    cache_key = f"item:{item_id}"
-    lock_key = f"item:{item_id}:lock"
-    
-    cached = await redis.get(cache_key)
-    if cached:
-        return json.loads(cached)
-    
-    # Try to acquire lock (only one worker refreshes)
-    # [WHAT]: Lock prevents multiple workers from simultaneously fetching DB
-    lock_acquired = False  # In real code: use Redis SET NX
-    
-    if lock_acquired:
-        # This worker refreshes cache
-        item_data = {"id": item_id, "data": "fresh"}
-        await redis.set(cache_key, json.dumps(item_data), ex=300)
-        # Release lock
-    else:
-        # Other worker is refreshing; wait a bit
-        import time
-        time.sleep(0.1)
-        return await cached_user(item_id)
-    
-    return item_data
-
-# ========== ENTERPRISE CONTEXT: Compression & ORJson ==========
-
-# [COMPONENT MEANING] ORJSONResponse = 2-3x faster serialization
-# [ARGUMENT MEANING] Uses orjson library (Rust-based JSON)
-@app.get("/fast-response", response_class=ORJSONResponse)
-async def fast_response():
-    """[WHY]: orjson is faster for large JSON payloads."""
-    return {
-        "items": [{"id": i, "data": f"item_{i}"} for i in range(1000)]
-    }
-
-# [COMPONENT MEANING] GZipMiddleware = Compress response body
-# Responses > 1000 bytes automatically gzipped for clients that accept it
-from fastapi.middleware.gzip import GZipMiddleware
+# Add GZip compression middleware
+# [COMPONENT MEANING] GZipMiddleware = Middleware compressing responses with gzip when client supports it.
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
-# ========== Cache Key Strategies ==========
 
-def build_cache_key(endpoint: str, user_id: int, filters: dict) -> str:
-    """[WHAT]: Construct deterministic cache keys."""
-    # Sort filters for consistent key
-    filters_str = json.dumps(filters, sort_keys=True)
-    return f"{endpoint}:user:{user_id}:{hashlib.md5(filters_str.encode()).hexdigest()}"
+# ============================================================================
+# HTTP CACHING HEADERS
+# ============================================================================
 
-@app.get("/filtered-items/{user_id}")
-async def filtered_items(user_id: int, category: str = "all", limit: int = 10):
-    """[HOW]: Cache key incorporates all query parameters."""
-    cache_key = build_cache_key("items", user_id, {"category": category, "limit": limit})
+def generate_etag(data: dict) -> str:
+    # [WHAT] Generate ETag hash from data.
+    # [WHY] ETag allows browser/proxy to validate cached content.
     
-    # Check cache
-    cached = await redis.get(cache_key)
-    if cached:
-        return json.loads(cached)
-    
-    # Fetch and cache
-    items = [{"id": i, "category": category} for i in range(limit)]
-    await redis.set(cache_key, json.dumps(items), ex=600)
-    
-    return items
-
-if __name__ == "__main__":
-    pass
-EOF
-
-echo "✓ Segment 10: Caching & Performance (segment_10_caching_performance.py)"
-
-# Continue with final segments (11-20)
-
-echo ""
-echo "============================================================================"
-echo "SEGMENT 11: Structured Logging & Distributed Tracing"
-echo "============================================================================"
-
-cat << 'EOF' > segment_11_logging_tracing.py
-"""
-[WHAT]: JSON logging, correlation IDs, OpenTelemetry, trace context propagation
-[WHY]: Production visibility. Trace requests across microservices. Debug distributed systems.
-"""
-
-from fastapi import FastAPI, Request
-import logging
-import json
-from pythonjsonlogger import jsonlogger
-from datetime import datetime
-import uuid
-
-app = FastAPI()
-
-# ========== BASIC USAGE: Structured JSON Logging ==========
-
-# [COMPONENT MEANING] pythonjsonlogger = Log records as JSON objects
-# [ARGUMENT MEANING] Enables log aggregation and parsing by tools like ELK
-
-logger = logging.getLogger("fastapi")
-logger.setLevel(logging.INFO)
-
-handler = logging.StreamHandler()
-formatter = jsonlogger.JsonFormatter()
-handler.setFormatter(formatter)
-logger.addHandler(handler)
-
-@app.get("/basic-logging")
-async def basic_logging():
-    """[HOW]: Logs emitted as JSON for ingestion into logging platforms."""
-    logger.info("User accessed endpoint", extra={"user_id": 123, "action": "login"})
-    return {"status": "ok"}
-
-# ========== POWER USAGE: Correlation ID Middleware ==========
-
-# [COMPONENT MEANING] Correlation ID = Unique ID tracking request through system
-# [ARGUMENT MEANING] X-Request-ID header = Standard header for correlation ID
-@app.middleware("http")
-async def correlation_id_middleware(request: Request, call_next):
-    """[WHAT]: Inject correlation ID into every request."""
-    correlation_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
-    
-    # Store in request state for access in endpoints
-    request.state.correlation_id = correlation_id
-    
-    response = await call_next(request)
-    response.headers["X-Request-ID"] = correlation_id
-    
-    logger.info(
-        "Request completed",
-        extra={
-            "correlation_id": correlation_id,
-            "method": request.method,
-            "path": request.url.path,
-            "status_code": response.status_code
-        }
-    )
-    
-    return response
-
-@app.get("/traced-endpoint")
-async def traced_endpoint(request: Request):
-    """[HOW]: Endpoint can access correlation ID for local logging."""
-    correlation_id = request.state.correlation_id
-    
-    logger.info(
-        "Processing request",
-        extra={
-            "correlation_id": correlation_id,
-            "business_event": "user_action"
-        }
-    )
-    
-    return {"correlation_id": correlation_id}
-
-# ========== PRECISION USAGE: OpenTelemetry Integration ==========
-
-# [COMPONENT MEANING] OpenTelemetry = Observability framework for distributed tracing
-# [COMPONENT MEANING] Span = Unit of work (single operation) in a trace
-
-tracing_example = """
-from opentelemetry import trace
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.exporter.jaeger.thrift import JaegerExporter
-
-# Configure tracing backend (Jaeger, Datadog, etc.)
-jaeger_exporter = JaegerExporter(agent_host_name="localhost", agent_port=6831)
-trace.set_tracer_provider(TracerProvider())
-trace.get_tracer_provider().add_span_processor(...)
-
-tracer = trace.get_tracer(__name__)
-
-@app.get("/traced")
-async def traced_operation():
-    # [HOW]: Create named span for this operation
-    with tracer.start_as_current_span("get_traced") as span:
-        # Add metadata to span
-        span.set_attribute("user_id", 123)
-        span.set_attribute("operation", "fetch_data")
-        
-        # Nested span for sub-operation
-        with tracer.start_as_current_span("database_query"):
-            result = await fetch_from_db()
-        
-        span.set_status(trace.Status(trace.StatusCode.OK))
-        return result
-"""
-
-# ========== ENTERPRISE CONTEXT: W3C Trace Context ==========
-
-# [COMPONENT MEANING] W3C Trace Context = Standard for trace ID propagation
-# [ARGUMENT MEANING] traceparent header = Format: "00-trace_id-span_id-flags"
-
-@app.middleware("http")
-async def trace_context_propagation(request: Request, call_next):
-    """[WHAT]: Extract and propagate W3C trace context across services."""
-    traceparent = request.headers.get("traceparent", f"00-{uuid.uuid4().hex}-{uuid.uuid4().hex[:16]}-01")
-    
-    response = await call_next(request)
-    
-    # Propagate to downstream services
-    response.headers["traceparent"] = traceparent
-    
-    logger.info(
-        "Trace context propagated",
-        extra={"traceparent": traceparent}
-    )
-    
-    return response
-
-if __name__ == "__main__":
-    pass
-EOF
-
-echo "✓ Segment 11: Logging & Tracing (segment_11_logging_tracing.py)"
-
-echo ""
-echo "============================================================================"
-echo "SEGMENT 12: Metrics Collection & Health Checks"
-echo "============================================================================"
-
-cat << 'EOF' > segment_12_metrics_health.py
-"""
-[WHAT]: Prometheus metrics, health checks, SLIs/SLOs, APM integration
-[WHY]: Visibility into system behavior. Alerting on anomalies. Data-driven decisions.
-"""
-
-from fastapi import FastAPI
-from prometheus_client import Counter, Gauge, Histogram, generate_latest, REGISTRY
-import asyncio
-from datetime import datetime
-
-app = FastAPI()
-
-# ========== BASIC USAGE: Prometheus Metrics ==========
-
-# [COMPONENT MEANING] Counter = Monotonically increasing metric (requests, errors)
-# [ARGUMENT MEANING] labels=["method", "status"] = Dimensions for analysis
-http_requests_total = Counter(
-    "http_requests_total",
-    "Total HTTP requests",
-    ["method", "status"]
-)
-
-# [COMPONENT MEANING] Gauge = Can increase/decrease (active connections, CPU)
-active_connections = Gauge(
-    "active_connections",
-    "Current active connections"
-)
-
-# [COMPONENT MEANING] Histogram = Distribution of values (latency, size)
-request_latency_seconds = Histogram(
-    "request_latency_seconds",
-    "Request latency in seconds",
-    buckets=[0.01, 0.05, 0.1, 0.5, 1.0]
-)
-
-@app.middleware("http")
-async def metrics_middleware(request, call_next):
-    """[HOW]: Collect metrics for every request."""
-    active_connections.inc()
-    
-    start_time = datetime.utcnow()
-    
-    response = await call_next(request)
-    
-    duration = (datetime.utcnow() - start_time).total_seconds()
-    
-    # Record metrics
-    http_requests_total.labels(method=request.method, status=response.status_code).inc()
-    request_latency_seconds.observe(duration)
-    active_connections.dec()
-    
-    return response
-
-# [COMPONENT MEANING] /metrics endpoint = Prometheus scrapes this for metrics
-@app.get("/metrics")
-async def metrics():
-    """[WHAT]: Expose metrics in Prometheus format."""
-    return generate_latest(REGISTRY)
-
-# ========== POWER USAGE: Health Check Endpoints ==========
-
-# [COMPONENT MEANING] /health/live = Kubernetes liveness probe
-# [ARGUMENT MEANING] Return 200 if process alive; 503 if should restart
-
-@app.get("/health/live", status_code=200)
-async def liveness_probe():
-    """[HOW]: Indicates if application is running (basic health)."""
-    return {"status": "alive"}
-
-# [COMPONENT MEANING] /health/ready = Kubernetes readiness probe
-# [ARGUMENT MEANING] Return 200 if ready to accept traffic; 503 if initializing/degraded
-
-db_ready = True  # Simulated DB connection flag
-
-@app.get("/health/ready", status_code=200)
-async def readiness_probe():
-    """[WHAT]: Indicates if application can handle traffic."""
-    if not db_ready:
-        return {"status": "not_ready", "reason": "Database unavailable"}, 503
-    
-    return {"status": "ready"}
-
-# [COMPONENT MEANING] /health/startup = Kubernetes startup probe
-# [ARGUMENT MEANING] Return 200 once initialization complete; 503 if still initializing
-
-startup_complete = False
-
-@app.on_event("startup")
-async def startup():
-    global startup_complete
-    await asyncio.sleep(1)  # Simulate initialization
-    startup_complete = True
-
-@app.get("/health/startup", status_code=200)
-async def startup_probe():
-    """[HOW]: Signals when app initialization finished."""
-    if not startup_complete:
-        return {"status": "initializing"}, 503
-    
-    return {"status": "started"}
-
-# ========== PRECISION USAGE: Custom Business Metrics ==========
-
-# [COMPONENT MEANING] Custom metrics = Domain-specific KPIs
-# [WATCH OUT]: High cardinality labels cause storage explosion
-
-users_created_total = Counter(
-    "users_created_total",
-    "Total users created",
-    ["signup_source"]  # Low cardinality: web, mobile, api
-)
-
-payment_amount_total = Gauge(
-    "payment_amount_dollars",
-    "Total payment revenue",
-    ["currency"]  # Cardinality: USD, EUR, GBP (fixed set)
-)
-
-@app.post("/user")
-async def create_user(source: str):
-    """[HOW]: Emit custom business metrics."""
-    if source not in ["web", "mobile", "api"]:
-        source = "unknown"
-    
-    users_created_total.labels(signup_source=source).inc()
-    
-    return {"status": "created"}
-
-# ========== ENTERPRISE CONTEXT: SLI/SLO Definition ==========
-
-slo_definition = """
-SLI/SLO Examples:
-
-SLI (Service Level Indicator) = Measurable metric
-- API Latency: p99 response time < 500ms
-- Error Rate: < 0.1% of requests return 5xx
-- Availability: 99.9% of requests successful
-
-SLO (Service Level Objective) = Target for SLI
-- "99.9% of requests complete in < 500ms"
-- "99.95% uptime per month (22 seconds downtime allowed)"
-- "Error budget: 0.1% of requests can fail"
-
-Implementation:
-- Monitor p50, p95, p99 latencies
-- Track error count by status code
-- Alert when approaching error budget limit
-"""
-
-# Calculate SLI: successful requests
-successful_requests = Counter(
-    "requests_successful",
-    "Successful requests (2xx/3xx)"
-)
-
-# Calculate availability
-available_seconds = Gauge(
-    "service_available_seconds_total",
-    "Total seconds service was available"
-)
-
-if __name__ == "__main__":
-    pass
-EOF
-
-echo "✓ Segment 12: Metrics & Health (segment_12_metrics_health.py)"
-
-echo ""
-echo "============================================================================"
-echo "SEGMENT 13: Middleware Architecture & Request Processing"
-echo "============================================================================"
-
-cat << 'EOF' > segment_13_middleware.py
-"""
-[WHAT]: BaseHTTPMiddleware, middleware order, request/response modification, exception handling
-[WHY]: Middleware applies cross-cutting concerns. Proper order prevents bugs.
-"""
-
-from fastapi import FastAPI, HTTPException, Request
-from starlette.middleware.base import BaseHTTPMiddleware
-from fastapi.responses import JSONResponse
-from fastapi.exceptions import RequestValidationError
-import time
-import logging
-
-app = FastAPI()
-logger = logging.getLogger(__name__)
-
-# ========== BASIC USAGE: Decorator-Style Middleware ==========
-
-# [COMPONENT MEANING] @app.middleware("http") = Simpler, functional middleware
-# [ARGUMENT MEANING] call_next() = Invoke next middleware or route handler
-
-@app.middleware("http")
-async def add_process_time_header(request: Request, call_next):
-    """[HOW]: Middleware wraps request/response processing."""
-    start_time = time.time()
-    
-    response = await call_next(request)
-    
-    process_time = time.time() - start_time
-    response.headers["X-Process-Time"] = str(process_time)
-    
-    return response
-
-# ========== POWER USAGE: Class-Based Middleware ==========
-
-# [COMPONENT MEANING] BaseHTTPMiddleware = Subclass for complex middleware
-# [ARGUMENT MEANING] dispatch() method = Override to implement logic
-
-class LoggingMiddleware(BaseHTTPMiddleware):
-    """[WHAT]: Detailed request/response logging for debugging."""
-    
-    async def dispatch(self, request: Request, call_next):
-        """[HOW]: dispatch() receives request before route, response after."""
-        # Log incoming request
-        logger.info(
-            "Incoming request",
-            extra={
-                "method": request.method,
-                "path": request.url.path,
-                "client": request.client.host if request.client else "unknown"
-            }
-        )
-        
-        response = await call_next(request)
-        
-        # Log outgoing response
-        logger.info(
-            "Response sent",
-            extra={
-                "status": response.status_code,
-                "path": request.url.path
-            }
-        )
-        
-        return response
-
-app.add_middleware(LoggingMiddleware)
-
-# ========== PRECISION USAGE: Request State & Context ==========
-
-class RequestIDMiddleware(BaseHTTPMiddleware):
-    """[WHAT]: Inject unique ID into request for tracking."""
-    
-    async def dispatch(self, request: Request, call_next):
-        """[HOW]: Store arbitrary data in request.state."""
-        import uuid
-        
-        request.state.request_id = str(uuid.uuid4())
-        
-        response = await call_next(request)
-        response.headers["X-Request-ID"] = request.state.request_id
-        
-        return response
-
-app.add_middleware(RequestIDMiddleware)
-
-@app.get("/with-request-id")
-async def with_request_id(request: Request):
-    """[WATCH OUT]: Can access request.state set by middleware."""
-    return {"request_id": request.state.request_id}
-
-# ========== ENTERPRISE CONTEXT: Custom Exception Handling ==========
-
-class CustomException(Exception):
-    """[COMPONENT MEANING] Custom exception for domain logic."""
-    def __init__(self, status_code: int, detail: str):
-        self.status_code = status_code
-        self.detail = detail
-
-# [COMPONENT MEANING] @app.exception_handler() = Register handler for exception type
-@app.exception_handler(CustomException)
-async def custom_exception_handler(request: Request, exc: CustomException):
-    """[HOW]: FastAPI catches exception; handler formats response."""
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={"detail": exc.detail, "type": "custom_error"}
-    )
-
-@app.get("/custom-error")
-async def trigger_custom_error():
-    """[WHAT]: Raise custom exception; handler formats as JSON."""
-    raise CustomException(status_code=400, detail="Custom validation failed")
-
-# [COMPONENT MEANING] RequestValidationError handler = Customize Pydantic error format
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    """[HOW]: Reformat Pydantic errors for cleaner API responses."""
-    errors = [
-        {
-            "field": err["loc"][-1],
-            "message": err["msg"],
-            "type": err["type"]
-        }
-        for err in exc.errors()
-    ]
-    
-    return JSONResponse(
-        status_code=422,
-        content={"detail": "Validation failed", "errors": errors}
-    )
-
-# ========== Middleware Execution Order ==========
-
-# [WATCH OUT]: Middleware executes in REVERSE order of addition!
-# Add in this order: A -> B -> C
-# Request flows: A -> B -> C -> route -> C -> B -> A
-
-class MiddlewareA(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        print("A: before")
-        response = await call_next(request)
-        print("A: after")
-        return response
-
-class MiddlewareB(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next):
-        print("B: before")
-        response = await call_next(request)
-        print("B: after")
-        return response
-
-app.add_middleware(MiddlewareA)
-app.add_middleware(MiddlewareB)
-# Execution: B:before -> A:before -> route -> A:after -> B:after
-
-if __name__ == "__main__":
-    pass
-EOF
-
-echo "✓ Segment 13: Middleware (segment_13_middleware.py)"
-
-echo ""
-echo "============================================================================"
-echo "SEGMENT 14: Error Handling & Resilience Patterns"
-echo "============================================================================"
-
-cat << 'EOF' > segment_14_error_resilience.py
-"""
-[WHAT]: HTTPException, retry logic, circuit breaker, timeouts, fallback patterns
-[WHY]: Production systems fail. Resilience prevents cascading failures.
-"""
-
-from fastapi import FastAPI, HTTPException
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
-from datetime import datetime, timedelta
-import asyncio
-
-app = FastAPI()
-
-# ========== BASIC USAGE: HTTPException ==========
-
-# [COMPONENT MEANING] HTTPException = FastAPI exception for HTTP errors
-# [ARGUMENT MEANING] status_code = HTTP status; detail = Error message
-
-@app.get("/user/{user_id}")
-async def get_user(user_id: int):
-    """[HOW]: Raise HTTPException; FastAPI converts to HTTP response."""
-    if user_id < 0:
-        raise HTTPException(
-            status_code=400,
-            detail="User ID must be positive",
-            headers={"X-Error": "invalid_id"}
-        )
-    
-    user = {"id": user_id, "name": f"User {user_id}"}
-    
-    if user_id > 1000000:
-        raise HTTPException(
-            status_code=404,
-            detail=f"User {user_id} not found"
-        )
-    
-    return user
-
-# ========== POWER USAGE: Retry Logic ==========
-
-# [COMPONENT MEANING] @retry() = Decorator adding automatic retry behavior
-# [ARGUMENT MEANING] stop=stop_after_attempt(3) = Max 3 attempts
-# [ARGUMENT MEANING] wait=wait_exponential() = Exponential backoff: 1s, 2s, 4s, 8s...
-
-@retry(
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=1, max=10),
-    retry=retry_if_exception_type(ConnectionError)
-)
-async def call_external_api(endpoint: str):
-    """[WHAT]: Automatically retry transient failures."""
-    # Simulate flaky API
-    import random
-    if random.random() < 0.7:
-        raise ConnectionError("API temporarily unavailable")
-    
-    return {"status": "success"}
-
-@app.get("/resilient/{endpoint}")
-async def resilient_call(endpoint: str):
-    """[HOW]: Retry decorator handles transient failures transparently."""
-    try:
-        result = await call_external_api(endpoint)
-        return result
-    except ConnectionError:
-        raise HTTPException(status_code=503, detail="API unavailable after retries")
-
-# ========== PRECISION USAGE: Circuit Breaker Pattern ==========
-
-# [COMPONENT MEANING] Circuit Breaker = Prevent requests to failing service
-# States: Closed (working) -> Open (failing) -> Half-Open (testing recovery)
-
-class CircuitBreaker:
-    """[WHY]: Circuit breaker stops hammering failing service, allows recovery."""
-    
-    def __init__(self, failure_threshold: int = 5, recovery_timeout: int = 60):
-        self.failure_threshold = failure_threshold
-        self.recovery_timeout = recovery_timeout
-        self.failure_count = 0
-        self.last_failure_time = None
-        self.state = "closed"  # closed, open, half-open
-    
-    async def call(self, func, *args, **kwargs):
-        """[HOW]: Wrap function call with circuit breaker logic."""
-        if self.state == "open":
-            # Check if recovery timeout elapsed
-            if datetime.utcnow() - self.last_failure_time > timedelta(seconds=self.recovery_timeout):
-                self.state = "half-open"
-            else:
-                raise Exception("Circuit breaker is open")
-        
-        try:
-            result = await func(*args, **kwargs)
-            
-            # Success; reset
-            if self.state == "half-open":
-                self.state = "closed"
-                self.failure_count = 0
-            
-            return result
-        
-        except Exception as e:
-            self.failure_count += 1
-            self.last_failure_time = datetime.utcnow()
-            
-            if self.failure_count >= self.failure_threshold:
-                self.state = "open"
-            
-            raise
-
-breaker = CircuitBreaker(failure_threshold=3)
-
-async def flaky_service():
-    """[WATCH OUT]: Service fails intermittently."""
-    import random
-    if random.random() < 0.8:
-        raise ConnectionError("Service error")
-    return {"data": "ok"}
-
-@app.get("/circuit-breaker")
-async def circuit_breaker_example():
-    """[WHAT]: Circuit breaker prevents cascade of failures."""
-    try:
-        result = await breaker.call(flaky_service)
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Service unavailable: {breaker.state}")
-
-# ========== ENTERPRISE CONTEXT: Timeout & Fallback ==========
-
-# [COMPONENT MEANING] asyncio.wait_for() = Enforce timeout on async operation
-# [COMPONENT MEANING] [WATCH OUT]: TimeoutError if timeout exceeded
-
-async def slow_database_query():
-    """[WHAT]: Potentially slow operation."""
-    await asyncio.sleep(10)
-    return {"data": "result"}
-
-@app.get("/with-timeout")
-async def with_timeout():
-    """[HOW]: wait_for() raises TimeoutError if operation exceeds timeout."""
-    try:
-        result = await asyncio.wait_for(slow_database_query(), timeout=2.0)
-        return result
-    except asyncio.TimeoutError:
-        # Fallback: return cached/degraded response
-        return {"data": "cached_result", "stale": True}, 200
-
-# [COMPONENT MEANING] Feature flag = Conditionally enable features
-features_enabled = {"new_api": False, "beta_feature": True}
-
-@app.get("/feature-flag/{feature_name}")
-async def check_feature(feature_name: str):
-    """[WHAT]: Enable/disable features at runtime without deployment."""
-    if not features_enabled.get(feature_name, False):
-        raise HTTPException(status_code=404, detail="Feature not available")
-    
-    return {"feature": feature_name, "enabled": True}
-
-if __name__ == "__main__":
-    pass
-EOF
-
-echo "✓ Segment 14: Error Handling (segment_14_error_resilience.py)"
-
-# Segments 15-20
-
-echo ""
-echo "============================================================================"
-echo "SEGMENT 15: Testing Strategy (Unit, Integration, E2E)"
-echo "============================================================================"
-
-cat << 'EOF' > segment_15_testing.py
-"""
-[WHAT]: pytest, TestClient, fixtures, dependency overrides, async testing, load testing
-[WHY]: Automated testing prevents regressions. TestClient enables fast integration tests.
-"""
-
-import pytest
-from fastapi import FastAPI, Depends
-from fastapi.testclient import TestClient
-from httpx import AsyncClient
-
-app = FastAPI()
-
-# ========== BASIC USAGE: TestClient ==========
-
-@app.get("/hello")
-async def hello(name: str = "World"):
-    """Simple endpoint for testing."""
-    return {"message": f"Hello, {name}!"}
+    json_str = json.dumps(data, sort_keys=True)
+    return hashlib.md5(json_str.encode()).hexdigest()
 
 @app.get("/users/{user_id}")
-async def get_user(user_id: int):
-    """Simulate user fetch."""
-    if user_id < 1:
-        return {"error": "Invalid ID"}, 400
-    return {"id": user_id, "name": f"User {user_id}"}
-
-# [COMPONENT MEANING] TestClient = Make HTTP requests without running server
-# [ARGUMENT MEANING] Can be used in pytest fixtures or directly
-
-def test_hello_endpoint():
-    """[HOW]: TestClient mimics HTTP requests for testing."""
-    client = TestClient(app)
-    response = client.get("/hello")
-    assert response.status_code == 200
-    assert response.json() == {"message": "Hello, World!"}
-
-def test_hello_with_param():
-    """[WHAT]: Test with query parameters."""
-    client = TestClient(app)
-    response = client.get("/hello?name=Alice")
-    assert response.json() == {"message": "Hello, Alice!"}
-
-# ========== POWER USAGE: Fixtures & Dependency Overrides ==========
-
-# Simulated dependencies
-async def get_db():
-    """[WATCH OUT]: In real code, returns database connection."""
-    return {"connection": "real_db"}
-
-async def get_current_user():
-    """[WHAT]: Dependency that validates authentication."""
-    return {"id": 1, "username": "john"}
-
-@app.get("/profile")
-async def get_profile(user = Depends(get_current_user)):
-    """Protected endpoint requiring authentication."""
-    return {"user": user}
-
-# Test fixtures
-@pytest.fixture
-def client():
-    """[HOW]: Pytest fixture provides TestClient for all tests."""
-    return TestClient(app)
-
-@pytest.fixture
-def mock_user():
-    """[WHAT]: Mock user data for testing."""
-    return {"id": 999, "username": "testuser"}
-
-def test_profile_without_override(client):
-    """[WATCH OUT]: Without override, uses real get_current_user()."""
-    response = client.get("/profile")
-    # Would fail in real app if user not authenticated
-
-def test_profile_with_override(client, mock_user):
-    """[HOW]: Override dependency for testing."""
-    # [COMPONENT MEANING] app.dependency_overrides = Replace dependency with mock
-    app.dependency_overrides[get_current_user] = lambda: mock_user
+async def get_user_cached(user_id: int, if_none_match: str = Header(None)):
+    # [WHAT] Endpoint with ETag-based caching.
+    # [WHY] Avoid sending response body if client has fresh cached version.
     
-    response = client.get("/profile")
-    assert response.status_code == 200
-    assert response.json() == {"user": mock_user}
-    
-    # Clean up
-    app.dependency_overrides.clear()
-
-# ========== PRECISION USAGE: Async Testing ==========
-
-# [COMPONENT MEANING] @pytest.mark.asyncio = Mark test as async
-# [ARGUMENT MEANING] Allows using await in test functions
-
-@pytest.mark.asyncio
-async def test_async_endpoint():
-    """[HOW]: Test async endpoints with async client."""
-    # [COMPONENT MEANING] AsyncClient = Async HTTP client for testing
-    async with AsyncClient(app=app, base_url="http://test") as ac:
-        response = await ac.get("/hello?name=Bob")
-        assert response.status_code == 200
-
-# ========== ENTERPRISE CONTEXT: Database Fixtures ==========
-
-# Simulated database
-class MockDatabase:
-    def __init__(self):
-        self.users = {}
-    
-    async def create_user(self, name: str):
-        user_id = len(self.users) + 1
-        self.users[user_id] = {"id": user_id, "name": name}
-        return self.users[user_id]
-    
-    async def get_user(self, user_id: int):
-        return self.users.get(user_id)
-
-@pytest.fixture
-def mock_db():
-    """[WHAT]: Fresh database for each test; isolated state."""
-    db = MockDatabase()
-    yield db
-    # Cleanup after test
-
-@pytest.mark.asyncio
-async def test_create_user(mock_db):
-    """[HOW]: Use fixture to test database operations."""
-    user = await mock_db.create_user("Alice")
-    assert user["name"] == "Alice"
-    assert await mock_db.get_user(user["id"]) == user
-
-# ========== Load Testing Patterns ==========
-
-load_testing_example = """
-# Using Locust for load testing
-
-from locust import HttpUser, task, between
-
-class APIUser(HttpUser):
-    wait_time = between(1, 3)  # Wait 1-3 seconds between requests
-    
-    @task(3)  # Weight: 3 times more frequent than others
-    def get_hello(self):
-        # [WHAT]: Simulate real user behavior
-        self.client.get("/hello?name=User")
-    
-    @task(1)
-    def get_user(self):
-        user_id = random.randint(1, 100)
-        self.client.get(f"/users/{user_id}")
-
-# Run: locust -f locustfile.py --host=http://localhost:8000
-"""
-
-if __name__ == "__main__":
-    pass
-EOF
-
-echo "✓ Segment 15: Testing (segment_15_testing.py)"
-
-echo ""
-echo "============================================================================"
-echo "SEGMENT 16: Docker Containerization & Kubernetes Deployment"
-echo "============================================================================"
-
-cat << 'EOF' > segment_16_docker_k8s.sh
-#!/bin/bash
-
-# [COMPONENT MEANING] Dockerfile = Build specification for container image
-
-cat > Dockerfile << 'DOCKER_EOF'
-# Multi-stage build for minimal image size
-
-# Stage 1: Builder
-FROM python:3.11-slim as builder
-
-WORKDIR /build
-RUN python -m venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Stage 2: Runtime (much smaller)
-FROM python:3.11-slim
-
-# [ARGUMENT MEANING] WORKDIR = Set working directory in container
-WORKDIR /app
-
-# Copy venv from builder
-COPY --from=builder /opt/venv /opt/venv
-ENV PATH="/opt/venv/bin:$PATH"
-
-# Copy application code
-COPY . .
-
-# [COMPONENT MEANING] EXPOSE = Document which port container listens on
-EXPOSE 8000
-
-# [COMPONENT MEANING] CMD = Default command when container starts
-# [ARGUMENT MEANING] uvicorn main:app = Run FastAPI app with Uvicorn
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
-DOCKER_EOF
-
-# ========== Kubernetes Manifests ==========
-
-# [COMPONENT MEANING] Deployment = Kubernetes resource managing pod replicas
-cat > deployment.yaml << 'K8S_EOF'
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: fastapi-app
-  labels:
-    app: fastapi
-spec:
-  # [ARGUMENT MEANING] replicas = Number of pod instances
-  replicas: 3
-  
-  selector:
-    matchLabels:
-      app: fastapi
-  
-  template:
-    metadata:
-      labels:
-        app: fastapi
-    
-    spec:
-      containers:
-      - name: fastapi
-        image: myregistry.azurecr.io/fastapi:latest
-        
-        # [COMPONENT MEANING] resources.requests = Guaranteed minimum
-        # [COMPONENT MEANING] resources.limits = Maximum allowed
-        resources:
-          requests:
-            memory: "256Mi"
-            cpu: "250m"
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
-        
-        # [COMPONENT MEANING] livenessProbe = Check if container alive; restart if failed
-        livenessProbe:
-          httpGet:
-            path: /health/live
-            port: 8000
-          initialDelaySeconds: 10
-          periodSeconds: 10
-          failureThreshold: 3
-        
-        # [COMPONENT MEANING] readinessProbe = Check if ready for traffic
-        readinessProbe:
-          httpGet:
-            path: /health/ready
-            port: 8000
-          initialDelaySeconds: 5
-          periodSeconds: 5
-        
-        # [COMPONENT MEANING] startupProbe = Check if initialization complete
-        startupProbe:
-          httpGet:
-            path: /health/startup
-            port: 8000
-          failureThreshold: 30
-          periodSeconds: 10
----
-
-apiVersion: v1
-kind: Service
-metadata:
-  name: fastapi-service
-spec:
-  selector:
-    app: fastapi
-  
-  ports:
-  - protocol: TCP
-    port: 80
-    targetPort: 8000
-  
-  type: LoadBalancer
----
-
-# [COMPONENT MEANING] HorizontalPodAutoscaler = Auto-scale based on metrics
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
-metadata:
-  name: fastapi-hpa
-spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: fastapi-app
-  
-  minReplicas: 2
-  maxReplicas: 10
-  
-  # [ARGUMENT MEANING] targetCPUUtilizationPercentage = Scale when CPU > 70%
-  metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 70
-K8S_EOF
-
-echo "[SEGMENT 16] Dockerfile and Kubernetes manifests generated"
-EOF
-
-chmod +x segment_16_docker_k8s.sh
-bash segment_16_docker_k8s.sh
-
-echo "✓ Segment 16: Docker & Kubernetes (segment_16_docker_k8s.sh)"
-
-echo ""
-echo "============================================================================"
-echo "SEGMENT 17: API Versioning & Backward Compatibility"
-echo "============================================================================"
-
-cat << 'EOF' > segment_17_api_versioning.py
-"""
-[WHAT]: URL versioning, semantic versioning, deprecation headers, breaking changes
-[WHY]: APIs evolve. Versioning prevents breaking existing clients.
-"""
-
-from fastapi import FastAPI, APIRouter, HTTPException, Header
-from typing import Optional
-from enum import Enum
-
-app = FastAPI()
-
-# ========== BASIC USAGE: URL Path Versioning ==========
-
-# [COMPONENT MEANING] APIRouter(prefix="/v1") = Version prefix for all routes
-v1_router = APIRouter(prefix="/v1", tags=["v1"])
-
-@v1_router.get("/users/{user_id}")
-async def get_user_v1(user_id: int):
-    """[WHAT]: V1 API returns minimal user data."""
-    return {"id": user_id, "name": f"User {user_id}"}
-
-# [COMPONENT MEANING] V2 with more fields
-v2_router = APIRouter(prefix="/v2", tags=["v2"])
-
-@v2_router.get("/users/{user_id}")
-async def get_user_v2(user_id: int):
-    """[HOW]: V2 adds new fields (backward compatible additive change)."""
-    return {
-        "id": user_id,
-        "name": f"User {user_id}",
-        "email": f"user{user_id}@example.com",  # New field
-        "created_at": "2024-01-01T00:00:00Z"     # New field
-    }
-
-app.include_router(v1_router)
-app.include_router(v2_router)
-
-# ========== POWER USAGE: Deprecation Headers ==========
-
-# [COMPONENT MEANING] Deprecated header = Inform clients endpoint is deprecated
-# [COMPONENT MEANING] Sunset header = When endpoint will be removed
-
-from datetime import datetime, timedelta
-
-@v1_router.get("/users", deprecated=True)
-async def list_users_v1():
-    """[WATCH OUT]: Marked deprecated in Swagger UI."""
-    # In production: set headers
-    headers = {
-        "Deprecation": "true",
-        "Sunset": (datetime.utcnow() + timedelta(days=90)).isoformat(),
-        "Link": '<http://localhost:8000/v2/users>; rel="successor-version"'
+    user_data = {
+        "user_id": user_id,
+        "username": f"user_{user_id}",
+        "email": f"user{user_id}@example.com",
     }
     
-    return {"users": [], "headers": headers}
+    # [COMPONENT MEANING] ETag = HTTP header containing a hash of response content for conditional request validation.
+    etag = generate_etag(user_data)
+    
+    # [ARGUMENT MEANING] If-None-Match = HTTP request header containing ETag value for conditional GET requests.
+    if if_none_match == etag:
+        # Client has the latest version
+        return JSONResponse(content={}, status_code=304)  # Not Modified
+    
+    response = JSONResponse(content=user_data)
+    response.headers["ETag"] = etag
+    # [COMPONENT MEANING] Cache-Control = HTTP response header controlling browser and proxy caching behavior.
+    response.headers["Cache-Control"] = "public, max-age=300"  # Cache for 5 minutes
+    
+    return response
 
-# ========== PRECISION USAGE: Breaking Change Strategies ==========
 
-# Strategy 1: Optional new fields (non-breaking)
-class UserV1(BaseModel):
-    id: int
-    name: str
+@app.get("/public-data")
+async def get_public_data():
+    # [WHAT] Endpoint with Cache-Control header.
+    # [WHY] Tell browser/CDN how long to cache this response.
+    
+    data = {"data": "This is public and can be cached"}
+    
+    response = JSONResponse(content=data)
+    # [ARGUMENT MEANING] Cache-Control = max-age specifies cache duration in seconds.
+    response.headers["Cache-Control"] = "public, max-age=3600"  # Cache for 1 hour
+    # [COMPONENT MEANING] Last-Modified = HTTP header containing the timestamp of when the resource was last changed.
+    response.headers["Last-Modified"] = datetime.utcnow().strftime("%a, %d %b %Y %H:%M:%S GMT")
+    
+    return response
 
-class UserV2(BaseModel):
-    id: int
-    name: str
-    email: Optional[str] = None  # New field; optional for compatibility
 
-# Strategy 2: Rename field with alias (non-breaking)
-from pydantic import BaseModel, Field
+@app.get("/user-data/{user_id}")
+async def get_user_data_conditional(user_id: int, if_modified_since: str = Header(None)):
+    # [WHAT] Endpoint with Last-Modified-based caching.
+    # [WHY] Allow client to revalidate with timestamp.
+    
+    # Simulate resource last modified 1 hour ago
+    last_modified = (datetime.utcnow() - timedelta(hours=1))
+    
+    user_data = {"user_id": user_id, "data": "cached"}
+    
+    response = JSONResponse(content=user_data)
+    # [ARGUMENT MEANING] If-Modified-Since = HTTP request header containing timestamp for conditional GET requests.
+    response.headers["Last-Modified"] = last_modified.strftime("%a, %d %b %Y %H:%M:%S GMT")
+    response.headers["Cache-Control"] = "public, max-age=600"
+    
+    return response
 
-class UserV3(BaseModel):
-    id: int
-    name: str
-    email_address: str = Field(alias="email")  # Old name as alias
 
-# Strategy 3: Union types (support both old and new)
-from typing import Union
+# ============================================================================
+# IN-MEMORY CACHING (SIMPLE CACHE)
+# ============================================================================
 
-OldUser = dict
-NewUser = dict
+# [WHAT] Simple in-memory cache (for single-server; use Redis for distributed).
+simple_cache = {}
 
-@app.post("/v2/users")
-async def create_user(data: Union[OldUser, NewUser]):
-    """[HOW]: Accept both old and new formats."""
-    # Detect format and process accordingly
-    return {"created": True}
+def cache_get(key: str):
+    # [WHAT] Retrieve value from cache if not expired.
+    entry = simple_cache.get(key)
+    if entry and entry["expires_at"] > datetime.utcnow():
+        return entry["value"]
+    return None
 
-# ========== ENTERPRISE CONTEXT: Versioning Strategy ==========
+def cache_set(key: str, value, ttl_seconds: int = 300):
+    # [WHAT] Store value in cache with TTL.
+    simple_cache[key] = {
+        "value": value,
+        "expires_at": datetime.utcnow() + timedelta(seconds=ttl_seconds)
+    }
 
-class APIVersion(str, Enum):
-    V1 = "v1"
-    V2 = "v2"
+@app.get("/expensive-computation")
+async def expensive_computation(n: int = 10):
+    # [WHAT] Endpoint with simple in-memory caching.
+    
+    cache_key = f"computation_{n}"
+    
+    # Check cache first
+    cached_result = cache_get(cache_key)
+    if cached_result:
+        return JSONResponse(content={"result": cached_result, "source": "cache"})
+    
+    # Compute if not cached
+    result = sum(i ** 2 for i in range(n))
+    
+    # Cache the result
+    cache_set(cache_key, result, ttl_seconds=300)
+    
+    return JSONResponse(content={"result": result, "source": "computed"})
 
-@app.get("/versions")
-async def list_versions():
-    """[WHAT]: Document API versions and deprecation timelines."""
-    return {
-        "v1": {
-            "status": "deprecated",
-            "sunset_date": "2024-12-31",
-            "reason": "Use v2 for new features"
-        },
-        "v2": {
-            "status": "current",
-            "deprecation_date": None
-        },
-        "v3": {
-            "status": "beta",
-            "deprecation_date": None
+
+# ============================================================================
+# REDIS CACHING SIMULATION
+# ============================================================================
+
+# [WHAT] Simulated Redis cache (in production, use aioredis).
+redis_cache = {}
+
+# [COMPONENT MEANING] Redis = In-memory data store used for high-performance caching and session management.
+# [COMPONENT MEANING] aioredis = Async Redis client library for non-blocking Redis operations in FastAPI.
+
+# [ARGUMENT MEANING] set() = Redis command storing a key-value pair with optional expiration.
+# [ARGUMENT MEANING] get() = Redis command retrieving the value associated with a key.
+# [ARGUMENT MEANING] setex() = Redis command storing a key-value pair with expiration time in seconds.
+# [ARGUMENT MEANING] expire() = Redis command setting expiration time on an existing key.
+# [ARGUMENT MEANING] delete() = Redis command removing one or more keys from the cache.
+# [ARGUMENT MEANING] pipeline() = Redis method batching multiple commands to reduce network round trips.
+# [ARGUMENT MEANING] lock() = Redis distributed lock mechanism preventing cache stampede with mutual exclusion.
+
+async def redis_set(key: str, value: str, ex: int = None):
+    # [WHAT] Simulate Redis SET command.
+    redis_cache[key] = {"value": value, "expires_at": datetime.utcnow() + timedelta(seconds=ex) if ex else None}
+
+async def redis_get(key: str):
+    # [WHAT] Simulate Redis GET command.
+    entry = redis_cache.get(key)
+    if entry:
+        if entry["expires_at"] is None or entry["expires_at"] > datetime.utcnow():
+            return entry["value"]
+        else:
+            del redis_cache[key]
+    return None
+
+async def redis_delete(key: str):
+    # [WHAT] Simulate Redis DELETE command.
+    if key in redis_cache:
+        del redis_cache[key]
+
+@app.get("/cached-user/{user_id}")
+async def get_cached_user(user_id: int):
+    # [WHAT] Endpoint using Redis cache.
+    
+    cache_key = f"user:{user_id}"
+    
+    # Try to get from Redis
+    cached_user = await redis_get(cache_key)
+    if cached_user:
+        return JSONResponse(content={"user": json.loads(cached_user), "source": "redis"})
+    
+    # Fetch from "database"
+    user_data = {"user_id": user_id, "name": f"User {user_id}"}
+    
+    # Store in Redis with 5-minute expiration
+    await redis_set(cache_key, json.dumps(user_data), ex=300)
+    
+    return JSONResponse(content={"user": user_data, "source": "database"})
+
+
+@app.post("/invalidate-cache/{user_id}")
+async def invalidate_user_cache(user_id: int):
+    # [WHAT] Invalidate user cache on update.
+    # [WHY] When user data changes, remove from cache to prevent stale data.
+    
+    cache_key = f"user:{user_id}"
+    await redis_delete(cache_key)
+    
+    return JSONResponse(content={"message": f"Cache for user {user_id} invalidated"})
+
+
+# ============================================================================
+# PERFORMANCE OPTIMIZATION
+# ============================================================================
+
+@app.get("/fast-json")
+async def fast_json():
+    # [WHAT] Use ORJSONResponse for faster serialization.
+    # [COMPONENT MEANING] ORJSONResponse = High-performance JSON response class using the orjson library for faster serialization.
+    
+    data = {
+        "items": [{"id": i, "value": i ** 2} for i in range(1000)],
+        "count": 1000,
+    }
+    
+    # ORJSONResponse is significantly faster than JSONResponse
+    return ORJSONResponse(content=data)
+
+@app.get("/slow-json")
+async def slow_json():
+    # [WHAT] Use standard JSONResponse (slower).
+    
+    data = {
+        "items": [{"id": i, "value": i ** 2} for i in range(1000)],
+        "count": 1000,
+    }
+    
+    return JSONResponse(content=data)
+
+
+@app.get("/cache-key-builder")
+async def cache_key_builder(user_id: int, format: str = "json"):
+    # [COMPONENT MEANING] cache_key_builder = Function constructing unique cache keys from request parameters.
+    # [WHAT]: Build cache key from request params to avoid collisions.
+    
+    # [HOW]: Combine request parameters to create unique key
+    cache_key = f"user:{user_id}:format:{format}"
+    
+    return JSONResponse(content={"cache_key": cache_key})
+
+
+@app.get("/bulk-data")
+async def bulk_data(limit: int = 100):
+    # [WHAT] Large response that benefits from compression.
+    # [WHY] GZipMiddleware automatically compresses responses > 1000 bytes.
+    
+    items = [
+        {
+            "id": i,
+            "name": f"Item {i}",
+            "description": f"This is item {i} with some description",
+            "price": i * 10.5,
         }
-    }
+        for i in range(limit)
+    ]
+    
+    return JSONResponse(content={"items": items, "count": len(items)})
 
-# [WATCH OUT]: Avoid ambiguous routing
-# ❌ BAD: /users (matches both /v1/users and /v2/users if not careful)
-# ✓ GOOD: /v1/users and /v2/users clearly separated
+
+@app.get("/health")
+async def health():
+    return JSONResponse(content={"status": "ok"})
+
 
 if __name__ == "__main__":
-    pass
-EOF
+    print("\n[INFO] Starting Uvicorn server on http://localhost:8010")
+    print("[INFO] Try these endpoints:")
+    print("  - GET /users/1 (with ETag caching)")
+    print("  - GET /public-data (with Cache-Control)")
+    print("  - GET /user-data/1 (with Last-Modified)")
+    print("  - GET /expensive-computation?n=100 (in-memory cache)")
+    print("  - GET /cached-user/1 (Redis simulation)")
+    print("  - POST /invalidate-cache/1 (invalidate cache)")
+    print("  - GET /fast-json (ORJSONResponse)")
+    print("  - GET /slow-json (JSONResponse)")
+    print("  - GET /bulk-data?limit=500 (tests GZip compression)")
+    print("\n")
+    
+    uvicorn.run(app=app, host="127.0.0.1", port=8010, workers=1, log_level="info")
+SEGMENT_10_EOF
 
-echo "✓ Segment 17: API Versioning (segment_17_api_versioning.py)"
+echo "[✓] Segment 10 generated: segment_10_caching_performance.py"
+
 
 echo ""
-echo "============================================================================"
-echo "SEGMENT 18: Service-to-Service Communication & Resilience"
-echo "============================================================================"
-
-cat << 'EOF' > segment_18_service_communication.py
-"""
-[WHAT]: httpx async client, circuit breaker, service discovery, message queues, gRPC
-[WHY]: Microservices require reliable inter-service communication.
-"""
-
-from fastapi import FastAPI
-import httpx
-from typing import Optional
-import asyncio
-
-app = FastAPI()
-
-# ========== BASIC USAGE: Async HTTP Client ==========
-
-# [COMPONENT MEANING] httpx.AsyncClient = Async HTTP client with connection pooling
-# [ARGUMENT MEANING] timeout = Timeout for all requests
-
-async def call_external_service(url: str) -> dict:
-    """[HOW]: Make non-blocking HTTP request to external service."""
-    async with httpx.AsyncClient(timeout=5.0) as client:
-        # [WATCH OUT]: timeout prevents hanging on slow/dead services
-        response = await client.get(url)
-        response.raise_for_status()  # Raise on 4xx/5xx
-        return response.json()
-
-@app.get("/external-data/{service_id}")
-async def get_external_data(service_id: int):
-    """[WHAT]: Call external service and return data."""
-    try:
-        data = await call_external_service(f"https://api.example.com/service/{service_id}")
-        return data
-    except httpx.TimeoutException:
-        return {"error": "Service timeout"}, 504
-    except httpx.HTTPError as e:
-        return {"error": str(e)}, 502
-
-# ========== POWER USAGE: Connection Pooling & Limits ==========
-
-# [COMPONENT MEANING] limits = Control connection pool behavior
-# [ARGUMENT MEANING] max_connections = Max total connections
-# [ARGUMENT MEANING] max_keepalive_connections = Reusable connections
-
-client = httpx.AsyncClient(
-    timeout=10.0,
-    limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
-    http2=True  # Enable HTTP/2 for multiplexing
-)
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """[HOW]: Close client to return connections to pool."""
-    await client.aclose()
-
-# ========== PRECISION USAGE: Retry + Circuit Breaker ==========
-
-from tenacity import retry, stop_after_attempt, wait_exponential
-
-# [COMPONENT MEANING] Circuit breaker wrapper
-class ResilientServiceClient:
-    """[WHY]: Prevent cascading failures across services."""
-    
-    def __init__(self, base_url: str):
-        self.base_url = base_url
-        self.failure_count = 0
-        self.is_open = False
-    
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=1, max=10)
-    )
-    async def get(self, path: str):
-        """[HOW]: Retry transient failures; circuit breaker prevents cascade."""
-        if self.is_open:
-            raise Exception("Circuit breaker open")
-        
-        try:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(f"{self.base_url}{path}", timeout=5.0)
-                response.raise_for_status()
-                self.failure_count = 0  # Reset on success
-                return response.json()
-        except Exception as e:
-            self.failure_count += 1
-            if self.failure_count >= 5:
-                self.is_open = True
-                asyncio.create_task(self._reset_after_delay())
-            raise
-    
-    async def _reset_after_delay(self):
-        """[WATCH OUT]: Allow recovery time before retrying."""
-        await asyncio.sleep(60)  # Wait 1 minute
-        self.is_open = False
-        self.failure_count = 0
-
-user_service = ResilientServiceClient("https://user-service.internal")
-
-@app.get("/user/{user_id}")
-async def get_user(user_id: int):
-    """[WHAT]: Call user service with automatic retry + circuit breaker."""
-    try:
-        user = await user_service.get(f"/users/{user_id}")
-        return user
-    except Exception as e:
-        return {"error": "User service unavailable"}, 503
-
-# ========== ENTERPRISE CONTEXT: Message Queues & Event Streaming ==========
-
-# [COMPONENT MEANING] Message queue = Async communication between services
-# Examples: RabbitMQ, Kafka
-
-message_queue_example = """
-# RabbitMQ with aio-pika
-
-from aio_pika import connect, IncomingMessage
-
-async def publish_event(event: dict):
-    # Connect to RabbitMQ
-    connection = await connect("amqp://guest:guest@localhost/")
-    channel = await connection.channel()
-    
-    # [COMPONENT MEANING] Exchange = Routing broker for messages
-    exchange = await channel.get_exchange("events")
-    
-    # Publish message
-    await exchange.publish(message=aio_pika.Message(
-        body=json.dumps(event).encode()
-    ), routing_key="user.created")
-
-async def consume_events():
-    # [COMPONENT MEANING] Queue = Buffer for messages
-    connection = await connect("amqp://guest:guest@localhost/")
-    channel = await connection.channel()
-    queue = await channel.get_queue("user-events")
-    
-    # [HOW]: Subscribe to messages
-    async with queue.iterator() as queue_iter:
-        async for message: IncomingMessage in queue_iter:
-            with message.process():
-                event = json.loads(message.body)
-                # Handle event
-"""
-
-# ========== gRPC for High-Performance Communication ==========
-
-grpc_example = """
-# Protocol Buffers definition (user.proto)
-syntax = "proto3";
-
-service UserService {
-  rpc GetUser (GetUserRequest) returns (UserResponse);
-  rpc ListUsers (ListUsersRequest) returns (stream UserResponse);
-}
-
-message GetUserRequest {
-  int32 user_id = 1;
-}
-
-message UserResponse {
-  int32 id = 1;
-  string name = 2;
-  string email = 3;
-}
-
-# FastAPI + gRPC server
-from grpc import aio
-
-async def grpc_server():
-    server = aio.Server()
-    # Register service handlers
-    await server.start()
-"""
-
-if __name__ == "__main__":
-    pass
-EOF
-
-echo "✓ Segment 18: Service Communication (segment_18_service_communication.py)"
+echo "================================================================================"
+echo "ALL SEGMENTS GENERATED SUCCESSFULLY"
+echo "================================================================================"
 
 echo ""
-echo "============================================================================"
-echo "SEGMENT 19: Production Deployment & Zero-Downtime Strategies"
-echo "============================================================================"
-
-cat << 'EOF' > segment_19_deployment.py
-"""
-[WHAT]: Uvicorn vs Gunicorn, worker tuning, rolling/blue-green/canary deployments
-[WHY]: Production deployments require zero downtime. Workers must be properly tuned.
-"""
-
-deployment_info = {
-    "uvicorn_vs_gunicorn": """
-    # Single-worker Uvicorn (development)
-    uvicorn main:app --host 0.0.0.0 --port 8000
-    
-    # Gunicorn with Uvicorn workers (production)
-    gunicorn main:app -k uvicorn.workers.UvicornWorker --workers 4 --worker-connections 1000
-    
-    [WHAT]: Workers = Separate processes handling requests concurrently
-    [HOW]: --workers = Number of workers; tune to 2*(CPU cores) + 1 for I/O workloads
-    [WATCH OUT]: Too few workers = requests queued; too many = context switching overhead
-    """,
-    
-    "worker_tuning": """
-    # For I/O-bound FastAPI (database, HTTP calls):
-    workers = 2 * cpu_count + 1
-    
-    # For CPU-bound (rare):
-    workers = cpu_count
-    
-    # Connection limits per worker
-    --worker-connections 1000  # Max concurrent per worker
-    --graceful-timeout 30      # Seconds to drain connections on shutdown
-    """,
-    
-    "rolling_deployment": """
-    # [WHAT]: Gradually replace old instances with new ones
-    # Benefits: Zero downtime, easy rollback if issues
-    # Risks: Multiple versions running; DB compatibility required
-    
-    Process:
-    1. Launch new pod with updated code
-    2. Wait for readiness probe to pass
-    3. Load balancer routes traffic to new pod
-    4. Terminate old pod
-    5. Repeat until all pods updated
-    """,
-    
-    "blue_green_deployment": """
-    # [WHAT]: Two identical environments (Blue, Green); switch traffic between them
-    # Benefits: Instant rollback; simple testing
-    # Risks: 2x resource cost; data consistency during switch
-    
-    Process:
-    1. Deploy new version to Green environment (no traffic)
-    2. Run smoke tests against Green
-    3. Switch load balancer: Blue -> Green
-    4. Keep Blue as instant rollback plan
-    5. After stability, redeploy Blue for next cycle
-    """,
-    
-    "canary_release": """
-    # [WHAT]: Route small percentage of traffic to new version
-    # Benefits: Real-world testing before full release
-    # Risks: Complex routing; version skew issues
-    
-    Process:
-    1. Deploy new version alongside old
-    2. Send 5% of traffic to new version
-    3. Monitor error rates, latency
-    4. If OK, increase to 25%, 50%, 100%
-    5. If errors detected, rollback to 0%
-    """,
-    
-    "nginx_config": """
-    # Nginx reverse proxy for load balancing & graceful shutdown
-    
-    upstream backend {
-        server app1:8000;
-        server app2:8000;
-        server app3:8000;
-    }
-    
-    server {
-        listen 80;
-        
-        location / {
-            # [WHAT]: Route requests to backend pool
-            proxy_pass http://backend;
-            proxy_http_version 1.1;
-            proxy_set_header Connection "";
-            
-            # [HOW]: WebSocket support (upgrade connection)
-            proxy_set_header Upgrade $http_upgrade;
-            proxy_set_header Connection "upgrade";
-            
-            # [WATCH OUT]: Timeout must match app graceful-timeout
-            proxy_connect_timeout 30s;
-            proxy_send_timeout 30s;
-            proxy_read_timeout 30s;
-        }
-    }
-    """,
-    
-    "graceful_shutdown": """
-    # [COMPONENT MEANING] SIGTERM = Signal for graceful shutdown
-    # [ARGUMENT MEANING] --graceful-timeout = Max seconds to drain connections
-    
-    Process:
-    1. Kubernetes sends SIGTERM to pod
-    2. Uvicorn stops accepting NEW requests
-    3. Existing requests continue up to graceful-timeout seconds
-    4. Pod exits; load balancer removes from pool
-    5. SIGKILL sent if graceful-timeout exceeded (cleanup forced)
-    
-    Implementation:
-    - FastAPI via Uvicorn handles SIGTERM natively
-    - Close database connections in shutdown event
-    - Use --graceful-timeout matching app lifecycle
-    """
-}
-
-for title, content in deployment_info.items():
-    print(f"\n[{title.upper()}]")
-    print(content)
-
-if __name__ == "__main__":
-    pass
-EOF
-
-echo "✓ Segment 19: Production Deployment (segment_19_deployment.py)"
+echo "Created files:"
+ls -lh *.py
 
 echo ""
-echo "============================================================================"
-echo "SEGMENT 20: Incident Response & Production Debugging"
-echo "============================================================================"
-
-cat << 'EOF' > segment_20_debugging.py
-"""
-[WHAT]: Log analysis, distributed tracing, profiling, memory debugging, incident response
-[WHY]: Production issues demand visibility. Debugging tools extract signal from noise.
-"""
-
-debugging_tools = {
-    "log_aggregation": """
-    # [COMPONENT MEANING] ELK Stack = Elasticsearch, Logstash, Kibana
-    # [WHAT]: Centralized log analysis for multi-service systems
-    
-    Implementation:
-    1. FastAPI emits JSON logs to stdout
-    2. Logstash parses and sends to Elasticsearch
-    3. Kibana visualizes and searches logs
-    
-    Query example:
-    - Find all 500 errors: status:500
-    - Filter by service: service:"user-api"
-    - Time range: last 5 minutes
-    - Correlate by request ID: correlation_id:uuid123
-    """,
-    
-    "distributed_tracing": """
-    # [COMPONENT MEANING] Jaeger = Distributed tracing visualization
-    # [WHAT]: Track request flow across multiple services
-    
-    Example trace:
-    Request enters -> API Gateway (5ms) 
-      -> User Service (50ms) 
-        -> Database Query (40ms)
-      -> Order Service (30ms)
-        -> Payment Service (100ms)
-    
-    Identifies bottleneck (Payment Service) for optimization
-    """,
-    
-    "profiling": """
-    # [COMPONENT MEANING] py-spy = Sampling profiler for production
-    # [HOW]: Attach to running process; collect CPU samples
-    
-    Command:
-    py-spy record -o profile.svg -p <pid> -d 30 -r 100
-    
-    Output: Flame graph showing where CPU time spent
-    Identifies hot paths for optimization
-    """,
-    
-    "memory_profiling": """
-    # [COMPONENT MEANING] memory_profiler = Track memory allocation
-    # [WHAT]: Detect memory leaks, large object creation
-    
-    Tools:
-    - memory_profiler: Line-by-line memory usage
-    - tracemalloc: Python std lib; trace allocations
-    - objgraph: Find object reference cycles
-    """,
-    
-    "pool_exhaustion": """
-    # [WATCH OUT]: Database connection pool exhaustion
-    # Symptoms:
-    - Requests timeout waiting for connection
-    - "QueuePool limit exceeded" errors
-    - High latency without CPU increase
-    
-    Debugging:
-    1. Check pool size vs concurrent requests: pool_size + max_overflow
-    2. Verify connections are being returned: monitor pool.checkedout()
-    3. Check for connection leaks: connections not closing
-    4. Review slow queries: might hold connections too long
-    
-    Fix:
-    - Increase pool_size if legitimate traffic spike
-    - Optimize queries to reduce holding time
-    - Use connection pooling library (PgBouncer for PostgreSQL)
-    """,
-    
-    "slow_queries": """
-    # [COMPONENT MEANING] Slow query log = Database logs queries > threshold
-    # [HOW]: Enable and analyze to find optimization targets
-    
-    Example (PostgreSQL):
-    SET log_min_duration_statement = 1000;  # Log queries > 1 second
-    
-    Analysis:
-    - Count occurrences: which query runs most?
-    - Check execution plan: WHERE clause using index?
-    - Look for N+1 queries: could use eager loading
-    """,
-    
-    "race_condition": """
-    # [WATCH OUT]: Bugs depending on timing of concurrent operations
-    # Hard to reproduce; intermittent failures
-    
-    Example:
-    Thread 1: Read balance = 100
-    Thread 2: Read balance = 100
-    Thread 1: Withdraw 50, write balance = 50
-    Thread 2: Withdraw 30, write balance = 70  # Bug! Should be 20
-    
-    Debugging:
-    - Reproduce under high concurrency: asyncio stress test
-    - Use thread analyzers: ThreadSanitizer
-    - Review critical sections: are they locked?
-    - Add logging to sequence events
-    
-    Fix:
-    - Use database transactions
-    - Explicit locking: asyncio.Lock
-    - Version-based optimistic locking
-    """,
-    
-    "incident_response": """
-    # [COMPONENT MEANING] Incident severity = Classification (P0/P1/P2/P3)
-    # P0: Complete outage; immediate escalation
-    # P1: Major degradation; page on-call
-    # P2: Partial degradation; normal business hours
-    # P3: Minor issue; backlog
-    
-    Incident playbook:
-    1. DETECT: Monitoring alert triggered
-    2. RESPOND: On-call engineer acknowledges
-    3. ASSESS: Understand scope and impact
-    4. MITIGATE: Stop bleeding (rollback, failover, etc.)
-    5. RESOLVE: Fix root cause
-    6. POSTMORTEM: Review what went wrong and prevent recurrence
-    
-    Runbook example:
-    [Incident] Database connection pool exhaustion
-    [Symptoms] Requests timing out with "pool limit exceeded"
-    [Immediate Action]
-    1. Restart affected service pods to clear bad connections
-    2. Monitor pool.checkedout() metric
-    3. Increase pool_size +50% in production
-    [Investigation]
-    1. Review slow query log from timeframe
-    2. Check for recent deployments
-    3. Correlate with traffic spike
-    [Prevention]
-    1. Add alerting for pool.checkedout() > 80%
-    2. Implement connection timeout
-    """
-}
-
-for title, content in debugging_tools.items():
-    print(f"\n{'='*70}")
-    print(f"[{title.upper()}]")
-    print('='*70)
-    print(content)
-
-if __name__ == "__main__":
-    pass
-EOF
-
-echo "✓ Segment 20: Debugging (segment_20_debugging.py)"
+echo "================================================================================"
+echo "NEXT STEPS"
+echo "================================================================================"
+echo ""
+echo "To run each segment individually:"
+echo ""
+echo "  python segment_1_core_architecture.py"
+echo "  python segment_2_pydantic_validation.py"
+echo "  python segment_3_response_models.py"
+echo "  python segment_4_dependency_injection.py"
+echo "  python segment_5_database_integration.py"
+echo "  python segment_6_authentication.py"
+echo "  python segment_7_security_hardening.py"
+echo "  python segment_8_alembic_migrations.py"
+echo "  python segment_9_async_concurrency.py"
+echo "  python segment_10_caching_performance.py"
+echo ""
+echo "Each segment runs on a different port (8001-8010)."
+echo "Access Swagger docs at: http://localhost:PORT/docs"
+echo ""
+echo "================================================================================"
 
 echo ""
-echo "============================================================================"
-echo "BUILD COMPLETE!"
-echo "============================================================================"
-
-echo "
-✅ All 20 segments generated:
-
-Segment  1: Core Architecture & ASGI Lifecycle
-Segment  2: Pydantic Request Validation
-Segment  3: Response Models & Serialization
-Segment  4: Dependency Injection
-Segment  5: SQLAlchemy Async
-Segment  6: Authentication & OAuth2
-Segment  7: Security Hardening
-Segment  8: Alembic Migrations
-Segment  9: Async & Concurrency
-Segment 10: Caching & Performance
-Segment 11: Logging & Tracing
-Segment 12: Metrics & Health Checks
-Segment 13: Middleware Architecture
-Segment 14: Error Handling & Resilience
-Segment 15: Testing Strategy
-Segment 16: Docker & Kubernetes
-Segment 17: API Versioning
-Segment 18: Service-to-Service Communication
-Segment 19: Production Deployment
-Segment 20: Incident Response & Debugging
-
-📁 Output: All files in $WORKSPACE
-
-✨ Each segment demonstrates:
-   - Basic Usage (foundational)
-   - Power Usage (advanced features)
-   - Precision Usage (edge cases)
-   - Enterprise Context (production patterns)
-"
-
+echo "✓ Code generation complete! Files are in: $WORKSPACE"
 echo ""
-echo "Files available in workspace:"
-ls -lh *.py *.sh 2>/dev/null | awk '{print "  " $9 " (" $5 ")"}'
