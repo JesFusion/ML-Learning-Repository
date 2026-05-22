@@ -109,4 +109,81 @@
     -gt: Greater than (>)
     
     -ge: Greater than or equal (>=)
+
+    -z:  String is zero-length (empty)
+    
+    -n:  String is non-zero-length (not empty)
+
+    = (equal), != (not-equal)
+},
+
+{
+    File Test Operators:
+
+    -e= Path exists (any type)
+
+    -f= Exists and is a regular file
+
+    -d= Exists and is a Directory
+
+    -r= Readable by current process
+
+    -w= Writable by current process
+
+    -x= Executable by current process
+
+    -s= File exists and has size > 0 bytes
+
+    -L= Symbolic link
+
+    -p= Named pipe (FIFO)
+
+    -S= Is a socket
+
+    -nt = File1 is newer than file2 (by mtime)
+
+    -ot = File1 is older than file2
+
+    -ef = Same inode (hard links or identical path)
+},
+
+{
+    In Bash, ;;, ;&, and ;;& are terminators used exclusively inside case statements. They control "fall-through" behavior, determining whether Bash should stop evaluating after a match or continue testing subsequent patterns.
+
+
+    1. ;; (Standard Terminate):
+    
+        This is the default terminator you use 99% of the time. Once a pattern matches, Bash executes its code block and immediately exits the entire case statement. It will not look at any other options.
+
+    2. ;& (Unconditional Fall-Through):
+    
+        This terminator tells Bash to execute the current block and then force-execute the very next block, completely ignoring whether the next pattern actually matches or not.
+
+    3. ;;& (Conditional Fall-Through):
+    
+        This terminator tells Bash to execute the current block, and then continue testing all remaining patterns down the line to see if any others match.
+},
+
+{
+    declare is a bash builtin that explicitly defines variables with type constraints, scope modifiers, and export flags.
+
+    declare flags:
+
+        
+    1. -i = Integer; bash automatically evaluates arithmetic on assignment.
+    
+    2. -r = Readonly; any re-assignment causes an immediate runtime error.
+    
+    3. -x = Export; marks the variable for child process inheritance.
+    
+    4. -a = Array (indexed); declares a zero-based integer-keyed array.
+    
+    5. -A = Associative array; string-keyed hash map. Requires Bash 4+.
 }
+
+
+
+
+
+
+

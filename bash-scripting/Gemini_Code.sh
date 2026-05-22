@@ -373,8 +373,8 @@ section "4-POWER: env -i — Clean Environment Execution"
 
 # [WHAT]: Run a command with a completely empty environment to verify a script
 #         doesn't rely on inherited ambient variables.
-# [WHY]:  CI runners often have different environments from dev machines. Scripts
-#         that silently consume inherited vars are brittle and non-reproducible.
+# [WHY]:  CI runners often have different environments from dev machines. Scripts that silently consume inherited vars are brittle and non-reproducible.
+
 CLEAN_ENV_OUT=$(env -i HOME="/tmp" PATH="/usr/bin:/bin" bash -c 'echo "Clean PATH: $PATH"')
 pass "env -i output: $CLEAN_ENV_OUT"
 
