@@ -47,5 +47,8 @@ Pytest/__pycache__/
 # file for writing pytest code 
 Pytest/test_file.py
 
+# cryptographic lock file ensuring deterministic builds
+Golang/go.sum
 
-project_root/
+# golang dependency manifest
+Golang/go.mod
