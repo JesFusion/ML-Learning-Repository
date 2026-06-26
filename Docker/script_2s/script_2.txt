@@ -1581,3 +1581,1051 @@ docker run -d --name $CONTAINER_NAME $IMAGE_NAME
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#!/usr/bin/env bash
+
+# Specifies the bash interpreter to execute this script
+
+set -euo pipefail # Enables strict error handling: exit on error (-e), undefined variables (-u), and pipeline failures (-o pipefail)
+
+# trap 'echo ""' DEBUG
+
+if false; then # Starts a disabled block of code that evaluates to false
+
+    # ===================================== SEGMENT 1: Container Fundamentals & Virtualization Models =====================================
+    echo "Running docker container" # Prints a message to the console indicating the container will run
+
+    # Line 1/3 of command: Executes a new Docker container with the specified parameters
+    # Line 2/3 of command: Names the container 'segment_1_container' and runs it in detached mode
+    # Line 3/3 of command: Uses alpine to sleep, suppresses errors, and bypasses failures
+    docker run \
+    --name segment_1_container -d \
+    alpine sleep 670 2>/dev/null || true
+
+    echo "PID of bash script = $$" # Prints the process ID (PID) of the currently running bash shell
+
+    environment_drift_file="/tmp/env_drift_snapshot_$$_$(date +%s).txt" # Constructs a temporary file name for environment drift
+
+    env > "$environment_drift_file" # Exports current environment variables and saves them into the file
+
+    kernel_version_release=$(uname -r) # Gets the Linux kernel release version
+
+    echo "Kernel version: $kernel_version_release" # Prints the stored kernel version to the console
+
+    cat <<'EOF' > /tmp/immutable.Dockerfile # Begins a heredoc to write the immutable Dockerfile content
+    # Specifies the base image. 'alpine:latest' is a minimal, lightweight 
+    # Linux distribution (around 5MB) commonly used to keep image sizes small.
+    FROM alpine:latest # Sets the base image to the minimal alpine distribution
+
+    # Runs a command during the image build process. 
+    # This prints a message to the build log as a reminder of Docker's design.
+    RUN echo "This image is immutable - any change requires a new build" # Executes an echo command during image build
+
+    # Adds metadata to the image using key-value pairs.
+    # This serves as documentation or a flag for automated tools/scanners.
+    LABEL immutable="true" # Applies metadata labeling the image as immutable
+
+    # Defines the default executable that runs when the container starts.
+    # In this case, it launches the standard Shell ('sh') interpreter.
+    ENTRYPOINT ["/bin/sh"] # Sets the container's default execution shell to /bin/sh
+EOF
+    # End of the immutable.Dockerfile heredoc generation
+
+    reproducible_Dockerfile="/tmp/reproducible_$(date +%s).Dockerfile" # Constructs a unique file name using the current timestamp
+
+    echo "Reproducible Dockerfile name: $reproducible_Dockerfile" # Prints the generated Dockerfile name
+
+    cat <<'EOF' > "$reproducible_Dockerfile" # Begins a heredoc to write the reproducible Dockerfile content
+    # Specifies the base image. This downloads the latest minimal Alpine Linux distribution to serve as the environment.
+    FROM alpine:latest # Sets the base image to the minimal alpine distribution
+
+    # Runs a shell command during the build process to print text to the build logs for verification.
+    RUN echo "Reproducible content" # Executes an echo command to verify the build process
+
+    # Copies a file from your local host machine into the container image.
+    # Source: /tmp/reproducible_input.txt (on your computer)
+    # Destination: /app/data.txt (inside the Docker image)
+    COPY /tmp/reproducible_input.txt /app/data.txt # Copies a file from the host machine into the container's /app directory
+EOF
+    # End of the reproducible_Dockerfile heredoc generation
+
+    base_directory="/media/sf_DevOps-MlOps/linux/ML-Learning-Repository/Docker/Docker-Practice" # Sets the base working directory for the practice environment
+
+    # ===================================== SEGMENT 5: DOCKERFILE DIRECTIVES =====================================
+
+    # segment_5_dir="/home/jesfusion/Documents/docker_practice/segment5"
+
+    segment_5_dir=$(mktemp -d) # Creates a temporary directory and stores its path in a variable
+
+    cd "$segment_5_dir" # Changes the current working directory to the newly created temp directory
+
+    echo -e "\nSegment 5 practice file path: $segment_5_dir" # Prints the temp directory path with a leading newline
+
+    mkdir -p "$segment_5_dir/src" # Creates a 'src' subdirectory inside the temp folder
+
+    mkdir -p "$segment_5_dir/config" # Creates a 'config' subdirectory inside the temp folder
+
+    # Create an empty dummy file named 'large-file.daemon' (often used to simulate log files or test volume bindings)
+    touch large-file.daemon # Creates an empty file named large-file.daemon
+
+    cat <<'EOF' > "python-code.py" # Begins a heredoc to generate the Python application code
+    #!/usr/bin/env python3 # Python shebang indicating the script requires Python 3
+
+    from flask import Flask, jsonify # Imports the Flask class and jsonify function
+    import os # Imports the operating system module
+    import sys # Imports the system-specific parameters module
+    import logging # Imports the built-in logging module
+    from datetime import datetime, timezone # Imports datetime objects for timestamp generation
+
+    # Initialize the Flask application
+    app = Flask(__name__) # Instantiates the main Flask web application
+
+    # Fetch the root logger configuration
+    logger = logging.getLogger() # Gets the root logger instance
+
+    # READ LEVEL ONCE: Safely convert environment variable string to numeric logging level
+    # Defaults to 'INFO' if the environment variable 'the_logging_level' is not set
+    the_log_level = os.getenv('the_logging_level', 'INFO').upper() # Retrieves log level from env vars or defaults to INFO
+    numeric_level = getattr(logging, the_log_level, logging.INFO) # Converts the string level into its numeric logging equivalent
+    logger.setLevel(numeric_level) # Applies the chosen numeric level to the root logger
+
+    # Define a consistent string format for all log entries
+    log_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s') # Defines the layout for all log messages
+
+    # Configure Stream Handler to send log messages to the standard output (terminal/console)
+    stdout_handler = logging.StreamHandler(sys.stdout) # Creates a handler pointing to the system console
+    stdout_handler.setFormatter(log_formatter) # Connects the layout formatter to the console handler
+    logger.addHandler(stdout_handler) # Adds the console handler to the root logger
+
+    # Define the directory and full file path for file logging
+    log_dir = '/segment_5_dir/logs' # Declares the directory path for the persistent logs
+    log_file_path = os.path.join(log_dir, 'segment5.log') # Joins the directory and file name into a full path
+
+    # Create the log directory automatically if it does not already exist
+    os.makedirs(log_dir, exist_ok=True) # Ensures the log directory exists on the file system
+
+    # Attempt to configure a File Handler for persistent logging
+    try: # Starts error handling block in case folder lacks write permissions
+        file_handler = logging.FileHandler(log_file_path) # Attempts to create a file writer for logs
+        file_handler.setFormatter(log_formatter) # Formats the logs being written to the file
+        logger.addHandler(file_handler) # Attaches the file handler to the root logger
+        logger.info("Successfully attached FileHandler. Logging to file is active!") # Logs a success message if file writing works
+    except PermissionError as e: # Catches access denial from the operating system
+        # FORCE visibility: Print directly to stdout with unmistakable markers if folder permissions fail
+        print("\n" + "="*60, file=sys.stdout) # Prints an empty visual separator line to stdout
+        print(f"🚨 CRITICAL ERROR: DOCKER WAS BLOCKED FROM WRITING TO LAPTOP FOLDER!", file=sys.stdout) # Prints the critical permission warning
+        print(f"Details: {e}", file=sys.stdout) # Prints the exact error code/reason
+        print("="*60 + "\n", file=sys.stdout) # Closes the visual error box
+
+    # Load application metadata from environment variables with fallback defaults
+    version_of_app = os.getenv('version_of_the_app', '1.0.0') # Retrieves the app version or sets a default
+    user_name = os.getenv('name_of_user', 'username unknown') # Retrieves the username or sets a default
+
+    # 🌟 LINE REMOVED: No more string override breaking the logger!
+
+    # Endpoint: Health check route to verify application status and test logging
+    @app.route('/health', methods=['GET']) # Decorates the function as a GET endpoint for /health
+    def health_check(): # Defines the health check response function
+        # Loop to simulate system check operations and generate test log entries
+        for x in range(3): # Loops three times to test logic and logs
+            logger.info(f"I am healthy [{x + 1}]") # Writes a numbered health status to the logger
+
+        return jsonify({ # Returns a formatted JSON HTTP response
+            "name of user": user_name, # Injects the fetched username
+            'status': 'healthy', # Hardcodes the application status
+            'timestamp': datetime.now(timezone.utc).isoformat(), # Calculates current UTC time
+            'version': version_of_app # Injects the app version
+        }), 200 # Appends an HTTP 200 OK status code
+
+    # Endpoint: General API information route
+    @app.route('/api/info', methods=['GET']) # Decorates the function as a GET endpoint for /api/info
+    def api_info(): # Defines the general API info response function
+        return jsonify({ # Returns a formatted JSON HTTP response
+            'service': 'Flask API', # Hardcodes the service name
+            'version': version_of_app, # Injects the version number
+            'container_started': True, # Hardcodes container started status
+            'hostname': os.getenv('HOSTNAME', 'unknown hostname') # Fetches and injects the container hostname
+        }), 200 # Appends an HTTP 200 OK status code
+
+    # Endpoint: Detailed operational status of the running process
+    @app.route('/api/status', methods=['GET']) # Decorates the function as a GET endpoint for /api/status
+    def api_status(): # Defines the internal status response function
+        return jsonify({ # Returns a formatted JSON HTTP response
+            'running': True, # Indicates the process is alive
+            'app_version': version_of_app, # Injects the app version
+            'python_version': sys.version, # Injects the specific Python system version
+            'pid': os.getpid() # Injects the internal operating process ID
+        }), 200 # Appends an HTTP 200 OK status code
+
+    # Error Handler: Catch and format 404 Not Found errors as clean JSON responses
+    @app.errorhandler(404) # Decorator catching any 404 router errors
+    def not_found(error): # Defines the 404 fallback function
+        return jsonify({'error': 'Not found', 'message': str(error)}), 404 # Returns JSON representation of a missing page
+
+    # Error Handler: Catch and format 500 Internal Server errors as clean JSON responses
+    @app.errorhandler(500) # Decorator catching any 500 router errors
+    def internal_error(error): # Defines the 500 fallback function
+        return jsonify({'error': 'Internal server error', 'message': str(error)}), 500 # Returns JSON representation of a server crash
+
+    # Application entry point
+    if __name__ == '__main__': # Ensures the code only runs if executed directly (not imported)
+        logger.info(f"Starting Flask API v{version_of_app}") # Logs the finalized application startup details
+        # Run the built-in Flask development server with custom configurations
+        app.run( # Calls the run method on the Flask app
+            host='0.0.0.0', # Listen on all available network interfaces
+            port=2026,      # Run on custom port 2026
+            debug=False,    # Disabled for production/stable testing
+            threaded=True   # Handle multiple requests concurrently
+        ) # Closes the application run function
+EOF
+    # End of the python-code.py heredoc generation
+
+    cat <<'EOF' > "requirements.txt" # Begins a heredoc to define Python package requirements
+    Flask==2.3.3 # Requires the Flask framework at version 2.3.3
+    Werkzeug==2.3.7 # Requires Werkzeug utility at version 2.3.7
+    Jinja2==3.1.2 # Requires Jinja2 templating at version 3.1.2
+    click==8.1.6 # Requires click CLI package at version 8.1.6
+    itsdangerous==2.1.2 # Requires itsdangerous at version 2.1.2
+    MarkupSafe==2.1.3 # Requires MarkupSafe at version 2.1.3
+EOF
+    # End of the requirements.txt heredoc generation
+
+    cat <<'EOF' > ".dockerignore" # Begins a heredoc to write docker ignore rules
+    # Exclude the gitignore file from the docker build context
+    .gitignore
+    # Exclude the dummy daemon file from the docker build context
+    large-file.daemon
+EOF
+    # End of the .dockerignore heredoc generation
+
+    cat <<'EOF' > ".gitignore" # Begins a heredoc to write git ignore rules
+    # Ignore absolutely all files and directories tracking
+    *
+EOF
+    # End of the .gitignore heredoc generation
+
+    cat <<'EOF' > "Dockerfile" # Begins a heredoc to generate the primary Dockerfile
+    FROM python:3.11-slim AS segment5_base_image # Use a slim python base image and alias the stage
+
+    # Line 1/4 of LABEL: Set maintainer email
+    # Line 2/4 of LABEL: Set description text
+    # Line 3/4 of LABEL: Set version number
+    # Line 4/4 of LABEL: Set segment tracking id
+    LABEL maintainer="jesfusionprox@gmail.com" \
+        description="Practicing Segment 5 using Flask API Python Code" \
+        version="0.0.1" \
+        segment="5"
+
+    SHELL ["/bin/bash", "-c"] # Override default builder shell to bash
+
+    WORKDIR /segment_5_dir # Configure the directory path inside the image
+
+    ARG name_of_user="jesfusion-project" # Create a build argument for the username
+
+    # Line 1/6 of ENV: Force stdout/stderr unbuffered
+    # Line 2/6 of ENV: Prevent Python from writing .pyc files
+    # Line 3/6 of ENV: Disable pip caching
+    # Line 4/6 of ENV: Set app version
+    # Line 5/6 of ENV: Set log level
+    # Line 6/6 of ENV: Resolve dynamically assigned username
+    ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+        PIP_NO_CACHE_DIR=1 \
+        version_of_the_app=0.0.1 \
+        the_logging_level=INFO \
+        name_of_user=${name_of_user}
+
+    ARG BUILD_DATE # Register a build argument to track compilation date
+
+    # Version Control System Reference
+    ARG VCS_REF # Register a build argument for the repository commit hash
+
+    ARG CACHE_BUST=default # Register an argument used to purposefully break image cache layers
+
+    # Line 1/7 of RUN: Update ubuntu apt package list
+    # Line 2/7 of RUN: Install utility tools without recommended packages
+    # Line 3/7 of RUN: Request curl
+    # Line 4/7 of RUN: Request ca-certificates
+    # Line 5/7 of RUN: Clear the apt cache list
+    # Line 6/7 of RUN: Delete the raw repository lists
+    # Line 7/7 of RUN: Finish deletion task
+    RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+            curl \
+            ca-certificates && \
+        apt-get clean && \
+        rm -rf /var/lib/apt/lists/*
+        
+    COPY --chown=1000:1000 requirements.txt . # Copies requirements file assigned to non-root ID
+
+    RUN ["python", "-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel"] # Upgrades pip baseline packages
+
+    RUN ["python", "-m", "pip", "install", "-r", "requirements.txt"] # Installs application-specific dependencies
+
+    # Line 1/2 of RUN: Instantiate non-root user matching provided username variable
+    # Line 2/2 of RUN: Force non-root ownership on working directory
+    RUN useradd -m -u 1000 ${name_of_user} && \
+        chown -R 1000:1000 /segment_5_dir
+
+    COPY --chown=1000:1000 . . # Copies all residual files into image with safe ownership
+
+    USER ${name_of_user} # Swaps context down to non-root privileges
+
+    # listen to this port
+    EXPOSE 2026 # Formalizes the port to expect traffic
+
+    # Line 1/5 of HEALTHCHECK: Determine spacing between health queries
+    # Line 2/5 of HEALTHCHECK: Cap maximum wait time per query
+    # Line 3/5 of HEALTHCHECK: Configure maximum fails before marking unhealthy
+    # Line 4/5 of HEALTHCHECK: Establish grace period for booting
+    # Line 5/5 of HEALTHCHECK: Specify curl-based validation ping
+    HEALTHCHECK --interval=25s \
+                --timeout=15s \
+                --retries=4 \
+                --start-period=100s \
+        CMD ["/bin/bash", "-c", "curl -f http://localhost:2026/health || exit 1"]
+
+    STOPSIGNAL SIGTERM # Instructs docker to forward SIGTERM upon shutdown
+
+    # unshakeable command
+    ENTRYPOINT ["python", "-u"] # Locks in python unbuffered as the primary execution wrapper
+
+    # shakeable command
+    CMD ["./python-code.py"] # Defines the default python script to trigger
+
+    # Production Variant
+
+    # # --- Stage 1: Base Image Selection ---
+    # # Use a lightweight, official Python 3.11 image to keep the final size small
+    # FROM python:3.11-slim AS segment5_base_image_2
+
+    # # --- Shell Configuration ---
+    # # Change the default shell from 'sh' to 'bash' to support advanced bash-specific syntax
+    # SHELL ["/bin/bash", "-c"]
+
+    # # --- Metadata Labels ---
+    # # Metadata for tracking ownership, environment context, and caching strategy
+    # LABEL maintainer="jesfusionprox@gmail.com"
+    # LABEL environment="Segment 5 Production Scenario"
+    # LABEL cache_strategy="external"
+
+    # # --- Working Directory ---
+    # # Create and switch to the application directory inside the container
+    # WORKDIR /segment_5_dir/app
+
+    # # --- Build-Time Arguments (ARG) ---
+    # # Variable to intentionally break the Docker cache layer when needed
+    # ARG CACHE_BUST=default
+    # # Define the system username, defaulted to "jesfusion-project-2"
+    # ARG user_name="jesfusion-project-2"
+    # # Arguments for tracking build timestamps and version control tracking (Git hashes)
+    # ARG BUILD_DATE
+    # ARG VCS_REF
+
+    # # --- Runtime Environment Variables (ENV) ---
+    # # PYTHONUNBUFFERED: Forces stdout/stderr to stream instantly (crucial for Docker logs)
+    # # PYTHONDONTWRITEBYTECODE: Prevents Python from writing .pyc files to save disk space
+    # # PIP_NO_CACHE_DIR: Disables pip caching to keep the image slim
+    # # NAME_OF_USER: Dynamically pulls the value from the 'user_name' build argument
+    # ENV PYTHONUNBUFFERED=1 \
+    #     PYTHONDONTWRITEBYTECODE=1 \
+    #     PIP_NO_CACHE_DIR=1 \
+    #     APP_VERSION=0.0.2 \
+    #     LOG_LEVEL=ERROR \
+    #     NAME_OF_USER=${user_name}
+
+    # # --- System Package Installation ---
+    # # Print cache buster, update packages, install essential tools, and clean up temporary files in one layer
+    # RUN echo "Build cache buster: ${CACHE_BUST}" && \
+    #     apt-get update && \
+    #     apt-get install -y --no-install-recommends curl ca-certificates && \
+    #     apt-get clean && \
+    #     rm -rf /var/lib/apt/lists/*
+
+    # # --- Dependency Management ---
+    # # Copy only the requirements file first to take advantage of Docker layer caching
+    # COPY requirements.txt .
+
+    # # Upgrade core Python packaging tools using executive format
+    # RUN ["python", "-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel"]
+
+    # # Install Python packages defined in the requirements file
+    # RUN ["python", "-m", "pip", "install", "-r", "requirements.txt"]
+
+    # # --- Security & Permissions ---
+    # # Create a non-root system user with ID 1000 and grant them ownership of the app directory
+    # RUN useradd -m -u 1000 ${user_name} && \
+    #     chown -R 1000:1000 /segment_5_dir/app
+
+    # # Copy the rest of the application source code and set ownership to the new non-root user
+    # COPY --chown=1000:1000 . .
+
+    # # Switch from root user to the non-root user for security compliance
+    # USER ${user_name}
+
+    # # --- Network Configuration ---
+    # # Inform Docker that the container listens on port 2027 at runtime
+    # EXPOSE 2027
+
+    # # --- Health Monitoring ---
+    # # Periodically check if the container application is responding correctly
+    # HEALTHCHECK --interval=30s \
+    #             --timeout=15s \
+    #             --retries=5 \
+    #             --start-interval=5s \
+    #             --start-period=100s \
+    #     CMD ["curl", "-f", "http://localhost:2027/health || exit 1"]
+
+    # # --- Lifecycle Management ---
+    # # Set the system signal used to gracefully shut down the container application
+    # STOPSIGNAL SIGTERM
+
+    # # --- Execution Command ---
+    # # Run the application. 
+    # CMD ["python", "-u", "./python-code.py"]
+
+EOF
+    # End of the primary Dockerfile heredoc generation
+
+    cat <<'EOF' > "docker-compose.yaml" # Begins a heredoc to configure the Docker Compose file
+    # Jesse's Docker Compose File
+
+    # version: '3.9'
+
+    services: # fancy name for 'container'
+    
+    flask_api: # Identifies the flask web application service module
+    
+        build: # Targets the build context definition block
+        context: . #  look inside the current working folder on my computer to find my application files
+
+        dockerfile: Dockerfile.segment5 # Pins the specific Dockerfile variant to utilize
+
+        args: # Passes argument parameters downstream to the Docker build
+
+            BUILD_DATE: "27/05/2026" # Provides a hardcoded build timestamp string
+            
+            # Version Control System Reference
+            VCS_REF: "9y3hr8rhfmnnef920ur38h" # Provides a hardcoded source control tracking hash
+
+            CACHE_BUST: "segment_5_practice" # Provides an explicit argument to reset cache layers
+
+    # name of container
+        container_name: segment_5_conatiner # Statically assigns the running container a string name
+
+        ports: # Begins the list to bridge networks
+        - "2026:2026" # Routes traffic from host port 2026 directly into container port 2026
+
+        environment: # Defines internal application variables
+        - the_logging_level=DEBUG # Enforces a DEBUG verbosity level
+        - PYTHONUNBUFFERED=1 # Mirrors environment flags for immediate pipeline prints
+        
+        volumes: # Specifies file mounts to externalize storage
+        - ./config:/segment_5_dir/config:ro # Mounts application configs as read-only
+
+        - jesse_log_folder_decoy:/segment_5_dir/logs # Placeholder target mapping to host logs output
+
+        
+        deploy: # Details scaling and restarting deployments
+        restart_policy: # Declares when a container should revive
+            condition: unless-stopped # Instructs compose to revive infinitely unless requested to stop
+            
+            # on-failure is also an option
+
+            # condition: on-failure
+
+            delay: 15s # Dictates the pause time before triggering auto-restart
+            
+            # max_attempts: 5
+
+        
+        healthcheck: # Sets health validation checks natively inside compose
+        test: ["CMD", "curl", "-f", "http://localhost:2026/health"] # Validates application health via an endpoint request
+        interval: 12s # Waits 12 seconds between respective ping requests
+        timeout: 17s # Allows the curl command to wait 17 seconds for an answer
+        retries: 4 # Dictates 4 subsequent fails registers an unhealthy flag
+        start_period: 60s # Forbids triggering the failure mechanism on boot logic
+        
+        # depends_on: specifies dependency on other services (not used in this project, but shows common pattern)
+
+    # volumes:
+    #   app_logs:
+    #     driver: local
+
+EOF
+    # End of the docker-compose.yaml heredoc generation
+
+    # Rename the original Dockerfile to a segment-specific backup name to prevent overwriting
+    mv "$segment_5_dir/Dockerfile" "$segment_5_dir/Dockerfile.segment5" # Performs renaming file action inside terminal
+
+    # Store the absolute path of the target docker-compose file into a local variable
+    yaml_file="$segment_5_dir/docker-compose.yaml" # Hardcodes internal compose variable identifier
+
+    # Define the target host directory path where Docker container logs/volumes will map to
+    log_path="/home/jesfusion/Documents/docker_practice/logs" # Sets the expected host location for app log extraction
+
+    current_date=$(date +"%Y-%m-%d %H:%M:%S") # Dynamically requests localized timestamp data
+
+    # Scan the YAML file for a static date string and replace it globally with the current live system timestamp
+    sed -i "s|27/05/2026|$current_date|g" "$yaml_file" # Intercepts and substitutes the old dummy string directly inline
+
+    # Replace the placeholder text 'jesse_log_folder_decoy' with the actual shared log folder file path defined above
+    sed -i "s|jesse_log_folder_decoy|$log_path|g" "$yaml_file" # Overwrites placeholder yaml volume configuration via string replacements
+
+    tree -a # Invokes visualization of directory structure for rapid auditing
+
+    if false; then # Provides an inner guard rails toggle suppressing actual testing defaults
+        docker compose --compatibility up --build # Initiates building instructions to orchestrator instance
+    fi 
+
+
+
+
+
+
+
+
+
+
+
+
+    # ===================================== SEGMENT 6: LAYER CACHING AND BUILD OPTIMIZATION =====================================
+
+
+    segment6_folder=$(mktemp -d)
+
+    # segment6_folder="/home/jesfusion/Documents/docker_practice"
+
+    segment_6_file_path="/media/sf_Windows/ML-Learning-Repository/Docker/Docker-Practice"
+
+
+
+    mkdir -p "$segment6_folder/src"
+
+    mkdir -p "$segment6_folder/tests"
+
+    cd "$segment6_folder"
+
+
+    echo "Folder directory: $segment6_folder"
+
+
+    cat <<'EOF' > "$segment6_folder/src/python_code.py"
+    #!/usr/bin/env python3
+    # This is the shebang for our generated Python file, telling the system to use Python 3.
+
+
+    """
+    Data processing application demonstrating Docker layer caching.
+    Uses numpy, pandas, scikit-learn for CPU-intensive operations.
+    """
+
+    # 'sys' lets us interact with the Python interpreter itself (like exiting the program).
+    import sys
+    import subprocess
+    # 'logging' is Python's built-in tool for printing messages (better than just using 'print').
+    import logging
+    # 'datetime' gives us tools to work with dates and times.
+    from datetime import datetime
+    # 'numpy' is the king of math and arrays in Python. We alias it as 'np' to save typing.
+    import numpy as np
+    # 'pandas' is used for data manipulation and analysis, kind of like Excel on steroids. Aliased as 'pd'.
+    import pandas as pd
+    # 'StandardScaler' from 'scikit-learn' helps us normalize data (scale it down so all numbers play nice together).
+    from sklearn.preprocessing import StandardScaler
+
+    # We're setting up the rules for our logger.
+    logging.basicConfig(
+        # 'level=logging.INFO' means we want to see INFO messages, WARNINGs, and ERRORs, but ignore hidden DEBUG messages.
+        level=logging.INFO,
+        # 'format' dictates how the log looks. We want the time, the severity level, and the actual message.
+        format='%(asctime)s - %(levelname)s - %(message)s'
+    )
+    # We create a specific logger for this file (__name__ is a special variable that holds the name of the current module).
+    logger = logging.getLogger(__name__)
+
+    # Defining a Class. Think of a class as a blueprint for creating an object that holds both data and functions.
+    class DataProcessor:
+        """Processes and analyzes datasets using numpy and pandas."""
+        
+        # '__init__' is the constructor. It runs automatically the moment we create a new DataProcessor instance.
+        # 'random_seed=42' is a default argument.
+        def __init__(self, random_seed=20):
+            """Initialize processor with random seed for reproducibility."""
+            # By setting a random seed, we ensure our "random" numbers are exactly the same every single time we run the script. Great for testing!
+            np.random.seed(random_seed)
+            # We create an instance of our scaler and save it to 'self' so other functions in this class can use it later.
+            self.scaler = StandardScaler()
+            # Log that we're good to go!
+            logger.info("DataProcessor initialized")
+        
+        # A function to fake some data so we have something to process.
+        def generate_sample_data(self, n_samples=1000, n_features=10):
+            """Generate random sample data for processing."""
+            # 'f-strings' (the 'f' before the quotes) let us inject variables directly into the string using curly braces.
+            logger.info(f"Generating {n_samples} samples with {n_features} features")
+            # 'np.random.randn' generates a matrix of random numbers based on a standard normal distribution (bell curve).
+            X = np.random.randn(n_samples, n_features)
+            # 'np.random.randint' creates an array of random integers. Here, it's choosing between 0 and 1 (2 is exclusive) to create fake categories.
+            y = np.random.randint(0, 2, n_samples)
+            # We hand back both the features (X) and the targets (y).
+            return X, y
+        
+        # A function to crunch the numbers.
+        def process_data(self, X, y):
+            """Normalize features and prepare data."""
+            logger.info("Scaling features using StandardScaler")
+            # 'fit_transform' calculates the mean and standard deviation of our data, then applies it to scale the data down.
+            X_scaled = self.scaler.fit_transform(X)
+            
+            # Create DataFrame for easier analysis
+            # We're turning our raw array into a Pandas DataFrame, giving each column a name using a list comprehension.
+            df = pd.DataFrame(X_scaled, columns=[f'feature_{i}' for i in range(X.shape[1])])
+            # We attach our target labels as a brand new column at the end of the DataFrame.
+            df['target'] = y
+            
+            # 'shape' tells us the dimensions (rows, columns).
+            logger.info(f"Data shape: {df.shape}")
+            # 'dtypes' tells us the data type of each column (like float64 or int64). We convert it to a dictionary for cleaner logging.
+            logger.info(f"Data dtypes: {df.dtypes.to_dict()}")
+            
+            # Return the beautiful, structured data.
+            return df
+        
+        # A function to grab some quick stats.
+        def analyze_data(self, df):
+            """Compute statistics on processed data."""
+            logger.info("Computing statistical summaries")
+            # Creating a dictionary to hold all our stats.
+            summary = {
+                # 'select_dtypes' grabs only the columns with numbers. 'mean()' gets the average, and 'to_dict()' turns it into a Python dictionary.
+                'mean': df.select_dtypes(include=[np.number]).mean().to_dict(),
+                # Same thing here, but 'std()' calculates the standard deviation (how spread out the numbers are).
+                'std': df.select_dtypes(include=[np.number]).std().to_dict(),
+                # Grabbing the dimensions again.
+                'shape': df.shape,
+                # 'datetime.utcnow().isoformat()' grabs the current time in universal time and formats it as a standard ISO 8601 string.
+                'processed_at': datetime.utcnow().isoformat()
+            }
+            # Hand back the stats dictionary.
+            return summary
+
+    # The main function orchestrates everything.
+    def main():
+        """Main entry point for the data processor."""
+        logger.info("Starting data processor")
+        
+        # We instantiate (bring to life) our class.
+        processor = DataProcessor()
+        # Call our fake data generator, asking for 5000 rows and 20 columns.
+        X, y = processor.generate_sample_data(n_samples=5000, n_features=20)
+        # Process it...
+        df = processor.process_data(X, y)
+        # Get the stats...
+        summary = processor.analyze_data(df)
+        
+        # Log the final dictionary.
+        logger.info(f"Processing complete: {summary}")
+        # Print a standard success message to the console.
+        print("SUCCESS: Data processing completed without errors")
+
+    # This is a classic Python trick. It means: "If I run this script directly, execute main(). 
+    # But if another script imports this file, do NOT run main() automatically."
+    if __name__ == '__main__':
+        main()
+        
+        pytest_ops = subprocess.run(
+            ["pytest", "-vs", "tests/processor_test.py"],
+
+            capture_output = True,
+            
+            text = True
+        )
+
+        print("Running tests:\n", pytest_ops.stdout)
+
+EOF
+
+
+    sleep 1.0 && echo -e "\n1) Data processor application created at src/python-code.py" && sleep 0.8
+
+
+
+    cat <<'EOF' > "$segment6_folder/requirements.txt"
+    numpy==1.24.3
+    pandas==2.0.3
+    scikit-learn==1.3.0
+    scipy==1.11.1
+    matplotlib==3.7.2
+    seaborn==0.12.2
+    requests==2.31.0
+    python-dotenv==1.0.0
+    click==8.1.6
+    pytest==7.4.0
+    pytest-cov==4.1.0
+    black==23.7.0
+    flake8==6.0.0
+
+EOF
+
+
+    echo "2) Requirements file created with multiple packages for caching demo" && sleep 0.8
+
+
+    cat <<'EOF' > "$segment6_folder/tests/processor_test.py"
+    #!/usr/bin/env python3
+    # Tell the system to use Python 3.
+
+    """Unit tests for data processor."""
+
+    # 'pytest' is a hugely popular framework for writing and running tests in Python.
+    import pytest
+    # We're importing the class we wrote earlier so we can test it!
+    from src.processor import DataProcessor
+    # Need numpy for some array checks.
+    import numpy as np
+
+    # We group our tests inside a class. Pytest will automatically find and run any function starting with 'test_'.
+    class TestDataProcessor:
+        
+        # Test 1: Does it even turn on?
+        def test_initialization(self):
+            """Test processor initialization."""
+            processor = DataProcessor(random_seed=42)
+            # 'assert' is the core of testing. It says: "If the thing on the right isn't true, crash the test and tell me!"
+            # Here we just make sure 'processor' actually exists.
+            assert processor is not None
+
+            
+        
+        # Test 2: Does it make the data right?
+        def test_generate_sample_data(self):
+            """Test sample data generation."""
+            processor = DataProcessor(random_seed=42)
+            X, y = processor.generate_sample_data(n_samples=100, n_features=5)
+            # Checking if the matrix has exactly 100 rows and 5 columns.
+            assert X.shape == (100, 5)
+            # Checking if the target array has exactly 100 items.
+            assert y.shape == (100,)
+            # 'np.unique' finds all unique values. We expect exactly 2 (0 and 1).
+            assert len(np.unique(y)) == 2
+        
+        # Test 3: Does it process things correctly?
+        def test_process_data(self):
+            """Test data processing and scaling."""
+            processor = DataProcessor(random_seed=42)
+            X, y = processor.generate_sample_data(n_samples=100, n_features=5)
+            df = processor.process_data(X, y)
+            # df.shape[0] is the number of rows.
+            assert df.shape[0] == 100
+            # df.shape[1] is the columns. It should be 6 (5 features + 1 target column we added).
+            assert df.shape[1] == 6  # 5 features + target
+            # Make sure the target column actually got attached.
+            assert 'target' in df.columns
+        
+        # Test 4: Do the stats work?
+        def test_analyze_data(self):
+            """Test data analysis."""
+            processor = DataProcessor(random_seed=42)
+            X, y = processor.generate_sample_data(n_samples=100, n_features=5)
+            df = processor.process_data(X, y)
+            summary = processor.analyze_data(df)
+            # Checking that our dictionary actually contains the keys we expect.
+            assert 'mean' in summary
+            assert 'std' in summary
+            assert 'shape' in summary
+            # Double-checking the shape inside the dictionary is correct.
+            assert summary['shape'] == (100, 6)
+
+EOF
+
+
+    sed -i "s|src.processor|src.python_code|g" "$segment6_folder/tests/processor_test.py"
+
+    echo "3) Test file created at tests/processor_test.py" && sleep 0.8
+
+
+
+    cat <<'EOF' > "$segment6_folder/Dockerfile"
+    FROM python:3.11-slim
+
+    LABEL the_maintainer="jessenwachukwu6@gmail.com"
+
+    LABEL the_segment="Segment 6: Layer Caching"
+
+    LABEL image_description="Data processor with caching optimization demonstrations"
+
+    WORKDIR "/segment_6_folder"
+
+
+    # ===================================== Layer 1: Least-changing - OS-level dependencies (apt packages) =====================================
+
+
+    RUN apt-get update && \
+        apt-get install -y --no-install-recommends \
+        build-essential \
+        curl \
+        git && \
+        rm -rf /var/lib/apt/lists/* && \
+        apt-get clean
+
+
+        
+
+
+    # ===================================== Layer 2: Python infrastructure - pip, setuptools, wheel upgrades =====================================
+
+    RUN python -m pip install --upgrade --no-cache-dir pip setuptools wheel
+
+
+
+    # ===================================== Layer 3: Python dependencies - copy requirements.txt and install =====================================
+
+
+    COPY requirements.txt .
+
+    RUN python -m pip install --no-cache-dir -r requirements.txt
+
+
+    # creating rootless user...
+
+    RUN useradd -m -u 1000 segment_6_user
+
+
+    # ===================================== Layer 4: Most-changing - application source code =====================================
+
+    COPY --chown=segment_6_user:segment_6_user src/ ./src/
+
+    COPY --chown=segment_6_user:segment_6_user tests/ ./tests/
+
+
+    # swtiching to normal user "segment_6_user" for subsequent commands...
+    USER segment_6_user
+
+
+
+    # running python code...
+    # ENTRYPOINT ["python", "-u", "src/python_code.py"]
+
+    CMD []
+
+EOF
+
+
+    echo "4) Dockerfile created with golden ordering optimization" && sleep 0.8
+
+
+    cat <<'EOF' > "$segment6_folder/Dockerfile.bk-cache"
+    # syntax=docker/dockerfile:1.4
+
+
+    FROM python:3.11-slim
+
+    LABEL segment="Segment 6: BuildKit Cache"
+
+    LABEL image_description="Data processor with BuildKit cache mounts"
+
+
+    WORKDIR /segment_6_buildkit
+
+    RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+        --mount=type=cache,target=/var/lib/apt,sharing=locked \
+        apt-get update && \
+        apt-get install -y --no-install-recommends \
+        build-essential \
+        curl
+
+
+    # Layer 2: Python infrastructure
+    RUN --mount=type=cache,target=/root/.cache/pip,id=jesse-practice-cache \
+        python -m pip install --upgrade pip setuptools wheel
+
+    # Layer 3: Python dependencies
+    COPY requirements.txt .
+
+    # Sharing the exact same custom id name!
+    RUN --mount=type=cache,target=/root/.cache/pip,id=jesse-practice-cache \
+        python -m pip install -r requirements.txt
+
+
+
+    RUN useradd -m -u 1000 segment_6_buildkit_user
+
+
+    COPY --chown=segment_6_buildkit_user:segment_6_buildkit_user src/ ./src/
+
+    COPY --chown=segment_6_buildkit_user:segment_6_buildkit_user tests/ ./tests/
+
+
+    USER segment_6_buildkit_user
+
+
+    ENTRYPOINT ["python", "-u", "src/python_code.py"]
+
+
+    CMD []
+
+EOF
+
+
+    echo "5) Dockerfile.bk-cache created with BuildKit cache mount optimization" && sleep 0.8
+
+
+    cat <<'EOF' > "$segment6_folder/docker-compose.yaml"
+    version: '3.9'
+
+
+    services:
+
+    standard_processor_app:
+
+        build:
+        context: .
+
+        dockerfile: Dockerfile
+
+        # cache_from: ["image:tag", "docker.io/registry/image:tag"]
+
+        container_name: standard_processor_app
+
+        environment:
+        PYTHONUNBUFFERED: "1"
+
+        command: ["python", "-u", "src/python_code.py"]
+
+    
+
+    buildkit_processor_app:
+
+        build:
+
+        context: .
+
+        dockerfile: Dockerfile.bk-cache
+
+        cache_to:
+            - type=inline
+
+        container_name: buildkit_processor_app
+        
+        environment:
+        # DOCKER_BUILDKIT: "1"
+
+        PYTHONUNBUFFERED: "1"
+        
+        # command: ["python", "-u", "src/python_code.py"]
+
+
+EOF
+
+
+    echo "6) docker-compose.yaml created with caching configurations" && sleep 0.8
+
+
+
+    docker rm -f "$(docker ps -aq)"    
+    
+
+    if false; then
+        
+        COMPOSE_DOCKER_CLI_BUILD=1 docker compose up --build
+        
+    fi 
+
+fi
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
