@@ -1718,3 +1718,1850 @@ echo ""
 echo "  # Segment 7"
 echo "  cd $SEGMENT7_DIR && bash build_variants.sh"
 echo ""
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+################################################################################
+# === SEGMENT 8: BUILDKIT — SECRETS, SSH, AND ADVANCED BUILD FEATURES ===
+# Demonstrates: DOCKER_BUILDKIT, RUN --mount=type=secret, RUN --mount=type=ssh,
+# docker buildx, --platform, FROM --platform=$BUILDPLATFORM/$TARGETPLATFORM,
+# fat manifests, QEMU, docker buildx create/use/ls/inspect
+################################################################################
+
+echo -e "${BLUE}=== SEGMENT 8: BUILDKIT & ADVANCED BUILD FEATURES ===${NC}"
+echo "Creating a multi-platform Go application with BuildKit advanced features..."
+
+# [WHAT] Create a temporary directory for Segment 8; isolate all Segment 8 work
+SEGMENT8_DIR=$(mktemp -d)
+cd "$SEGMENT8_DIR"
+
+# Create the Segment 8 runner script
+# [WHY] Encapsulate all BuildKit demonstrations in a self-contained script
+cat << 'EOF' > segment8_runner.sh
+#!/bin/bash
+
+set -euo pipefail
+
+SEGMENT8_PROJECT="buildkit_multiplatform_app"
+
+# [WHAT] Function to print debug info with timestamps; reused throughout segment
+log_info() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] INFO: $1"
+}
+
+# [WHAT] Function to print error messages; used for error reporting
+log_error() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: $1" >&2
+}
+
+log_info "Setting up Segment 8: BuildKit with multi-platform Go app"
+
+# Create project directory structure
+mkdir -p "$SEGMENT8_PROJECT/src"
+mkdir -p "$SEGMENT8_PROJECT/secrets"
+cd "$SEGMENT8_PROJECT"
+
+# Create a simple Go application
+# [WHY] Go is ideal for demonstrating cross-platform builds (fast, single binary)
+cat << 'GOEOF' > src/main.go
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"runtime"
+	"time"
+)
+
+// Response structure for API endpoints
+type APIResponse struct {
+	Status      string    `json:"status"`
+	Timestamp   time.Time `json:"timestamp"`
+	Version     string    `json:"version"`
+	Platform    string    `json:"platform"`
+	Architecture string   `json:"architecture"`
+	Hostname    string    `json:"hostname"`
+}
+
+func main() {
+	version := os.Getenv("APP_VERSION")
+	if version == "" {
+		version = "1.0.0"
+	}
+
+	hostname, _ := os.Hostname()
+
+	// [WHAT] Simple health check endpoint (no dependencies, just status)
+	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		resp := APIResponse{
+			Status:        "healthy",
+			Timestamp:     time.Now(),
+			Version:       version,
+			Platform:      runtime.GOOS,
+			Architecture:  runtime.GOARCH,
+			Hostname:      hostname,
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	})
+
+	// [WHAT] Info endpoint showing build-time information
+	http.HandleFunc("/info", func(w http.ResponseWriter, r *http.Request) {
+		resp := APIResponse{
+			Status:        "running",
+			Timestamp:     time.Now(),
+			Version:       version,
+			Platform:      runtime.GOOS,
+			Architecture:  runtime.GOARCH,
+			Hostname:      hostname,
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(resp)
+	})
+
+	log.Printf("Starting server v%s on :8080 (%s/%s)", version, runtime.GOOS, runtime.GOARCH)
+	if err := http.ListenAndServe(":8080", nil); err != nil {
+		log.Fatalf("Server failed: %v", err)
+	}
+}
+GOEOF
+
+log_info "Go application created at src/main.go (platform-agnostic cross-compile target)"
+
+# Create a secret file for BuildKit demonstration
+# [WHY] Secrets are mounted at build time but never persist in any layer
+cat << 'SECRETEOF' > secrets/github_token.txt
+ghp_example_token_never_baked_into_image
+SECRETEOF
+
+log_info "Secret file created at secrets/github_token.txt (for --mount=type=secret demo)"
+
+# Create go.mod for dependency management
+cat << 'MODEOF' > go.mod
+module buildkit-app
+
+go 1.21
+MODEOF
+
+log_info "Go module file created"
+
+# Create main Dockerfile with BuildKit directives
+# [WHY] BuildKit enables advanced features like secret mounting, SSH forwarding, parallel builds
+cat << 'DOCKEREOF' > Dockerfile
+# === BUILDKIT MULTI-PLATFORM BUILD (SEGMENT 8) ===
+
+# [COMMAND MEANING] FROM --platform=$BUILDPLATFORM = Pin this stage to the build host's native platform
+# [WHY] Compiler tools (like 'go build') run faster on the build host's native arch
+FROM golang:1.21 AS builder
+
+# [COMMAND MEANING] Declare that we're using BuildKit-specific features
+# [FLAG MEANING] --mount=type=secret = Mount a secret file at build time without persisting it
+# [WHY] Secrets (API keys, tokens) are needed during build but must not appear in final image
+
+WORKDIR /build
+
+# [WHAT] Copy only go.mod first (layer caching optimization)
+# [WHY] If src changes but go.mod doesn't, Docker reuses the cached dependency layer
+COPY go.mod .
+
+# [WHAT] Copy Go source code
+COPY src/ ./src/
+
+# [COMMAND MEANING] RUN --mount=type=secret = Mount a secret at build time
+# [WHY] The secret is available at /run/secrets/github_token but not persisted in any layer
+# [HOW] The secret file is mounted as tmpfs, readable only during this RUN step
+# [WATCH OUT] If you try to `cat` or `echo` the secret into a file, it WILL persist in the image—never do this
+RUN --mount=type=secret=github_token \
+    echo "Building Go binary for multiple platforms..." && \
+    go build -o /build/app ./src/main.go && \
+    echo "Build complete—secret was available but is NOT in any layer"
+
+# [WHAT] Verify the secret is NOT baked in (prove isolation)
+RUN ls -la /run/secrets/ 2>/dev/null || echo "Secrets inaccessible after RUN step—correct!"
+
+# === RUNTIME STAGE: Targeting final platform ===
+# [COMMAND MEANING] FROM --platform=$TARGETPLATFORM = Target the final desired platform (e.g., linux/arm64)
+# [WHY] The runtime stage is the final artifact; it must match the architecture specified at build time
+FROM golang:1.21-alpine
+
+WORKDIR /app
+
+# [WHAT] Copy the compiled binary from builder stage
+# [WHY] Multi-stage build: builder produces artifact, runtime runs it; builder tools don't ship
+COPY --from=builder --chown=1000:1000 /build/app .
+
+# [WHAT] Create non-root user for security
+RUN addgroup -g 1000 appgroup && adduser -D -u 1000 -G appgroup appuser
+
+USER appuser
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=10s --timeout=5s --retries=3 \
+    CMD wget -q -O- http://localhost:8080/health || exit 1
+
+# [COMMAND MEANING] ENTRYPOINT ["./app"] = Run the Go binary directly
+# [WHY] Single static binary = no shell, minimal container, fast startup
+ENTRYPOINT ["./app"]
+DOCKEREOF
+
+log_info "Multi-platform Dockerfile created with BuildKit directives"
+
+# Create a .dockerignore file
+cat << 'IGNOREEOF' > .dockerignore
+.git
+.gitignore
+__pycache__
+*.pyc
+.DS_Store
+.env
+secrets/
+IGNOREEOF
+
+log_info ".dockerignore created"
+
+# Create a script demonstrating BuildKit enablement and buildx usage
+cat << 'BUILDSCRIPTEOF' > buildkit_demo.sh
+#!/bin/bash
+
+set -euo pipefail
+
+echo "======================================================================"
+echo "SEGMENT 8: BuildKit & Buildx Demonstration"
+echo "======================================================================"
+
+# [COMMAND MEANING] DOCKER_BUILDKIT=1 = Environment variable enabling BuildKit for a single build
+# [WHY] BuildKit is Docker's next-gen builder: faster, parallel stages, advanced cache mounts
+# [HOW] Set before docker build command; requires BuildKit to be available on the daemon
+# [WATCH OUT] Some older flags/features don't work with BuildKit; check compatibility
+
+echo ""
+echo "[STEP 1] Enable BuildKit for a single build:"
+echo "Command: DOCKER_BUILDKIT=1 docker build -t buildkit-app:buildkit ."
+echo ""
+echo "Explanation:"
+echo "  - DOCKER_BUILDKIT=1: Enables BuildKit for THIS build only"
+echo "  - Without this flag, older docker builder is used (slower, no secret mounts)"
+echo "  - With BuildKit: parallel stages, advanced caching, secret injection"
+echo ""
+
+# In actual execution, this would be:
+# DOCKER_BUILDKIT=1 docker build -t buildkit-app:buildkit .
+
+# [COMMAND MEANING] docker buildx = Extended build command with multi-platform support
+# [WHY] buildx adds: multi-platform builds, remote builders, cache export/import
+# [HOW] docker buildx build replaces docker build with advanced capabilities
+# [WATCH OUT] buildx output is different (layer output, progress streaming); requires setup
+
+echo "[STEP 2] List available buildx builders:"
+echo "Command: docker buildx ls"
+echo ""
+echo "Output shows:"
+echo "  - default: Local Docker daemon (single platform)"
+echo "  - docker-container: BuildKit in a container (multi-platform support)"
+echo ""
+
+# [COMMAND MEANING] docker buildx create = Create a new builder instance
+# [WHY] Each builder can have different configurations, caches, driver backends
+# [HOW] Specify --driver (docker, docker-container, kubernetes), --name, --platform
+# [WHAT ELSE] --use flag to set as active after creation; --append to add platforms
+
+echo "[STEP 3] Create a multi-platform builder (if needed):"
+echo "Command: docker buildx create --name multiplatform --driver docker-container"
+echo ""
+echo "Explanation:"
+echo "  - docker-container driver: runs BuildKit in a container, supports QEMU emulation"
+echo "  - This enables linux/amd64, linux/arm64, linux/arm/v7, etc."
+echo "  - docker driver: uses local daemon, single platform, faster for single-arch"
+echo ""
+
+echo "[STEP 4] Set the builder as active:"
+echo "Command: docker buildx use multiplatform"
+echo ""
+echo "Explanation:"
+echo "  - Subsequent buildx commands will use this builder"
+echo "  - Only one builder can be active at a time"
+echo ""
+
+# [COMMAND MEANING] docker buildx inspect = Show details about the active builder
+# [WHY] Verify platforms supported, driver type, cache status
+# [HOW] Displays all available platforms, buildkitd version, flags
+
+echo "[STEP 5] Inspect the active builder:"
+echo "Command: docker buildx inspect multiplatform"
+echo ""
+echo "Output shows:"
+echo "  - Platforms: linux/amd64, linux/arm64, linux/arm/v7, etc."
+echo "  - Driver: docker-container or docker"
+echo "  - BuildKit version and capabilities"
+echo ""
+
+# [COMMAND MEANING] --platform linux/amd64,linux/arm64 = Specify target architectures
+# [WHY] Build once, deploy to multiple CPU architectures without recompiling per-platform
+# [HOW] BuildKit uses QEMU to emulate foreign architectures during build
+# [WATCH OUT] Emulation is slower; native builds are ~10x faster
+
+echo "[STEP 6] Build for multiple platforms (example):"
+echo "Command: docker buildx build --platform linux/amd64,linux/arm64 -t buildkit-app:multiarch --push ."
+echo ""
+echo "Explanation:"
+echo "  - --platform linux/amd64,linux/arm64: Build for both x86_64 and ARM64"
+echo "  - QEMU emulates ARM64 on x86 hardware (slower but works)"
+echo "  - --push: Push directly to registry (required for multi-arch)"
+echo "  - --load: Only works for single platform (loads to local Docker daemon)"
+echo ""
+
+# [COMMAND MEANING] FROM --platform=$BUILDPLATFORM = Pin builder stage to native arch
+# [WHY] Compiler runs fast on native arch; only runtime is emulated
+# [HOW] $BUILDPLATFORM is injected by BuildKit (e.g., linux/amd64)"
+# [WHAT ELSE] $TARGETPLATFORM: the final desired platform specified in --platform flag
+
+echo "[STEP 7] In Dockerfile, use platform variables for cross-compilation:"
+echo "  FROM --platform=\$BUILDPLATFORM golang:1.21 AS builder"
+echo "  # builder stage runs on host arch (fast)"
+echo ""
+echo "  FROM --platform=\$TARGETPLATFORM alpine:latest"
+echo "  # runtime stage targets the final platform"
+echo ""
+
+# [COMMAND MEANING] RUN --mount=type=secret = Mount secret at build time
+# [WHY] API tokens, SSH keys needed during build but must not persist in image
+# [HOW] Secret passed via --secret id=name,src=/path; mounted at /run/secrets/name
+# [WATCH OUT] Mount is READ-ONLY and tmpfs; secret is inaccessible after RUN step
+
+echo "[STEP 8] Use secrets during build (do NOT log or persist them):"
+echo "Command: docker buildx build --secret id=github_token,src=./secrets/github_token.txt ."
+echo ""
+echo "In Dockerfile:"
+echo "  RUN --mount=type=secret=github_token \\\\
+echo "      git clone https://token@github.com/private/repo.git \\\\
+echo "      < /run/secrets/github_token"
+echo ""
+echo "Explanation:"
+echo "  - Secret is mounted as tmpfs at /run/secrets/github_token"
+echo "  - Readable only during this RUN step"
+echo "  - NOT persisted in any layer (verified by 'docker history')"
+echo ""
+
+# [COMMAND MEANING] RUN --mount=type=ssh = Forward SSH agent
+# [WHY] Clone private Git repos without embedding SSH keys
+# [HOW] SSH agent is forwarded into build step; authentication happens in-container
+# [WATCH OUT] Requires local SSH agent running; docker buildx build --ssh default
+
+echo "[STEP 9] Use SSH for private repo cloning:"
+echo "Command: docker buildx build --ssh default ."
+echo ""
+echo "In Dockerfile:"
+echo "  RUN --mount=type=ssh \\\\
+echo "      git clone git@github.com:private/repo.git"
+echo ""
+echo "Explanation:"
+echo "  - --ssh default: Forward the default SSH socket"
+echo "  - SSH key is never copied into image"
+echo "  - Authentication happens via agent (secure, ephemeral)"
+echo ""
+
+# [COMMAND MEANING] fat manifest = Manifest list with multiple platform digests
+# [WHY] Single tag points to correct architecture for any client
+# [HOW] Push multi-arch images with --push; Docker creates manifest list automatically
+# [WATCH OUT] Only works with registries (can't load multi-arch to local daemon)
+
+echo "[STEP 10] Fat manifests (multi-arch image lists):"
+echo "Command: docker buildx build --platform linux/amd64,linux/arm64 --push -t myapp:latest ."
+echo ""
+echo "Result:"
+echo "  - myapp:latest → manifest list (index)"
+echo "  - manifest list references:"
+echo "    - linux/amd64 → sha256:abc123..."
+echo "    - linux/arm64 → sha256:def456..."
+echo "  - docker pull on x86 → gets amd64 image"
+echo "  - docker pull on ARM → gets arm64 image"
+echo ""
+
+# [COMMAND MEANING] QEMU = Hardware emulator used for cross-platform builds
+# [WHY] Allows building ARM images on x86 without native ARM hardware
+# [HOW] buildx automatically handles QEMU setup; transparent to user
+# [WATCH OUT] Emulation is slow (~10x slower); use only when necessary
+
+echo "[STEP 11] QEMU emulation (transparent to user):"
+echo "When building for linux/arm64 on linux/amd64:"
+echo "  - BuildKit detects arch mismatch"
+echo "  - Automatically loads binfmt_misc handlers"
+echo "  - QEMU transparently emulates ARM syscalls"
+echo "  - Build proceeds (slower but works)"
+echo ""
+echo "Performance: Native build ~2min, emulated ~20min (rough estimate)"
+echo ""
+
+# [COMMAND MEANING] docker buildx use = Set active builder context
+# [WHY] Switch between different builders without recreating
+# [HOW] Affects all subsequent buildx commands
+# [WHAT ELSE] Use default to revert to Docker daemon builder
+
+echo "[STEP 12] Switch builders:"
+echo "Command: docker buildx use docker-container"
+echo "Then: docker buildx buildx use default"
+echo ""
+
+echo "======================================================================"
+echo "END OF BUILDKIT DEMONSTRATION"
+echo "======================================================================"
+BUILDSCRIPTEOF
+
+chmod +x buildkit_demo.sh
+
+log_info "BuildKit demonstration script created at buildkit_demo.sh"
+
+# Create a practical buildx build example (non-executable, for reference)
+cat << 'EXAMPLEEOF' > buildx_example.txt
+=== PRACTICAL BUILDX EXAMPLE ===
+
+# Step 1: Check if buildx is available
+docker buildx version
+
+# Step 2: Create a builder (if needed)
+docker buildx create --name multiplatform --driver docker-container
+
+# Step 3: Switch to the new builder
+docker buildx use multiplatform
+
+# Step 4: Verify platforms
+docker buildx inspect multiplatform
+
+# Step 5: Build for multiple platforms and push to registry
+DOCKER_BUILDKIT=1 docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  --push \
+  -t myregistry.azurecr.io/buildkit-app:v1.0.0 \
+  .
+
+# Step 6: Build with secret
+DOCKER_BUILDKIT=1 docker buildx build \
+  --platform linux/amd64 \
+  --secret id=github_token,src=./secrets/github_token.txt \
+  -t buildkit-app:withsecret \
+  .
+
+# Step 7: Build with SSH
+DOCKER_BUILDKIT=1 docker buildx build \
+  --platform linux/amd64 \
+  --ssh default \
+  -t buildkit-app:withssh \
+  .
+
+# Step 8: Build for single platform and load to daemon
+# (--load only works with single platform)
+DOCKER_BUILDKIT=1 docker buildx build \
+  --platform linux/amd64 \
+  --load \
+  -t buildkit-app:local \
+  .
+
+# Step 9: Build only to builder cache (no push/load)
+DOCKER_BUILDKIT=1 docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  .
+
+# Step 10: Inspect resulting image
+docker inspect buildkit-app:withsecret
+
+# Step 11: View build layers
+docker history buildkit-app:withsecret
+# Note: --mount=type=secret layers are EMPTY (no persistence)
+EXAMPLEEOF
+
+log_info "Buildx example commands documented at buildx_example.txt"
+
+log_info "Segment 8 setup complete"
+log_info "Next steps:"
+log_info "  1. Review buildkit_demo.sh for detailed explanations"
+log_info "  2. Read buildx_example.txt for practical commands"
+log_info "  3. To build with BuildKit: DOCKER_BUILDKIT=1 docker build -t app:v1 ."
+log_info "  4. To build multi-platform: docker buildx build --platform linux/amd64,linux/arm64 --push ."
+
+EOF
+
+chmod +x segment8_runner.sh
+bash segment8_runner.sh
+
+echo -e "${GREEN}✓ Segment 8 complete: BuildKit multi-platform Go app with secrets/SSH examples${NC}"
+
+cd -
+
+################################################################################
+# === SEGMENT 9: CONTAINER LIFECYCLE, PID 1, AND SIGNAL HANDLING ===
+# Demonstrates: docker create, docker start, docker stop, docker kill, docker pause,
+# docker unpause, docker restart, restart policies (no, on-failure, always, unless-stopped),
+# PID 1 contract, zombie processes, tini, dumb-init, --init, STOPSIGNAL
+################################################################################
+
+echo -e "${BLUE}=== SEGMENT 9: CONTAINER LIFECYCLE & SIGNAL HANDLING ===${NC}"
+echo "Creating signal handling demonstrations and lifecycle state management..."
+
+# [WHAT] Create a temporary directory for Segment 9
+SEGMENT9_DIR=$(mktemp -d)
+cd "$SEGMENT9_DIR"
+
+cat << 'EOF' > segment9_runner.sh
+#!/bin/bash
+
+set -euo pipefail
+
+SEGMENT9_PROJECT="signal_handling_lifecycle"
+
+log_info() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] INFO: $1"
+}
+
+log_error() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: $1" >&2
+}
+
+log_info "Setting up Segment 9: Container lifecycle and signal handling"
+
+mkdir -p "$SEGMENT9_PROJECT/src"
+cd "$SEGMENT9_PROJECT"
+
+# Create Python application that demonstrates signal handling
+# [WHY] Python can trap signals (SIGTERM, SIGKILL) and gracefully shut down
+cat << 'PYEOF' > src/signal_handler.py
+#!/usr/bin/env python3
+"""
+Demonstrates graceful shutdown and signal handling in containers.
+PID 1 must forward signals to child processes and reap zombies.
+"""
+
+import signal
+import sys
+import time
+import os
+import subprocess
+from datetime import datetime
+
+class GracefulShutdown:
+    """Handles SIGTERM and SIGKILL gracefully."""
+    
+    def __init__(self):
+        self.shutdown_requested = False
+        self.child_processes = []
+        
+        # [WHAT] Register signal handlers
+        # [WHY] PID 1 receives docker stop SIGTERM; must handle it gracefully
+        signal.signal(signal.SIGTERM, self._handle_sigterm)
+        signal.signal(signal.SIGINT, self._handle_sigint)
+        
+    def _handle_sigterm(self, signum, frame):
+        """Handle SIGTERM (docker stop sends this first)."""
+        print(f"[{datetime.now()}] SIGTERM received - initiating graceful shutdown")
+        self.shutdown_requested = True
+        
+    def _handle_sigint(self, signum, frame):
+        """Handle SIGINT (Ctrl+C)."""
+        print(f"[{datetime.now()}] SIGINT received - initiating graceful shutdown")
+        self.shutdown_requested = True
+        
+    def run_with_timeout(self, duration=30):
+        """Run until shutdown is requested or timeout expires."""
+        start_time = time.time()
+        
+        while not self.shutdown_requested:
+            elapsed = time.time() - start_time
+            if elapsed > duration:
+                print(f"[{datetime.now()}] Timeout reached ({duration}s)")
+                break
+                
+            # [WHAT] Simulate work (health check every second)
+            print(f"[{datetime.now()}] Running... (PID {os.getpid()})")
+            time.sleep(1)
+        
+        # [WHAT] Graceful shutdown: close connections, drain requests, exit
+        print(f"[{datetime.now()}] Graceful shutdown starting")
+        print(f"[{datetime.now()}] Closing connections...")
+        time.sleep(2)
+        print(f"[{datetime.now()}] Shutdown complete - exiting")
+        return 0
+
+# [WHAT] Demonstration of zombie process creation and reaping
+# [WHY] Child processes that exit but aren't reaped become zombies
+# [HOW] Parent (PID 1) must call wait() to reap zombie children
+def demonstrate_zombie_creation():
+    """Create a child process and show how PID 1 must reap it."""
+    print(f"[{datetime.now()}] Creating child process (will become zombie if not reaped)")
+    
+    # Fork a child that exits immediately
+    pid = os.fork()
+    if pid == 0:
+        # Child process
+        print(f"[{datetime.now()}] Child PID {os.getpid()} exiting immediately")
+        sys.exit(0)
+    else:
+        # Parent (PID 1 in container)
+        print(f"[{datetime.now()}] Parent waiting 2 seconds before reaping child {pid}")
+        time.sleep(2)
+        
+        # [WHAT] Reap the zombie with wait()
+        # [WHY] If PID 1 doesn't reap, child becomes zombie and consumes PID table slot
+        try:
+            wpid, status = os.waitpid(pid, 0)
+            print(f"[{datetime.now()}] Reaped child {wpid} with status {status}")
+        except ChildProcessError:
+            print(f"[{datetime.now()}] Child {pid} already reaped")
+
+if __name__ == '__main__':
+    print(f"[{datetime.now()}] Container starting (PID {os.getpid()} is PID 1)")
+    print(f"[{datetime.now()}] This process is responsible for:")
+    print(f"  1. Forwarding signals to child processes")
+    print(f"  2. Reaping zombie children (call wait())")
+    print(f"  3. Handling graceful shutdown on SIGTERM")
+    print("")
+    
+    # Demonstrate zombie handling
+    demonstrate_zombie_creation()
+    
+    # Start graceful shutdown handler
+    handler = GracefulShutdown()
+    exit_code = handler.run_with_timeout(duration=30)
+    
+    sys.exit(exit_code)
+PYEOF
+
+log_info "Python signal handler created at src/signal_handler.py"
+
+# Create a Dockerfile without proper init (demonstrates PID 1 problems)
+cat << 'DOCKEREOF1' > Dockerfile.bad_signal_handling
+# === BAD: Shell form CMD (creates /bin/sh as PID 1) ===
+# [COMMAND MEANING] CMD (shell form) = Runs command via /bin/sh -c
+# [WHY (BAD)] /bin/sh doesn't forward signals; SIGTERM goes to sh, not to Python
+# [WATCH OUT] docker stop won't gracefully shut down the app; SIGKILL after timeout
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY src/signal_handler.py .
+
+# [WHAT] This is the BAD way: shell form
+# [WHY BAD] /bin/sh is PID 1, doesn't forward SIGTERM to Python process
+# [RESULT] docker stop sends SIGTERM to sh (which ignores it), then waits 10s, sends SIGKILL
+CMD python signal_handler.py
+
+EXPOSE 8080
+DOCKEREOF1
+
+log_info "BAD Dockerfile (shell form) created at Dockerfile.bad_signal_handling"
+
+# Create proper Dockerfile with exec form
+cat << 'DOCKEREOF2' > Dockerfile.good_signal_handling
+# === GOOD: Exec form CMD (process is PID 1, receives signals directly) ===
+# [COMMAND MEANING] CMD (exec form) = Runs command directly without shell
+# [WHY (GOOD)] Python becomes PID 1; SIGTERM goes directly to Python process
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY src/signal_handler.py .
+
+# [WHAT] This is the GOOD way: exec form
+# [WHY GOOD] Python is PID 1, receives SIGTERM directly, can handle graceful shutdown
+# [RESULT] docker stop sends SIGTERM to Python, app gracefully shuts down
+CMD ["python", "signal_handler.py"]
+
+EXPOSE 8080
+DOCKEREOF2
+
+log_info "GOOD Dockerfile (exec form) created at Dockerfile.good_signal_handling"
+
+# Create Dockerfile with tini (proper init)
+cat << 'DOCKEREOF3' > Dockerfile.with_tini
+# === BEST: Using tini as proper init process ===
+# [COMMAND MEANING] tini = Minimal init process (~14KB) designed for containers
+# [WHY] tini correctly forwards signals AND reaps zombie children
+# [HOW] Run as PID 1, wrap the actual app as a child process
+
+FROM python:3.11-slim
+
+# [COMMAND MEANING] RUN apt-get install tini = Install minimal init
+# [WHY] tini is lighter than dumb-init, purpose-built for containers
+RUN apt-get update && apt-get install -y --no-install-recommends tini && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY src/signal_handler.py .
+
+# [COMMAND MEANING] ENTRYPOINT ["/usr/bin/tini", "--"] = Use tini as init
+# [WHY] tini becomes PID 1, forwards signals to Python (PID 2), reaps zombies
+# [HOW] tini --: use default signal forwarding and zombie reaping
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["python", "signal_handler.py"]
+
+EXPOSE 8080
+DOCKEREOF3
+
+log_info "BEST Dockerfile (with tini) created at Dockerfile.with_tini"
+
+# Create Dockerfile using docker --init flag (injects tini)
+cat << 'DOCKEREOF4' > Dockerfile.with_docker_init
+# === ALTERNATIVE: Use docker --init flag (automatic tini injection) ===
+# [COMMAND MEANING] docker --init = Injects tini automatically
+# [WHY] No need to modify Dockerfile; --init adds tini as PID 1 at runtime
+# [HOW] docker run --init <image>: tini is added transparently
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY src/signal_handler.py .
+
+# [WHAT] Regular CMD without explicit init
+# [WHY WORKS] --init flag will inject tini at runtime
+CMD ["python", "signal_handler.py"]
+
+EXPOSE 8080
+DOCKEREOF4
+
+log_info "Docker --init flag Dockerfile created at Dockerfile.with_docker_init"
+
+# Create a demonstration script showing lifecycle and restart policies
+cat << 'LIFECYCLEOF' > lifecycle_demo.sh
+#!/bin/bash
+
+set -euo pipefail
+
+echo "======================================================================"
+echo "SEGMENT 9: Container Lifecycle & Signal Handling Demonstration"
+echo "======================================================================"
+
+echo ""
+echo "[CONCEPT 1] Container States:"
+echo "  created   → Container exists but not running (docker create)"
+echo "  running   → Container is executing (docker start / docker run)"
+echo "  paused    → Container processes frozen (docker pause)"
+echo "  exited    → Container has stopped (docker stop / app exited)"
+echo "  dead      → Container in error state (rarely seen)"
+echo "  removed   → Container deleted from system (docker rm)"
+echo ""
+
+# [COMMAND MEANING] docker create = Create container without starting
+# [WHY] Separate creation from execution; useful for setup-before-run
+# [HOW] docker create <image> creates container, prints container ID
+# [WHAT ELSE] docker create --name mycontainer <image>: assign name during creation
+
+echo "[COMMAND] docker create:"
+echo "  docker create python:3.11-slim python signal_handler.py"
+echo ""
+echo "  Result:"
+echo "    - Container is in 'created' state (not running)"
+echo "    - filesystem is prepared, metadata stored"
+echo "    - No process is executing yet"
+echo "    - Useful for pre-configuration before running"
+echo ""
+
+# [COMMAND MEANING] docker start = Start a stopped or created container
+# [WHY] Resume a container from created or exited state
+# [HOW] Sends SIGTERM to PID 1 (if already running), then starts process
+# [WHAT ELSE] docker start -a: attach to logs after starting
+
+echo "[COMMAND] docker start:"
+echo "  docker start <container_id>"
+echo "  docker start <container_name>"
+echo ""
+echo "  Result:"
+echo "    - Container transitions from 'created' → 'running'"
+echo "    - PID 1 process (signal_handler.py) begins executing"
+echo ""
+
+# [COMMAND MEANING] docker stop = Graceful shutdown (SIGTERM + grace period)
+# [WHY] Allow app to finish requests, close connections, exit cleanly
+# [HOW] Send SIGTERM to PID 1, wait --time seconds (default 10), then SIGKILL
+# [FLAG MEANING] --time (-t) = Seconds to wait before SIGKILL (default 10)
+# [WATCH OUT] If app doesn't handle SIGTERM, it will be SIGKILL'd anyway
+
+echo "[COMMAND] docker stop:"
+echo "  docker stop <container_id>"
+echo "  docker stop --time 5 <container_id>"
+echo ""
+echo "  Sequence:"
+echo "    1. Send SIGTERM to PID 1 (graceful shutdown signal)"
+echo "    2. Wait --time seconds (default 10s)"
+echo "    3. If process still running: send SIGKILL (force terminate)"
+echo "    4. Container transitions to 'exited' state"
+echo ""
+echo "  Signal flow (good case):"
+echo "    docker stop → SIGTERM to PID 1 → app handles SIGTERM → exit(0)"
+echo ""
+echo "  Signal flow (bad case, no handler):"
+echo "    docker stop → SIGTERM to PID 1 → app ignores SIGTERM → wait 10s"
+echo "            → SIGKILL to PID 1 → app force-terminated"
+echo ""
+
+# [COMMAND MEANING] docker kill = Immediate termination (SIGKILL)
+# [WHY] Force-kill container without grace period (emergency only)
+# [HOW] Send signal (default SIGKILL) immediately to PID 1
+# [FLAG MEANING] --signal (-s) = Signal to send (e.g., --signal SIGUSR1)
+# [WATCH OUT] No grace period; app can't clean up; data loss likely
+
+echo "[COMMAND] docker kill:"
+echo "  docker kill <container_id>"
+echo "  docker kill --signal SIGUSR1 <container_id>"
+echo ""
+echo "  Result:"
+echo "    - SIGKILL sent immediately (no grace period)"
+echo "    - Container terminates forcefully"
+echo "    - App has no chance to clean up"
+echo "    - Use only in emergencies"
+echo ""
+
+# [COMMAND MEANING] docker pause = Freeze all processes (cgroup freezer)
+# [WHY] Suspend container without terminating (useful for cleanup, migration)
+# [HOW] Send SIGSTOP to entire cgroup via freezer subsystem
+# [WHAT ELSE] Container remains 'running' state (technically paused)
+
+echo "[COMMAND] docker pause / docker unpause:"
+echo "  docker pause <container_id>"
+echo "  docker unpause <container_id>"
+echo ""
+echo "  Result:"
+echo "    - All processes in container are suspended (SIGSTOP)"
+echo "    - Memory/files preserved; CPU resources released"
+echo "    - Network connections remain open (but no I/O)"
+echo "    - Useful before checkpointing or migrating containers"
+echo ""
+
+# [COMMAND MEANING] docker restart = Stop then start
+# [WHY] Reboot container (useful for clearing state, reloading config)
+# [HOW] docker stop + docker start in sequence
+# [FLAG MEANING] --time (-t) = Grace period for stop phase (default 10)
+
+echo "[COMMAND] docker restart:"
+echo "  docker restart <container_id>"
+echo "  docker restart --time 5 <container_id>"
+echo ""
+echo "  Sequence:"
+echo "    1. Send SIGTERM to PID 1 (respects --time grace period)"
+echo "    2. Wait for container to exit"
+echo "    3. docker start: restart the container"
+echo ""
+
+# [COMMAND MEANING] Restart policies = Automatic restart on exit/failure
+# [WHY] Keep critical services running; resilience without orchestrator
+# [HOW] Specify --restart when running container; daemon enforces policy
+# [WATCH OUT] Restart policies apply across daemon restarts (live-restore)
+
+echo "[RESTART POLICIES]:"
+echo ""
+echo "  --restart no (default):"
+echo "    - Container is NOT automatically restarted"
+echo "    - Stays exited after docker stop or app exit"
+echo "    docker run --restart no <image>"
+echo ""
+
+echo "  --restart always:"
+echo "    - Container is ALWAYS restarted, regardless of exit code"
+echo "    - Even if app crashes with exit(1), container restarts"
+echo "    - Restarts even after daemon restart (live-restore)"
+echo "    docker run --restart always <image>"
+echo ""
+
+echo "  --restart on-failure[:N]:"
+echo "    - Restart ONLY on non-zero exit codes"
+echo "    - Optional [:N] limits maximum restart attempts"
+echo "    - Useful for one-off tasks that shouldn't restart on success"
+echo "    docker run --restart on-failure:3 <image>  # Max 3 restarts"
+echo ""
+
+echo "  --restart unless-stopped:"
+echo "    - Always restart (like 'always')"
+echo "    - EXCEPT if container was explicitly stopped"
+echo "    - Does NOT restart after daemon restart if was stopped"
+echo "    docker run --restart unless-stopped <image>"
+echo ""
+
+# [CONCEPT] PID 1 Contract
+# [WHY] Container needs proper init process to manage children
+# [HOW] PID 1 must handle signals and reap zombies
+# [WATCH OUT] Most apps aren't designed to be PID 1; use tini/dumb-init
+
+echo "[CONCEPT: PID 1 Contract]:"
+echo ""
+echo "PID 1 has TWO responsibilities:"
+echo ""
+echo "  1. SIGNAL FORWARDING:"
+echo "     - SIGTERM/SIGINT received by PID 1"
+echo "     - Must forward to child processes"
+echo "     - Default behavior: signals to PID 1 without handler = ignored"
+echo "     - Example: /bin/sh (default shell) ignores SIGTERM"
+echo ""
+echo "  2. ZOMBIE REAPING:"
+echo "     - Child process exits but parent doesn't call wait()"
+echo "     - Child becomes 'zombie' (exit status hanging in kernel)"
+echo "     - PID 1 must call wait() to reap zombies"
+echo "     - If PID table fills with zombies: no new processes can start"
+echo ""
+echo "SYMPTOM: docker stop hangs, app doesn't shut down gracefully"
+echo ""
+
+# [CONCEPT] Zombie Process
+# [WHY] Illustrates why init is necessary
+
+echo "[ZOMBIE PROCESSES EXPLAINED]:"
+echo ""
+echo "Normal process lifecycle:"
+echo "  1. Parent spawns child via fork()"
+echo "  2. Child runs, then exits"
+echo "  3. Parent calls wait() to collect exit status"
+echo "  4. Child slot is freed"
+echo ""
+echo "Zombie lifecycle:"
+echo "  1. Parent spawns child via fork()"
+echo "  2. Child runs, then exits"
+echo "  3. Parent does NOT call wait() (or PID 1 ignores children)"
+echo "  4. Child remains as 'zombie' (exit status hanging)"
+echo "  5. 'ps' shows <defunct> (zombie)"
+echo "  6. PID table slot consumed; no new processes can start"
+echo ""
+echo "In containers:"
+echo "  - If PID 1 is an app that spawns children but doesn't reap zombies"
+echo "  - Zombie children accumulate"
+echo "  - Container eventually can't spawn new processes"
+echo "  - Solution: use tini/dumb-init as PID 1"
+echo ""
+
+# [TOOL] tini
+# [WHY] Minimal, purpose-built init for containers
+
+echo "[TOOL: tini]:"
+echo "  - Size: ~14KB executable"
+echo "  - Purpose: Proper init process for containers"
+echo "  - Features:"
+echo "    * Forwards all signals to child processes"
+echo "    * Reaps zombie children via wait()"
+echo "    * Lightweight (minimal overhead)"
+echo "  - Usage in Dockerfile:"
+echo "    ENTRYPOINT [\"/usr/bin/tini\", \"--\"]"
+echo "    CMD [\"python\", \"app.py\"]"
+echo ""
+
+# [TOOL] dumb-init
+# [WHY] Alternative to tini, from Yelp
+
+echo "[TOOL: dumb-init]:"
+echo "  - Size: ~4KB executable"
+echo "  - Purpose: Similar to tini; lightweight init"
+echo "  - Features:"
+echo "    * Signal forwarding"
+echo "    * Zombie reaping"
+echo "    * Even smaller than tini"
+echo "  - Usage: Same as tini"
+echo "    ENTRYPOINT [\"/usr/local/bin/dumb-init\", \"--\"]"
+echo "    CMD [\"python\", \"app.py\"]"
+echo ""
+
+# [FLAG MEANING] --init = Inject tini automatically at runtime
+# [WHY] No Dockerfile modification needed; tini added by docker run
+# [HOW] docker run --init <image>: tini injected as PID 1 transparently
+
+echo "[FLAG: docker run --init]:"
+echo "  - Automatically injects tini as PID 1"
+echo "  - No Dockerfile modification required"
+echo "  - Usage:"
+echo "    docker run --init <image>"
+echo "  - Behind the scenes:"
+echo "    * Docker adds tini as PID 1"
+echo "    * Your app becomes child of tini"
+echo "    * Signals and zombies handled properly"
+echo ""
+
+# [DIRECTIVE] STOPSIGNAL
+# [WHY] Override default SIGTERM with custom signal (rare)
+# [HOW] STOPSIGNAL SIGUSR1 in Dockerfile; docker stop sends SIGUSR1 instead
+
+echo "[STOPSIGNAL DIRECTIVE]:"
+echo "  - Default: docker stop sends SIGTERM"
+echo "  - STOPSIGNAL allows custom signal per image"
+echo "  - Usage in Dockerfile:"
+echo "    STOPSIGNAL SIGUSR1"
+echo "  - Result: docker stop sends SIGUSR1 instead of SIGTERM"
+echo "  - Override at runtime:"
+echo "    docker run --stop-signal SIGUSR2 <image>"
+echo ""
+
+# [FLAG MEANING] --stop-signal = Override image's STOPSIGNAL
+# [WHY] Run-time override if STOPSIGNAL is wrong for your use case
+# [HOW] docker run --stop-signal SIGUSR1 <image>
+
+echo "[FLAG: docker run --stop-signal]:"
+echo "  - Overrides STOPSIGNAL from Dockerfile"
+echo "  - Usage:"
+echo "    docker run --stop-signal SIGUSR1 <image>"
+echo ""
+
+echo "======================================================================"
+echo "END OF LIFECYCLE & SIGNAL HANDLING DEMONSTRATION"
+echo "======================================================================"
+LIFECYCLEOF
+
+chmod +x lifecycle_demo.sh
+
+log_info "Lifecycle demonstration script created at lifecycle_demo.sh"
+
+# Create a practical testing script
+cat << 'TESTEOF' > test_signal_handling.sh
+#!/bin/bash
+
+set -euo pipefail
+
+echo "======================================================================"
+echo "PRACTICAL TEST: Signal Handling Comparison"
+echo "======================================================================"
+echo ""
+echo "This script demonstrates the difference between:"
+echo "  1. Bad: Shell form CMD (PID 1 doesn't forward signals)"
+echo "  2. Good: Exec form CMD (PID 1 receives signals directly)"
+echo "  3. Best: Using tini as init (proper signal handling + zombie reaping)"
+echo ""
+
+echo "[TEST 1] Build all three variants:"
+echo "  docker build -f Dockerfile.bad_signal_handling -t signal:bad ."
+echo "  docker build -f Dockerfile.good_signal_handling -t signal:good ."
+echo "  docker build -f Dockerfile.with_tini -t signal:tini ."
+echo ""
+
+echo "[TEST 2] Run each and test signal handling:"
+echo ""
+echo "Test BAD (shell form):"
+echo "  docker run --name bad_test signal:bad &"
+echo "  sleep 2"
+echo "  time docker stop bad_test    # Will timeout then SIGKILL (no graceful shutdown)"
+echo "  docker rm bad_test"
+echo ""
+echo "Test GOOD (exec form):"
+echo "  docker run --name good_test signal:good &"
+echo "  sleep 2"
+echo "  time docker stop good_test   # SIGTERM handled, quick exit"
+echo "  docker rm good_test"
+echo ""
+echo "Test BEST (with tini):"
+echo "  docker run --name tini_test signal:tini &"
+echo "  sleep 2"
+echo "  time docker stop tini_test   # Signals handled properly"
+echo "  docker rm tini_test"
+echo ""
+
+echo "[EXPECTED RESULTS]:"
+echo "  - BAD: ~10 seconds (grace period timeout → SIGKILL)"
+echo "  - GOOD: < 1 second (app handles SIGTERM immediately)"
+echo "  - BEST: < 1 second (tini forwards SIGTERM properly)"
+echo ""
+TESTEOF
+
+chmod +x test_signal_handling.sh
+
+log_info "Signal handling test script created at test_signal_handling.sh"
+
+log_info "Segment 9 setup complete"
+log_info "Next steps:"
+log_info "  1. Review lifecycle_demo.sh for detailed concept explanations"
+log_info "  2. Build variants: docker build -f Dockerfile.good_signal_handling -t signal:good ."
+log_info "  3. Test signal handling: docker run --init signal:good"
+
+EOF
+
+chmod +x segment9_runner.sh
+bash segment9_runner.sh
+
+echo -e "${GREEN}✓ Segment 9 complete: Signal handling, PID 1 contract, lifecycle states, restart policies${NC}"
+
+cd -
+
+################################################################################
+# === SEGMENT 10: RUNNING CONTAINERS — PORTS, RESOURCES, LOGGING, DEBUGGING ===
+# Demonstrates: docker run, -p, -P, --memory, --cpus, --pids-limit, --cpuset-cpus,
+# --blkio-weight, --read-only, --tmpfs, docker logs, docker exec, docker attach,
+# docker inspect, docker stats, docker top, docker diff, nsenter, docker cp,
+# --name, -d, -e, --env-file, --label, --rm
+################################################################################
+
+echo -e "${BLUE}=== SEGMENT 10: RUNNING CONTAINERS — FLAGS, RESOURCES, DEBUGGING ===${NC}"
+echo "Creating comprehensive container runtime demonstrations..."
+
+# [WHAT] Create a temporary directory for Segment 10
+SEGMENT10_DIR=$(mktemp -d)
+cd "$SEGMENT10_DIR"
+
+cat << 'EOF' > segment10_runner.sh
+#!/bin/bash
+
+set -euo pipefail
+
+SEGMENT10_PROJECT="container_runtime_operations"
+
+log_info() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] INFO: $1"
+}
+
+log_error() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: $1" >&2
+}
+
+log_info "Setting up Segment 10: Container runtime operations and debugging"
+
+mkdir -p "$SEGMENT10_PROJECT"
+cd "$SEGMENT10_PROJECT"
+
+# Create a simple Python web server for testing
+cat << 'PYEOF' > app.py
+#!/usr/bin/env python3
+"""
+Simple web server for demonstrating container runtime flags and debugging.
+Demonstrates: logging, health checks, environment variables, resource usage.
+"""
+
+import http.server
+import socketserver
+import json
+import os
+import psutil
+import time
+from datetime import datetime
+from pathlib import Path
+
+PORT = 8080
+
+class RequestHandler(http.server.BaseHTTPRequestHandler):
+    """Handle HTTP requests and demonstrate container concepts."""
+    
+    def log_message(self, format, *args):
+        """Override to log to stdout with timestamps (12-factor log format)."""
+        print(f"[{datetime.now()}] {self.address_string()} - {format % args}")
+    
+    def do_GET(self):
+        """Handle GET requests."""
+        # [WHAT] Simple routing based on path
+        if self.path == '/health':
+            self._handle_health()
+        elif self.path == '/metrics':
+            self._handle_metrics()
+        elif self.path == '/info':
+            self._handle_info()
+        elif self.path == '/readiness':
+            self._handle_readiness()
+        else:
+            self._handle_notfound()
+    
+    def _handle_health(self):
+        """Health check endpoint (liveness probe)."""
+        response = {
+            'status': 'healthy',
+            'timestamp': datetime.now().isoformat(),
+            'pid': os.getpid()
+        }
+        self._send_json(200, response)
+    
+    def _handle_readiness(self):
+        """Readiness check endpoint (ready to serve traffic)."""
+        response = {
+            'status': 'ready',
+            'timestamp': datetime.now().isoformat(),
+            'listening_port': PORT
+        }
+        self._send_json(200, response)
+    
+    def _handle_metrics(self):
+        """Metrics endpoint (resource usage information)."""
+        try:
+            process = psutil.Process(os.getpid())
+            memory_info = process.memory_info()
+            cpu_percent = process.cpu_percent(interval=0.1)
+            
+            response = {
+                'process_id': os.getpid(),
+                'memory_rss_mb': round(memory_info.rss / 1024 / 1024, 2),
+                'memory_vms_mb': round(memory_info.vms / 1024 / 1024, 2),
+                'cpu_percent': cpu_percent,
+                'num_threads': process.num_threads(),
+                'timestamp': datetime.now().isoformat()
+            }
+            self._send_json(200, response)
+        except Exception as e:
+            self._send_json(500, {'error': str(e)})
+    
+    def _handle_info(self):
+        """Application info endpoint."""
+        response = {
+            'app': 'Container Runtime Demo',
+            'version': os.getenv('APP_VERSION', '1.0.0'),
+            'environment': os.getenv('ENVIRONMENT', 'production'),
+            'hostname': os.getenv('HOSTNAME', 'unknown'),
+            'container_name': os.getenv('CONTAINER_NAME', 'unknown'),
+            'timestamp': datetime.now().isoformat()
+        }
+        self._send_json(200, response)
+    
+    def _handle_notfound(self):
+        """404 Not Found."""
+        response = {
+            'error': 'Not Found',
+            'path': self.path,
+            'available_paths': ['/health', '/readiness', '/metrics', '/info']
+        }
+        self._send_json(404, response)
+    
+    def _send_json(self, status_code, data):
+        """Send JSON response."""
+        self.send_response(status_code)
+        self.send_header('Content-Type', 'application/json')
+        self.end_headers()
+        self.wfile.write(json.dumps(data).encode())
+
+if __name__ == '__main__':
+    print(f"[{datetime.now()}] Starting container runtime demo server")
+    print(f"[{datetime.now()}] PID: {os.getpid()}")
+    print(f"[{datetime.now()}] Listening on http://0.0.0.0:{PORT}")
+    print(f"[{datetime.now()}] Available endpoints: /health, /readiness, /metrics, /info")
+    
+    with socketserver.TCPServer(("", PORT), RequestHandler) as httpd:
+        try:
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            print(f"\n[{datetime.now()}] Server shutting down")
+PYEOF
+
+log_info "Python web server created at app.py"
+
+# Create requirements file
+cat << 'REQEOF' > requirements.txt
+psutil==5.9.5
+Werkzeug==2.3.7
+REQEOF
+
+log_info "Requirements file created"
+
+# Create a Dockerfile for the runtime demo
+cat << 'DOCKEREOF' > Dockerfile
+# === SEGMENT 10: CONTAINER RUNTIME OPERATIONS ===
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# [COMMAND MEANING] ENV = Set persistent environment variables
+# [WHY] Configuration visible to app at runtime
+ENV APP_VERSION=1.0.0 \
+    PYTHONUNBUFFERED=1 \
+    ENVIRONMENT=production
+
+# [COMMAND MEANING] COPY = Copy files from host to container
+# [WHY] Transfer application code and dependencies into image
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY app.py .
+
+# [COMMAND MEANING] USER = Switch to non-root user
+# [WHY] Security: limit impact of container compromise
+RUN useradd -m -u 1000 appuser
+USER appuser
+
+# [COMMAND MEANING] EXPOSE = Document which ports the app listens on
+# [WHY] Metadata; helps with docker run -P flag
+EXPOSE 8080
+
+# [COMMAND MEANING] HEALTHCHECK = Define health check logic
+# [WHY] Container orchestrators (Docker/Swarm) use this for readiness
+HEALTHCHECK --interval=5s --timeout=3s --retries=2 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"
+
+# [COMMAND MEANING] CMD (exec form) = Default command
+# [WHY] Process becomes PID 1; receives signals directly
+CMD ["python", "-u", "app.py"]
+DOCKEREOF
+
+log_info "Dockerfile created"
+
+# Create .dockerignore
+cat << 'IGNOREEOF' > .dockerignore
+__pycache__
+*.pyc
+.pytest_cache
+.DS_Store
+.env
+*.tmp
+IGNOREEOF
+
+log_info ".dockerignore created"
+
+# Create comprehensive runtime flags documentation
+cat << 'RUNTIMEEOF' > runtime_flags_guide.sh
+#!/bin/bash
+
+set -euo pipefail
+
+echo "======================================================================"
+echo "SEGMENT 10: Container Runtime Flags & Operations"
+echo "======================================================================"
+
+echo ""
+echo "=== DOCKER RUN: CORE COMMAND ==="
+echo ""
+
+# [COMMAND MEANING] docker run = Create and start container in one operation
+# [WHY] Most common way to launch containers; combines docker create + docker start
+# [HOW] Pulls image if missing, creates container, starts process, attaches terminal
+# [WATCH OUT] --rm flag auto-removes container on exit; always use for ephemeral tasks
+
+echo "[docker run] Core command:"
+echo "  docker run [FLAGS] <image> [COMMAND]"
+echo ""
+echo "Common flags:"
+echo "  --name <name>          Assign human-readable name"
+echo "  -d (--detach)          Run in background (don't attach stdout/stderr)"
+echo "  -it                    Interactive terminal (stdin open, pseudo-TTY)"
+echo "  --rm                   Auto-remove container on exit"
+echo "  -e (--env)             Set environment variables"
+echo "  --env-file             Load env vars from file"
+echo "  --label                Attach metadata labels"
+echo ""
+
+echo ""
+echo "=== PORT PUBLISHING ==="
+echo ""
+
+# [COMMAND MEANING] -p <hostPort>:<containerPort> = Publish container port to host
+# [WHY] Make container service accessible from outside
+# [HOW] Docker adds iptables DNAT rules; host:port → container:port
+# [FLAG MEANING] -p 8080:8080 = Map host port 8080 to container port 8080
+
+echo "[PORT PUBLISHING] -p flag:"
+echo ""
+echo "1. Basic port mapping:"
+echo "   docker run -p 8080:8080 <image>"
+echo "   Result: localhost:8080 → container:8080"
+echo ""
+
+# [FLAG MEANING] -p <ip>:<hostPort>:<containerPort> = IP-scoped port binding
+# [WHY] Restrict access to specific host interface (security)
+# [HOW] Only specified IP can access the port
+# [EXAMPLE] -p 127.0.0.1:8080:8080 = Only localhost can access
+
+echo "2. IP-scoped binding (security):"
+echo "   docker run -p 127.0.0.1:8080:8080 <image>"
+echo "   Result: Only localhost:8080 can reach container"
+echo "   Use case: Dev machine, prevent external access"
+echo ""
+
+# [FLAG MEANING] -P (--publish-all) = Publish all EXPOSE'd ports to random ephemeral ports
+# [WHY] Quick testing; avoid port conflicts; useful in CI
+# [HOW] Each EXPOSE'd port maps to random host port (49152-65535)
+
+echo "3. Publish all exposed ports:"
+echo "   docker run -P <image>"
+echo "   Result: All EXPOSE'd ports map to random host ports"
+echo "   Use case: Testing, CI/CD, avoiding conflicts"
+echo ""
+
+echo ""
+echo "=== RESOURCE CONSTRAINTS ==="
+echo ""
+
+# [FLAG MEANING] --memory (-m) = Hard memory limit
+# [WHY] Prevent container from consuming all host RAM
+# [HOW] Enforced by cgroup memory subsystem; exceeding triggers OOM Killer
+# [UNITS] Supports b, k, m, g (e.g., --memory 512m)
+
+echo "[MEMORY] --memory flag:"
+echo "  docker run --memory 512m <image>"
+echo "  Result: Container limited to 512 MB RAM"
+echo "  Exceeding: OOM Killer terminates container"
+echo ""
+
+# [FLAG MEANING] --memory-swap = Total memory + swap limit
+# [WHY] Control total memory+swap; set equal to --memory to disable swap
+# [HOW] If --memory-swap == --memory, no swap allowed
+# [DEFAULT] --memory-swap defaults to 2 × --memory
+
+echo "[MEMORY+SWAP] --memory-swap flag:"
+echo "  docker run --memory 512m --memory-swap 512m <image>"
+echo "  Result: 512 MB total (no swap allowed)"
+echo ""
+echo "  docker run --memory 512m --memory-swap 1g <image>"
+echo "  Result: 512 MB RAM + 512 MB swap = 1 GB total"
+echo ""
+
+# [FLAG MEANING] --cpus = Fractional CPU cores allowed
+# [WHY] Limit CPU usage; prevent CPU hog containers
+# [HOW] Enforced by cgroup cpu subsystem; soft limit (can burst)
+# [EXAMPLE] --cpus 1.5 = 1.5 CPU cores maximum
+
+echo "[CPU] --cpus flag:"
+echo "  docker run --cpus 1.5 <image>"
+echo "  Result: Container limited to 1.5 CPU cores"
+echo "  Note: This is a hard cap; container can't exceed this"
+echo ""
+
+# [FLAG MEANING] --cpu-shares = Relative CPU weight (scheduling only)
+# [WHY] When CPU contention exists, weight determines priority
+# [HOW] Default 1024; higher value = more CPU during contention
+# [NOTE] This is NOT a hard limit; just relative weight
+
+echo "[CPU SCHEDULING] --cpu-shares flag:"
+echo "  docker run --cpu-shares 512 <image>"
+echo "  Result: Half the default weight (1024)"
+echo "  Effect: When CPU contentious, gets less than default containers"
+echo ""
+
+# [FLAG MEANING] --pids-limit = Maximum processes in container
+# [WHY] Prevent fork bombs; limit resource exhaustion via process count
+# [HOW] Enforced by cgroup pids subsystem
+# [DEFAULT] Usually no limit; --pids-limit 100 caps at 100 processes
+
+echo "[PROCESS COUNT] --pids-limit flag:"
+echo "  docker run --pids-limit 100 <image>"
+echo "  Result: Container can have maximum 100 processes"
+echo "  Use case: Prevent fork bombs, resource exhaustion"
+echo ""
+
+# [FLAG MEANING] --cpuset-cpus = Pin container to specific CPU cores
+# [WHY] NUMA-aware workloads; ensure cache locality
+# [HOW] Limit to specific cores (e.g., 0,2,4 = cores 0, 2, 4)
+# [NOTE] Useful for latency-sensitive workloads
+
+echo "[CPU AFFINITY] --cpuset-cpus flag:"
+echo "  docker run --cpuset-cpus 0,2 <image>"
+echo "  Result: Container can only use CPU cores 0 and 2"
+echo "  Use case: NUMA systems, latency-critical workloads"
+echo ""
+
+# [FLAG MEANING] --blkio-weight = Relative block I/O weight
+# [WHY] Throttle disk I/O when multiple containers compete
+# [HOW] Weight 10–1000 (default 500); higher = more I/O bandwidth
+# [NOTE] Relative weight; enforced only during I/O contention
+
+echo "[BLOCK I/O] --blkio-weight flag:"
+echo "  docker run --blkio-weight 200 <image>"
+echo "  Result: Container has lower I/O priority (200 vs default 500)"
+echo "  Effect: During disk contention, gets less bandwidth"
+echo ""
+
+echo ""
+echo "=== FILESYSTEM & STORAGE ==="
+echo ""
+
+# [FLAG MEANING] --read-only = Mount root filesystem as read-only
+# [WHY] Immutable container pattern; prevent writes to layer
+# [HOW] Block device mounted read-only; /tmp, /var/tmp still writable
+# [WATCH OUT] App still needs writable paths (logs, temp files)
+
+echo "[FILESYSTEM] --read-only flag:"
+echo "  docker run --read-only <image>"
+echo "  Result: Container root filesystem is read-only"
+echo "  Use case: Security hardening; prevent tampering"
+echo ""
+echo "  Problem: App might need to write (logs, temp files)"
+echo "  Solution: Add --tmpfs for required writable paths"
+echo ""
+
+# [FLAG MEANING] --tmpfs <path> = Mount in-memory tmpfs
+# [WHY] Ephemeral writable space without touching overlay layer
+# [HOW] Mount point backed by RAM (tmpfs); lost on container exit
+# [SIZE] Control with --tmpfs /tmp:size=1g
+
+echo "[TMPFS] --tmpfs flag:"
+echo "  docker run --read-only --tmpfs /tmp:size=500m --tmpfs /var/log <image>"
+echo "  Result:"
+echo "    - /: read-only"
+echo "    - /tmp: writable, 500 MB, in-memory"
+echo "    - /var/log: writable, in-memory"
+echo "  Use case: Security + temp file handling"
+echo ""
+
+echo ""
+echo "=== LOGGING & OBSERVABILITY ==="
+echo ""
+
+# [COMMAND MEANING] docker logs = Fetch container stdout/stderr
+# [WHY] Debug application behavior, track errors, audit trail
+# [HOW] Reads from configured log driver (default json-file)
+# [WATCH OUT] Only works with json-file and journald log drivers
+
+echo "[LOGGING] docker logs command:"
+echo "  docker logs <container>"
+echo "  docker logs --follow <container>        # Like tail -f"
+echo "  docker logs --tail 50 <container>       # Last 50 lines"
+echo "  docker logs --since 10m <container>     # Last 10 minutes"
+echo ""
+echo "  Combined: docker logs -f --tail 100 --since 5m <container>"
+echo ""
+
+# [FLAG MEANING] --follow (-f) = Stream logs continuously
+# [WHY] Real-time monitoring; equivalent to tail -f
+# [HOW] Blocks and streams new log lines as app writes them
+
+echo "[LOGGING FLAGS]:"
+echo ""
+echo "  --follow (-f): Stream output in real-time"
+echo "  --tail N: Show last N lines (default all)"
+echo "  --since <timestamp>: Show logs after timestamp"
+echo "    Examples: --since 2024-01-15T10:30:00"
+echo "              --since 10m (last 10 minutes)"
+echo "              --since 2h (last 2 hours)"
+echo ""
+
+echo ""
+echo "=== EXECUTION & INTERACTION ==="
+echo ""
+
+# [COMMAND MEANING] docker exec = Run new command in running container
+# [WHY] Debug, inspect, admin tasks without entering PID 1
+# [HOW] Spawns new process (not PID 1); doesn't affect container process
+# [ADVANTAGE] Safe; doesn't interrupt main process
+
+echo "[EXECUTION] docker exec command:"
+echo "  docker exec <container> <command>"
+echo "  docker exec -it <container> /bin/bash    # Interactive shell"
+echo "  docker exec -u root <container> id       # Run as root"
+echo ""
+
+# [FLAG MEANING] -it = -i (interactive stdin) + -t (pseudo-TTY)
+# [WHY] Needed for interactive shell; maintains terminal behavior
+# [HOW] -i keeps stdin open even without attach; -t allocates PTY
+
+echo "[INTERACTIVE FLAGS]:"
+echo ""
+echo "  -i (--interactive): Keep STDIN open even if not attached"
+echo "  -t (--tty): Allocate a pseudo-terminal"
+echo "  -it: Combination (needed for interactive shell)"
+echo ""
+echo "  docker exec -it <container> /bin/bash   # Interactive shell"
+echo "  docker exec -i <container> python < script.py  # Pipe script"
+echo ""
+
+# [FLAG MEANING] -u <user> = Run command as specific user
+# [WHY] Execute command with different privileges
+# [HOW] uid:gid or username; must exist in container
+
+echo "[USER OVERRIDE]:"
+echo ""
+echo "  docker exec -u root <container> apt-get update   # Run as root"
+echo "  docker exec -u 1000 <container> id               # Run as UID 1000"
+echo ""
+
+# [COMMAND MEANING] docker attach = Connect terminal to running container PID 1
+# [WHY] Access running container's stdout/stderr
+# [HOW] Connects terminal to container's PID 1 stdio streams
+# [WATCH OUT] CTRL+C sends SIGTERM to PID 1 (might exit container)
+
+echo "[ATTACH] docker attach command:"
+echo "  docker attach <container>"
+echo ""
+echo "  Connects to container's main process (PID 1)"
+echo "  See real-time output"
+echo "  CTRL+C sends SIGTERM (caution!)"
+echo ""
+
+echo ""
+echo "=== INSPECTION & DEBUGGING ==="
+echo ""
+
+# [COMMAND MEANING] docker inspect = Low-level JSON metadata
+# [WHY] View complete container configuration
+# [HOW] Outputs detailed JSON; use jq for filtering
+# [EXAMPLE] docker inspect <container> | jq '.[] | .State'
+
+echo "[INSPECTION] docker inspect command:"
+echo "  docker inspect <container>                        # Full metadata"
+echo "  docker inspect --format='{{.State.Status}}' <container>"
+echo "  docker inspect <container> | jq '.[] | .Config'"
+echo ""
+
+# [COMMAND MEANING] docker stats = Live resource usage metrics
+# [WHY] Monitor CPU, memory, network, disk I/O in real-time
+# [HOW] Streams stats continuously until interrupted
+# [METRICS] CPU%, MEM, NET I/O, BLOCK I/O, PIDs
+
+echo "[STATS] docker stats command:"
+echo "  docker stats                 # All running containers"
+echo "  docker stats <container>     # Specific container"
+echo "  docker stats --no-stream     # Single snapshot (no stream)"
+echo ""
+echo "  Columns:"
+echo "    CPU%: Percentage of host CPU in use"
+echo "    MEM: Memory usage (absolute)"
+echo "    NET I/O: Network bytes in/out"
+echo "    BLOCK I/O: Disk bytes read/written"
+echo ""
+
+# [FLAG MEANING] --no-stream = Snapshot instead of continuous stream
+# [WHY] Get single measurement without blocking
+# [HOW] Print once and exit (useful in scripts)
+
+echo "[SNAPSHOT]:"
+echo "  docker stats --no-stream <container>"
+echo "  Useful in monitoring scripts; non-blocking"
+echo ""
+
+# [COMMAND MEANING] docker top = List processes in container
+# [WHY] See what's running inside (like ps inside container)
+# [HOW] Shows UID, PID, CPU%, MEM%, command
+# [NOTE] Similar to Unix ps command
+
+echo "[PROCESS LIST] docker top command:"
+echo "  docker top <container>           # All processes"
+echo "  docker top <container> -eo pid,user,comm"
+echo ""
+
+# [COMMAND MEANING] docker diff = Show filesystem changes
+# [WHY] Audit what files changed since container started
+# [HOW] Shows additions (A), changes (C), deletions (D)
+# [USE CASE] Debug unexpected modifications
+
+echo "[FILESYSTEM DIFF] docker diff command:"
+echo "  docker diff <container>"
+echo ""
+echo "  Output:"
+echo "    A /app/log.txt       (Added file)"
+echo "    C /etc/config        (Changed file)"
+echo "    D /tmp/old.tmp       (Deleted file)"
+echo ""
+
+# [TOOL] nsenter = Enter container namespaces from host
+# [WHY] Deep debugging without docker exec; access host perspective
+# [HOW] Join container's namespace; execute command in that context
+
+echo "[DEEP DEBUGGING] nsenter command:"
+echo "  nsenter --target <PID> /bin/bash"
+echo ""
+echo "  Explanation:"
+echo "    - <PID>: host PID of container process (not container PID)"
+echo "    - Enters container's namespace from host"
+echo "    - Useful for debugging when docker exec unavailable"
+echo ""
+echo "  Get host PID:"
+echo "    docker inspect -f '{{.State.Pid}}' <container>"
+echo ""
+
+# [FLAG MEANING] --target <PID> = Target process whose namespaces to enter
+# [WHY] Specify which process's namespace to join
+# [HOW] Use host PID (from docker inspect)
+
+# [FLAG MEANING] nsenter --net/--pid/--mnt = Namespace selectors
+# [WHY] Join specific namespaces (network, process, mount)
+# [HOW] By default joins all; flags select specific ones
+
+echo "  Namespace flags:"
+echo "    --net: network namespace"
+echo "    --pid: process namespace"
+echo "    --mnt: mount namespace"
+echo "    --uts: hostname namespace"
+echo ""
+
+# [COMMAND MEANING] docker cp = Copy files between host and container
+# [WHY] Extract/inject files without mounting volumes
+# [HOW] Works on running or stopped containers
+# [DIRECTION] Host → container OR container → host
+
+echo "[FILE TRANSFER] docker cp command:"
+echo "  docker cp <container>:/app/log.txt ./log.txt  # Container → Host"
+echo "  docker cp ./config.json <container>:/etc/      # Host → Container"
+echo "  docker cp <container>:/data . -r              # Copy directory"
+echo ""
+echo "  Use cases:"
+echo "    - Extract logs from stopped container"
+echo "    - Inject configuration dynamically"
+echo "    - Debug artifact retrieval"
+echo ""
+
+echo ""
+echo "=== ENVIRONMENT & METADATA ==="
+echo ""
+
+# [FLAG MEANING] -e <KEY=VALUE> = Set environment variable at runtime
+# [WHY] Pass configuration without rebuilding image
+# [HOW] Overrides ENV from Dockerfile; passed to PID 1
+
+echo "[ENVIRONMENT] -e flag:"
+echo "  docker run -e DATABASE_URL='postgres://...' <image>"
+echo "  docker run -e LOG_LEVEL=DEBUG <image>"
+echo ""
+echo "  Visible in container:"
+echo "    env           # List all env vars"
+echo "    echo \$DATABASE_URL"
+echo ""
+
+# [FLAG MEANING] --env-file = Load environment from file
+# [WHY] Avoid long command lines; load many vars at once
+# [HOW] Each line: KEY=VALUE; skip empty lines and comments
+
+echo "[ENV FILE] --env-file flag:"
+echo "  docker run --env-file .env.prod <image>"
+echo ""
+echo "  File format (.env.prod):"
+echo "    DATABASE_URL=postgres://user:pass@host/db"
+echo "    API_KEY=secret_key_here"
+echo "    LOG_LEVEL=INFO"
+echo ""
+
+# [FLAG MEANING] --label = Attach metadata labels
+# [WHY] Organize, filter, query containers by labels
+# [HOW] Key-value pairs; queryable via docker inspect or --filter
+# [USE] Version, environment, owner, cost center, etc.
+
+echo "[LABELS] --label flag:"
+echo "  docker run --label version=1.0.0 --label env=prod <image>"
+echo "  docker run --label owner=devops --label app=backend <image>"
+echo ""
+echo "  Query by label:"
+echo "    docker ps --filter label=env=prod"
+echo "    docker inspect <container> | jq '.[] | .Config.Labels'"
+echo ""
+
+# [FLAG MEANING] --name = Assign human-readable name
+# [WHY] Easy reference instead of container ID
+# [HOW] Name must be unique on daemon
+# [NOTE] Still can use container ID for any operation
+
+echo "[NAMING] --name flag:"
+echo "  docker run --name myapp <image>"
+echo ""
+echo "  Then reference by name:"
+echo "    docker logs myapp"
+echo "    docker exec -it myapp /bin/bash"
+echo "    docker stop myapp"
+echo ""
+
+# [FLAG MEANING] -d (--detach) = Run in background
+# [WHY] Don't block terminal; container runs independently
+# [HOW] Detach from container immediately; prints container ID
+
+echo "[BACKGROUND] -d flag:"
+echo "  docker run -d <image>                  # Run in background"
+echo "  docker run -d --name server <image>    # Named background container"
+echo ""
+echo "  Monitor background container:"
+echo "    docker logs server"
+echo "    docker stats server"
+echo ""
+
+# [FLAG MEANING] --rm = Auto-remove on exit
+# [WHY] Cleanup ephemeral containers automatically
+# [HOW] Container and writable layer deleted on exit
+# [USE CASE] One-off tasks, CI/CD, testing
+
+echo "[AUTO-CLEANUP] --rm flag:"
+echo "  docker run --rm <image>  # Deleted after exit"
+echo ""
+echo "  Useful for:"
+echo "    - One-off migrations: docker run --rm <image> npm run migrate"
+echo "    - Testing: docker run --rm <image> npm test"
+echo "    - Batch jobs: no container cleanup needed"
+echo ""
+
+echo "======================================================================"
+echo "END OF RUNTIME FLAGS DOCUMENTATION"
+echo "======================================================================"
+RUNTIMEEOF
+
+chmod +x runtime_flags_guide.sh
+
+log_info "Runtime flags guide created at runtime_flags_guide.sh"
+
+log_info "Segment 10 setup complete"
+log_info "Next steps:"
+log_info "  1. Review runtime_flags_guide.sh for comprehensive flag documentation"
+log_info "  2. Build image: docker build -t runtime-demo ."
+log_info "  3. Test various flags: docker run -p 8080:8080 -m 256m --cpus 1 runtime-demo"
+
+EOF
+
+chmod +x segment10_runner.sh
+bash segment10_runner.sh
+
+echo -e "${GREEN}✓ Segment 10 complete: Container runtime operations, port publishing, resource constraints, logging, debugging${NC}"
+
+cd -
+
+################################################################################
+# === WRAP-UP: SEGMENTS 8, 9, 10 COMPLETE ===
+################################################################################
+
+echo ""
+echo -e "${YELLOW}=== SEGMENTS 8, 9, 10 COMPLETE ===${NC}"
+echo ""
+echo -e "${GREEN}Summary:${NC}"
+echo ""
+echo "Segment 8 - BuildKit & Multi-Platform Builds:"
+echo "  Location: $SEGMENT8_DIR"
+echo "  Project: Go app with BuildKit secrets, SSH, cross-platform builds"
+echo "  Key Concepts: DOCKER_BUILDKIT=1, BuildKit cache mounts, RUN --mount=type=secret/ssh"
+echo "                docker buildx, --platform, FROM \$BUILDPLATFORM/\$TARGETPLATFORM"
+echo "                Fat manifests, QEMU emulation"
+echo ""
+echo "Segment 9 - Container Lifecycle & Signal Handling:"
+echo "  Location: $SEGMENT9_DIR"
+echo "  Project: Signal handler demonstrations and init process comparisons"
+echo "  Key Concepts: docker create/start/stop/kill/pause/unpause/restart"
+echo "                Restart policies: no, on-failure, always, unless-stopped"
+echo "                PID 1 contract, zombie reaping, tini, dumb-init, --init flag"
+echo ""
+echo "Segment 10 - Container Runtime Operations:"
+echo "  Location: $SEGMENT10_DIR"
+echo "  Project: Web server with comprehensive runtime flag demonstrations"
+echo "  Key Concepts: Port publishing (-p, -P), resource constraints (--memory, --cpus)"
+echo "                Logging (docker logs --follow), execution (docker exec)"
+echo "                Inspection (docker inspect/stats/top), filesystem (--read-only, --tmpfs)"
+echo "                File transfer (docker cp), metadata (--label, --env)"
+echo ""
+echo -e "${BLUE}Quick Start:${NC}"
+echo "  # Segment 8"
+echo "  cd $SEGMENT8_DIR && bash buildkit_demo.sh"
+echo ""
+echo "  # Segment 9"
+echo "  cd $SEGMENT9_DIR && bash lifecycle_demo.sh"
+echo ""
+echo "  # Segment 10"
+echo "  cd $SEGMENT10_DIR && bash runtime_flags_guide.sh"
+echo ""
