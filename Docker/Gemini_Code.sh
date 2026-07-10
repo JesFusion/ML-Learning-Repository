@@ -1187,7 +1187,7 @@ LABEL stage="test"
 LABEL description="Test stage: runs unit tests"
 
 WORKDIR /build
-
+ 
 COPY tests/ ./tests/
 
 # Run tests (would fail if tests don't pass, stopping the build)
