@@ -3,6 +3,10 @@
 set -euo pipefail
 
 
+source "$(pwd)/bash-scripting/funcs.sh"
+
+
+
 log() {
 
   if [[ $# -eq 1 ]]; then
@@ -1060,22 +1064,210 @@ fi
 
 
 
+# ===================================== SEGMENT 7 — FUNCTIONS: MODULARITY AND REUSE =====================================
+
+
+
+acquire_the_time() {
+  date +%s
+}
+
+
+function get_the_name_of_the_host {
+  hostname
+}
+
+
+echo "POSIX function acquire_the_time -> $(acquire_the_time)"
+
+echo "Bash function get_the_name_of_the_host -> $(get_the_name_of_the_host)"
+
+
+add_two_numbers() {
+  declare -i first_number="$1"
+
+  declare -i second_number="$2"
+
+  the_addition=$((first_number + second_number))
+
+  echo "$the_addition"
+}
+
+
+
+
+echo "The sum of 2000 and 3000 is $(add_two_numbers 2000 3000)"
+
+
+
+port_validation() {
+
+  local the_port="$1"
+
+  if [[ "$the_port" =~ ^[0-9]+$ ]] && (( the_port >= 1 && the_port <= 65535 )); then
+    
+    echo "Port $the_port is valid. Proceeding..."
+
+    return 0 # successful (assigned only to number 0)
+  
+  fi
+
+  return 1 # failed (failure is for any number >= 1)
+
+}
+
+
+
+
+checksum_calculation() {
+  
+  local the_input="$1"
+
+  echo "$the_input" | md5sum | cut -d' ' -f1
+  
+}
+
+
+
+# echo "jesse is cool" | md5sum | cut -d' ' -f1
+
+
+
+if port_validation 9103; then
+
+  echo "port_validation: 9013 is valid (return 0 received)"
+
+fi
+
+
+
+
+the_checksum=$(checksum_calculation "bash-script-segmenmt-7")
+
+
+echo "checksum_calculation: \"$the_checksum\""
+
+
+
+
+number_comparer(){
+  declare -n args="$1"
+
+  declare -i the_first_number="${args[0]}"
+  
+  declare -i the_second_number="${args[1]}"
+
+  if (( the_first_number > the_second_number )); then
+    
+    echo "$the_first_number is greater than $the_second_number"
+  
+  else
+
+    echo "$the_second_number is greater than $the_first_number"
+
+  fi
+}
+
+
+
+declare -a arguments=(143 238)
+
+
+number_comparer arguments
+
+
+
+
+evaluate_list_of_servers() {
+
+  declare -n the_servers="$1"
+
+  local -i server_number=0
+
+
+  for server in "${the_servers[@]}"; do
+
+    (( server_number++ )) || true
+
+    echo "Processing server $server_number: $server"
+  done
+
+  # server_number=$((server_number + 1))
+
+
+  if [ "${#the_servers[@]}" -eq $server_number ]; then
+    
+    echo "Accurately processed $server_number servers"
+  
+  else
+
+    echo "[WARNING] ${#the_servers[@]} uploaded, but $server_number processed"
+
+  fi
+}
 
 
 
 
 
 
+declare -a production_servers=("web-01.prod" "web-02.prod" "db-01.prod" "dock-02.dev" "k8-01.prod")
+
+
+
+evaluate_list_of_servers production_servers
+
+
+
+
+
+server_that_greets() {
+  
+  echo "Server was deployed to $1"
+
+}
+
+
+
+
+export -f server_that_greets
+
+
+bash -c 'echo""
+
+declare -a servers=("server-1" "server-2" "server-3")
+
+for sv in "${servers[@]}"; do
+  server_that_greets "$sv"
+done
+
+'
+
+
+
+if false; then
+
+  cat <<'EOF' > "${workspace_folder%workspace/}funcs.sh"
+  #!/usr/bin/env bash
+  set -euo pipefail
+
+
+  jesse_echo() {
+    output_message="$1"
+
+    echo "[BASH-SCRIPTING] $output_message"
+  }
+
+EOF
+
+fi
 
 
 
 
 
 
-
-trap 'echo ""' DEBUG
-
-
+jesse_echo "Segment 7 complete — Functions, namerefs, and export -f"
 
 
 

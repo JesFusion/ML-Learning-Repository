@@ -14,8 +14,8 @@ addopts = [
 
 
 testpaths = [
-    "Pytest",
-    "FastAPI/fastAPI_test.py"
+    "Pytest/test_functions.py",
+    # "FastAPI/fastAPI_test.py"
 ]
 
 markers = [

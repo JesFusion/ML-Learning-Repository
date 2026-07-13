@@ -70,8 +70,7 @@ validate_port() {
 # 💡 EXPLANATION: Closes the 'validate_port' function definition.
 }
 
-# [COMMAND MEANING] result=$(fn) = Command substitution that captures all stdout
-#                   of a function as the return data by forking a subshell.
+# [COMMAND MEANING] result=$(fn) = Command substitution that captures all stdout of a function as the return data by forking a subshell.
 # 💡 EXPLANATION: Defines a function 'calculate_checksum'.
 calculate_checksum() {
 # 💡 EXPLANATION: Assigns the first positional argument '$1' to the function-scoped 'local' variable 'input'.
@@ -99,11 +98,8 @@ pass "calculate_checksum: '$CHECKSUM'"
 # 💡 EXPLANATION: Prints the section header for namerefs.
 section "7-PRECISION: declare -n — Nameref for Array Passing"
 
-# [COMMAND MEANING] declare -n = Creates a nameref: a variable that is a
-#                   transparent alias for another variable by name reference.
-#                   This is the ONLY safe way to pass arrays to functions.
-# [WATCH OUT]: The nameref variable name must NOT shadow the original array name
-#              or you get a circular reference error.
+# [COMMAND MEANING] declare -n = Creates a nameref: a variable that is a transparent alias for another variable by name reference. This is the ONLY safe way to pass arrays to functions.
+# [WATCH OUT]: The nameref variable name must NOT shadow the original array name or you get a circular reference error.
 
 # 💡 EXPLANATION: Defines the function 'process_server_list'.
 process_server_list() {
@@ -133,10 +129,8 @@ process_server_list PROD_SERVERS  # Pass the NAME of the array, not its value
 # 💡 EXPLANATION: Prints the section header for exporting functions.
 section "7-DEVOPS: export -f — Functions to Child Processes"
 
-# [COMMAND MEANING] export -f funcname = Serializes the function definition into
-#                   the environment so spawned child bash processes can use it.
-# [WATCH OUT]: export -f is the mechanism exploited by the Shellshock CVE-2014-6271
-#              vulnerability. Never export functions that process untrusted input.
+# [COMMAND MEANING] export -f funcname = Serializes the function definition into the environment so spawned child bash processes can use it.
+# [WATCH OUT]: export -f is the mechanism exploited by the Shellshock CVE-2014-6271 vulnerability. Never export functions that process untrusted input.
 # 💡 EXPLANATION: Defines a simple single-line function 'greet_server' that echos its first argument.
 greet_server() { echo "  Deployed to: $1"; }
 # 💡 EXPLANATION: The 'export' built-in with the '-f' (function) flag modifies the environment variables so that any subshell or child bash process spawned from this script will inherit the definition of the 'greet_server' function.
@@ -150,8 +144,7 @@ pass "export -f: function called successfully in child bash process"
 # [COMMAND MEANING] source = Executes a file in the current shell context,
 #                   importing its functions and variables without a fork.
 # [COMMAND MEANING] . (dot) = POSIX-compliant alias for source; works in /bin/sh.
-# [WHAT ELSE]: Always source library files at the top of your script after
-#              set -euo pipefail so errors in the library abort early.
+# [WHAT ELSE]: Always source library files at the top of your script after set -euo pipefail so errors in the library abort early.
 
 # 💡 EXPLANATION: Logs the successful completion of Segment 7.
 pass "Segment 7 complete — Functions, namerefs, and export -f."

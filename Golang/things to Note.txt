@@ -1,0 +1,67 @@
+{
+    List of verbs for every primary data type:
+ General & Universal Verbs
+
+    - %v: The value in a default format (the ultimate shortcut; Go will guess the type for you).
+
+    - %+v: Adds field names when printing a struct.
+
+    - %T: Prints the data type of the variable instead of its value.
+
+
+
+
+    Text & Character Verbs
+
+    - %s: Strings (string).
+
+    - %q: A quoted string (useful for debugging strings with hidden spaces or tabs).
+
+    - %c: A character (rune).
+
+
+
+
+
+    Number Verbs
+
+    - %d: Standard base-10 integers (int, int64, uint16, etc.).
+
+    - %f: Standard decimal floating-point numbers (float64, float32).
+
+    - %.2f: Floating-point number restricted to 2 decimal places.
+
+    - %b: Base-2 Binary representation (prints the raw 0s and 1s of a number).
+
+    - %x: Base-16 Hexadecimal representation (lowercase letters, common for hashes/tokens).
+
+
+
+
+
+    Boolean & Memory Verbs
+
+    - %t: Booleans (true or false).
+
+    - %p: Pointer address (the physical hexadecimal address where the variable lives in memory).
+
+},
+
+
+
+{
+    3 Times You CANNOT Just Use %v
+    
+    
+    1. When formatting Floating-Point Decimals
+    If you have a float like 3.1415926535 and you want to display it as a clean version number or percentage, %v will print the whole messy sequence. You must use %.2f to restrict it to two decimal places.
+
+
+    2. When inspecting Struct Data
+    If you use %v on a struct, it only prints the raw values: {"jesfusion", 8080}. If you want to see the key names for easy debugging, you must use %+v to get {Username:jesfusion, Port:8080}.
+
+    
+    3. When converting to Binary, Hex, or Data Types
+    If you want to print a system port number in raw binary for debugging network packets, or find out what underlying type an environment variable parsed into, %v cannot help you. You must use %b (binary), %x (hex), or %T (type).
+
+}

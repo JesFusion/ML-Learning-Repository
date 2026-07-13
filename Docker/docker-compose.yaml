@@ -1,0 +1,46 @@
+# 'version' tells Compose what schema rules to follow. 3.9 is very standard.
+version: '3.9'
+
+# 'services' are the actual containers we want to run.
+services:
+  # First service using our basic Dockerfile.
+  processor_standard:
+    # Standard build: uses default caching
+    # 'build' defines how to construct the image.
+    build:
+      # 'context: .' means use the current directory to find files.
+      context: .
+      # Point to our standard Dockerfile.
+      dockerfile: Dockerfile
+    # Naming the container so it doesn't get a random auto-generated name.
+    container_name: processor_standard
+    # cache_from: tells BuildKit to use an external image as cache source
+    # If processor:latest exists, its layers are used as cache before rebuilding
+    # Useful in CI: previous builds provide cache for faster builds
+    # Format: 
+    cache_from: ["image:tag", "docker.io/registry/image:tag"]
+    # 'environment' injects environment variables into the running container.
+    environment:
+      # PYTHONUNBUFFERED=1 does the same thing as 'python -u'. It stops Python from delaying log output.
+      PYTHONUNBUFFERED: "1"
+    # 'command' overrides the CMD from the Dockerfile.
+    command: python -u src/processor.py
+  
+  # Second service using our advanced BuildKit Dockerfile.
+  processor_buildkit:
+    # BuildKit build: uses RUN --mount=type=cache for optimization
+    # Requires DOCKER_BUILDKIT=1 environment variable
+    # Dockerfile.cache uses cache mounts for apt and pip caches
+    build:
+      context: .
+      dockerfile: Dockerfile.cache
+      # cache_to: exports build cache to a backend for reuse
+      # Useful for CI/CD: saves cache to registry for stateless builders
+      # Options: type=registry, type=gha, type=s3, type=local
+      # 'cache_to' literally bundles the build cache into the image so another computer can pull it and use it to speed up THEIR builds!
+      cache_to: ["type=inline"]  # Embeds cache in image manifest
+    container_name: processor_buildkit
+    environment:
+      PYTHONUNBUFFERED: "1"
+    command: python -u src/processor.py
+# Close the Compose Heredoc.

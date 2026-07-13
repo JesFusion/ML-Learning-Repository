@@ -34,4 +34,20 @@
     Sharing data between multiple containers => Managed Volume
     
     CI/CD where host paths are unpredictable => Managed Volume
+},
+{
+    Cache points of Package Installers:
+
+    A) System Packages (apt):
+    
+        1) /var/cache/apt
+            This is where Ubuntu/Debian stores downloaded .deb installer files
+    
+        2) /var/lib/apt
+            This is where it stores the metadata package lists downloaded when you run "apt-get update"
+
+    B) Python Packages (pip):
+
+        1) /root/.cache/pip
+            This is the default directory where pip stores downloaded '.whl' (wheel) files and source tarballs before installing them
 }
