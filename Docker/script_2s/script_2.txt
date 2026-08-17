@@ -2170,6 +2170,82 @@ EOF
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     # ===================================== SEGMENT 6: LAYER CACHING AND BUILD OPTIMIZATION =====================================
 
 
@@ -2617,6 +2693,1127 @@ fi
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ===================================== SEGMENT 7: MULTI-STAGE BUILDS AND BASE IMAGES =====================================
+
+python3="/home/jesfusion/drive-folder/drive/devops-linux-venv-virtual/bin/python3"
+
+segment_7_folder="/home/jesfusion/container-end/docker-practice/segment-7"
+
+
+
+if [ -d "$segment_7_folder" ]; then
+    rm -rf "$segment_7_folder"
+    mkdir -p "$segment_7_folder"
+else
+    mkdir -p "$segment_7_folder"
+fi
+
+cd "$segment_7_folder" && mkdir src models tests
+
+logging_info(){
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] INFO: $1"
+}
+
+
+
+export MODEL_PATH="${segment_7_folder}/models/"
+
+
+
+
+
+# writing model-building.py script...
+
+
+cat <<'EOF' > "${segment_7_folder}/src/model-building.py"
+#!/usr/bin/env python3
+# ============================================================================
+# Python shebang
+# ============================================================================
+#
+# This tells the operating system: "If someone runs this file directly 
+# (like ./train_model.py), use Python 3 to execute it."
+#
+# '/usr/bin/env python3' is more portable than '/usr/bin/python3' because 
+# 'env' finds Python wherever it's installed, rather than assuming a 
+# specific path.
+
+
+
+"""
+ML model training script.
+
+This script runs in the BUILDER STAGE of a multi-stage Dockerfile.
+- It loads a dataset (Iris flowers)
+- Trains an AI model (Random Forest classifier)
+- Saves the trained model to /models/iris_model.pkl
+
+The final container will only copy the trained model file, NOT this script
+or the training libraries (scikit-learn, etc.). This keeps the final image small.
+"""
+
+# ============================================================================
+# [IMPORT] 'sys' - Interact with the Python interpreter
+# ============================================================================
+#
+# 'sys' is a built-in Python module that lets us interact with the Python interpreter itself. We use it to access things like command-line arguments,
+# exit codes, and system configuration.
+
+import sys
+
+
+
+import logging
+
+# ============================================================================
+# [IMPORT] 'pickle' - Save and load Python objects
+# ============================================================================
+#
+# 'pickle' is a tool that takes a live Python object (like a trained AI model)
+# and converts it into a byte stream (serializes it) so it can be saved to a
+# file. Later, we can load the file and unpickle it to get the object back.
+#
+# Think of it like taking a snapshot of an object's state and saving it to disk.
+
+import pickle
+
+# ============================================================================
+# [IMPORT] 'os' - Interact with the operating system
+# ============================================================================
+#
+# 'os' lets us interact with the operating system (like reading folders,
+# checking if files exist, getting environment variables, etc.).
+
+import os
+
+# ============================================================================
+# [IMPORT] 'Path' from 'pathlib' - Work with file paths safely
+# ============================================================================
+#
+# 'pathlib' is a modern Python module for working with file paths.
+# 'Path' is a class that makes working with file paths much easier and safer,
+# especially when you need to work across different operating systems
+# (Windows, Linux, Mac) that use different path separators (\ vs /).
+#
+# Instead of manually concatenating strings like "models/" + "iris_model.pkl",
+# we can use Path objects like: Path("/models") / "iris_model.pkl"
+
+from pathlib import Path
+
+# ============================================================================
+# [IMPORT] Scikit-learn - Machine learning library
+# ============================================================================
+#
+# Scikit-learn (sklearn) is a massive, well-known machine learning library
+# with hundreds of pre-built AI algorithms.
+#
+# 'load_iris' brings in a famous beginner dataset: measurements of iris flowers.
+# This dataset is simple, small, and perfect for learning.
+
+from sklearn.datasets import load_iris
+
+# ============================================================================
+# [IMPORT] 'train_test_split' - Divide data for testing
+# ============================================================================
+#
+# When training an AI model, we need to:
+#   1. Show it training data so it can learn
+#   2. Test it on separate data it's never seen before
+#
+# 'train_test_split' randomly divides our data into a "training" pile and 
+# a "testing" pile. This ensures the test data is completely fresh and 
+# gives us an honest measure of how well the model works.
+
+from sklearn.model_selection import train_test_split
+
+# ============================================================================
+# [IMPORT] 'RandomForestClassifier' - The AI algorithm
+# ============================================================================
+#
+# 'RandomForestClassifier' is our actual AI algorithm. It works by building
+# lots of decision trees (100, in our case) and having them vote on the answer.
+# It's called "Random Forest" because:
+#   - "Random": Each tree is built using random subsets of the data
+#   - "Forest": There are many trees
+#   - "Classifier": It classifies data into categories
+#
+# This algorithm is great for beginners because it works well on many types
+# of data and doesn't require much tuning.
+
+from sklearn.ensemble import RandomForestClassifier
+
+# ============================================================================
+# [IMPORT] Scoring and reporting tools
+# ============================================================================
+#
+# These tools help us grade how well our AI did:
+#   - 'accuracy_score': Calculates what percentage of guesses were correct
+#   - 'classification_report': Gives detailed statistics about performance
+#     on each category (precision, recall, F1-score)
+
+from sklearn.metrics import accuracy_score # , classification_report
+
+# ============================================================================
+# Configure logging to show INFO level messages
+# ============================================================================
+#
+# logging.basicConfig() sets up the logging system.
+# level=logging.INFO means: "Show me INFO messages and more serious ones
+# (WARNING, ERROR, CRITICAL). Don't show DEBUG messages."
+
+logging.basicConfig(level=logging.INFO)
+
+# ============================================================================
+# Create a logger for this specific file
+# ============================================================================
+#
+# Each Python file can have its own logger. This one will identify messages
+# as coming from this file. '__name__' is a special variable that equals
+# the module name (in this case, '__main__').
+
+logger = logging.getLogger(__name__)
+
+# ============================================================================
+# [FUNCTION] train_model() - The main training logic
+# ============================================================================
+#
+# This function handles all the machine learning work:
+#   1. Load the iris dataset
+#   2. Split it into training and testing portions
+#   3. Train the Random Forest classifier
+#   4. Evaluate how accurate it is
+#   5. Save the trained model to a file
+#
+# By putting all this logic in a function, we can:
+#   - Reuse it easily
+#   - Test it separately
+#   - Call it from other scripts
+
+
+
+
+try:
+    model_storage_path = os.environ.get("MODEL_PATH")
+
+except (FileNotFoundError, Exception) as error:
+
+    logging.info(f"Folder path for the model doesn't seem to exist: {error}")
+
+
+def train_model():
+    """Train a simple ML model and save it."""
+    
+    # ====================================================================
+    # Load the iris dataset
+    # ====================================================================
+    logger.info("Loading Iris dataset")
+    
+    # The iris dataset is a collection of measurements from 150 iris flowers.
+    # Each flower has 4 measurements (sepal length, sepal width, petal length, 
+    # petal width) and is labeled with its species (Setosa, Versicolor, 
+    # or Virginica).
+    #
+    # 'X' holds the features (measurements) - the INPUT data
+    # 'y' holds the target answers (species names) - the OUTPUT we want to predict
+    
+    # iris = 
+    X, y = load_iris(return_X_y = True)
+    
+    # ====================================================================
+    # Split the data: 80% training, 20% testing
+    # ====================================================================
+    logger.info("Splitting data: 80% train, 20% test")
+    
+    # We take 20% of the data and hide it from the AI during training so we can
+    # test it later with fresh data. This is called "held-out test set" and gives
+    # us an honest measure of how well the model works on new data it's never seen.
+    #
+    # 'random_state=42' ensures the random split is exactly the same every time
+    # we run the script. This makes results reproducible (same result every run).
+    # The number 42 is arbitrary—any number works, but 42 is a famous "magic number"
+    # in computer science!
+    
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=20
+    )
+    
+    # ====================================================================
+    # Train the Random Forest classifier
+    # ====================================================================
+    logger.info("Training Random Forest classifier")
+    
+    # We create an empty AI brain (100 decision trees).
+    # n_estimators=100 means we'll build 100 trees and have them vote
+    # random_state=42 again ensures reproducibility
+    
+    model = RandomForestClassifier(n_estimators=100, random_state=42)
+    
+    # Now we feed the model the training data so it can learn!
+    # This is the heavy, CPU-intensive part where the algorithm actually runs
+    # and builds its decision trees based on patterns in the data.
+    
+    model.fit(X_train, y_train)
+    
+    # ====================================================================
+    # Evaluate the model on the test data
+    # ====================================================================
+    logger.info("Evaluating model...")
+    
+    # We ask the trained AI to guess the answers for our hidden test data.
+    # It doesn't know the real answers yet—we're testing it.
+    
+    y_pred = model.predict(X_test)
+    
+    # Now we compare the AI's guesses to the real answers.
+    # accuracy_score returns a percentage (0.0 to 1.0) of how many were correct.
+    
+    accuracy = accuracy_score(y_test, y_pred)
+    
+    # Print the accuracy score, formatted to 4 decimal places
+    # (e.g., 0.9667 means 96.67% correct)
+    
+    logger.info(f"Accuracy: {accuracy:.4f}")
+    
+    # ====================================================================
+    # Save the trained model to a file
+    # ====================================================================
+    
+    # We define exactly where we want to save our trained AI brain.
+    # In Docker, this will be /models/iris_model.pkl
+    
+    model_path = Path(f"{model_storage_path}/iris_model.pkl")
+    
+    # Create the /models directory if it doesn't exist
+    # parents=True creates any parent directories needed
+    # exist_ok=True doesn't error if the folder already exists
+    
+    model_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    logger.info(f"Saving model to {model_path}")
+    
+    # Open the file in 'wb' (Write Binary) mode, and use pickle.dump to
+    # stuff our trained AI model into the file. The 'with' statement ensures
+    # the file gets closed properly even if something goes wrong.
+    
+    with open(model_path, 'wb') as ai_model:
+        pickle.dump(model, ai_model)
+    
+    logger.info("Model training complete")
+    
+    # Hand the model object and its accuracy score back to whoever called this function
+    return model, accuracy
+
+
+# ============================================================================
+# Classic Python trick: Only run this code if the file is run directly
+# ============================================================================
+#
+# This line means: "If I run this script directly (like python train_model.py),
+# execute the code below. But if another file imports this (like another Python
+# file saying 'from train_model import train_model'), don't run this code."
+#
+# This is a Python convention that separates:
+#   - Code that should always run (imports, function definitions)
+#   - Code that should only run when the file is the main program
+#
+# The '__name__' variable is special: it equals '__main__' when the file
+# is run directly, but equals the module name when imported.
+
+if __name__ == '__main__':
+    # Run our training function and grab the results
+    output_model, output_accuracy = train_model()
+    
+    # Print a success message
+    print(f"SUCCESS: Model trained with {output_accuracy:.4f} accuracy")
+
+
+EOF
+
+echo "1) Model training script created at ${segment_7_folder}/src/model-building.py"
+
+
+
+
+
+
+# writng model-testing.py script...
+
+
+
+cat <<'EOF' > "${segment_7_folder}/src/model-testing.py"
+#!/usr/bin/env python3
+# ============================================================================
+# Python shebang for the prediction script
+# ============================================================================
+
+"""
+Model prediction/inference script.
+
+This script:
+1. Loads a pre-trained model (copied from the builder stage)
+2. Makes predictions using that model
+3. Returns probabilities for each class
+
+It does NOT train anything. It only uses a trained model that was built
+in the builder stage. This is what goes in the FINAL runtime stage.
+
+Because it only loads and runs the model, the final image only needs:
+   - Python
+   - pickle (built-in)
+   - numpy (small)
+   - The model file
+
+It does NOT need scikit-learn, which saves about 200+ MB of image size!
+"""
+
+# ============================================================================
+# [IMPORT] Pickle and logging
+# ============================================================================
+
+import pickle
+import logging
+from pathlib import Path
+
+# ============================================================================
+# [IMPORT] NumPy - Standard numerical computing library
+# ============================================================================
+#
+# NumPy is the standard library for handling arrays and numbers in Python.
+# Machine learning libraries depend on NumPy, so it has to be installed in the
+# final image. But NumPy is much smaller than scikit-learn.
+
+import os
+
+# ============================================================================
+# Configure logging
+# ============================================================================
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+try:
+    model_storage_path = os.environ.get("MODEL_PATH")
+
+except (FileNotFoundError, Exception) as error:
+
+    logging.info(f"Folder path for the model doesn't seem to exist: {error}")
+
+
+# ============================================================================
+# [FUNCTION] load_model() - Wake up the saved AI brain
+# ============================================================================
+#
+# This function loads a pre-trained model that was saved by the training script.
+# It unpickles the binary file and reconstructs the model object.
+
+def load_model(
+    model_path: str
+):
+    """Load a pre-trained model from disk."""
+    
+    logger.info(f"\n\n\nLoading model from {model_path}")
+    
+    # Open the file in 'rb' (Read Binary) mode
+    with open(model_path, 'rb') as ai_binary:
+        # Use pickle.load to resurrect the AI model from the binary file!
+        # It reconstructs the exact model object that was saved
+        model = pickle.load(ai_binary)
+    
+    logger.info("Model loaded successfully")
+
+    return model
+
+
+# ============================================================================
+# [FUNCTION] predict() - Use the AI brain to make predictions
+# ============================================================================
+#
+# This function takes a trained model and feature measurements,
+# and returns the model's prediction and confidence scores.
+
+def model_predict(model, features):
+    """Make a prediction with the model.
+    
+    Args:
+        model: A trained RandomForestClassifier
+        features: A list of 4 measurements (sepal_length, sepal_width,
+                 petal_length, petal_width)
+    
+    Returns:
+        A dictionary with the prediction, probabilities, and class names
+    """
+    
+    logger.info(f"Making prediction for features: {features}")
+    
+    # We feed the features (measurements) into the AI, and it spits out
+    # a prediction (which species it thinks the flower is).
+    # The [features] syntax wraps our single measurement in a list because
+    # the model expects a 2D array (multiple flowers).
+    
+    prediction = model.predict([features])
+    
+    # It also spits out how confident it is about its guess.
+    # This gives us probabilities for each possible class (species).
+    # probabilities[0] is the probabilities array for the first flower.
+    
+    probabilities = model.predict_proba([features])
+    
+    # We package the results into a nice dictionary and return it
+
+    output = {
+        'prediction': int(prediction[0]),  # Convert to regular Python int
+        'probabilities': probabilities[0].tolist(),  # Convert to regular list
+        'class_names': ['Setosa', 'Versicolor', 'Virginica']  # Readable names
+    }
+
+    return output
+
+
+# ============================================================================
+# Classic Python trick again: Only run if this file is the main program
+# ============================================================================
+
+if __name__ == '__main__':
+    # Load the resurrected model
+
+    ai_model_path = (Path(f"{model_storage_path}") / "iris_model.pkl").resolve()
+
+    model = load_model(model_path = ai_model_path)
+    
+    # Create a sample iris measurement for testing
+    # These are real measurements from an Iris Setosa flower
+    sample = [5.1, 3.5, 1.4, 0.2]
+    
+    # Ask the AI what kind of flower it thinks this is!
+    result = model_predict(model, sample)
+    
+    # Print the results in a human-readable format
+    print(f"Prediction: {result['class_names'][result['prediction']]}")
+    print(f"Probabilities: {result['probabilities']}")
+
+
+
+EOF
+
+
+echo "2) Prediction script created at ${segment_7_folder}/src/model-testing.py"
+
+
+
+
+
+
+# copying Dockerfile into the project folder and verifing it has been copied...
+
+cat <<'EOF' > "${segment_7_folder}/Dockerfile"
+# ===================================== DOCKERFILE: MULTI-STAGE BUILDS =====================================
+
+# ===================================== STAGE 1: BUILDER =====================================
+
+
+FROM python:3.11-slim AS builder-image
+
+
+LABEL current-stage="builder-stage" image-description="Builder stage with training dependencies"
+
+WORKDIR /build-folder
+
+ENV MODEL_PATH=/build-folder/models
+
+RUN --mount=type=cache,target=/root/.cache/pip,id=docker-python-cache \
+    pip install scikit-learn==1.3.0 \
+    numpy==1.24.0 && \
+    mkdir -p ${MODEL_PATH}
+
+
+COPY src/model-building.py .
+
+RUN python model-building.py
+
+
+
+
+
+# ===================================== STAGE 2: TEST =====================================
+
+FROM python:3.11-slim AS test-image
+LABEL current-stage="test" \
+      image-description="Test stage for model validation" \
+      image-creator="Nwachukwu Jesse Chijioke" \
+      creator-email="workemailaddress73@gmail.com"
+
+      
+ENV MODEL_PATH=/test-folder/models/ \
+    PYTHONPATH=/test-folder/packages
+
+    
+WORKDIR /test-folder
+
+
+# copy numpy installation from builder-image
+COPY --from=builder-image /usr/local/lib/python3.11/site-packages/numpy* /test-folder/packages/
+
+# Copy standard binary wrappers if necessary (usually not required for pure numpy scripts)
+COPY --from=builder-image /usr/local/bin /usr/local/bin
+
+
+COPY --from=builder-image /build-folder/models /test-folder/models
+
+
+# RUN --mount=type=cache,target=/root/.cache/pip,id=docker-python-cache \
+#     pip install numpy==1.24.0
+
+COPY src/model-testing.py .
+
+RUN python model-testing.py
+
+
+
+
+
+
+
+# ===================================== STAGE 3: RUNTIME =====================================
+
+
+FROM python:3.11-slim AS runtime-image
+
+LABEL description="Production runtime with trained model"
+
+ENV PYTHONUNBUFFERED=1 \
+    MODEL_PATH=/runtime-folder/models/ \
+    PYTHONPATH=/runtime-folder/packages
+
+COPY --from=builder-image /usr/local/lib/python3.11/site-packages/numpy* /runtime-folder/packages/
+
+COPY --from=builder-image /usr/local/bin /usr/local/bin
+
+WORKDIR /runtime-folder
+
+COPY --from=builder-image /build-folder/models /runtime-folder/models
+
+COPY src/model-testing.py .
+
+CMD ["python", "/runtime-folder/model-testing.py"]
+
+
+EOF
+
+
+
+echo "3) Standard Dockerfile (multi-stage) created"
+
+
+
+# copying distroless Dockerfile variant into the project folder and verifing it has been copied...
+
+
+cat <<'EOF' > "${segment_7_folder}/Dockerfile.distroless"
+# ===================================== DOCKERFILE: DISTROLESS VARIANT =====================================
+
+
+# ===================================== BUILDER STAGE =====================================
+
+FROM python:3.11-slim AS builder-image-2
+
+ARG cache_ID=docker-python-cache
+
+ENV MODEL_PATH=/build-folder-2/models
+
+WORKDIR /build-folder-2
+
+RUN --mount=type=cache,target=/root/.cache/pip,id=${cache_ID} \
+    pip install scikit-learn==1.3.0 \
+    numpy==1.24.0 && \
+    mkdir -p ${MODEL_PATH}
+
+COPY src/model-building.py .
+
+RUN ["python", "model-building.py"]
+
+
+
+
+# ===================================== RUNTIME STAGE =====================================
+
+FROM gcr.io/distroless/python3-debian12:nonroot
+
+LABEL image-description="Minimal distroless image with trained model"
+
+ENV MODEL_PATH=/testing-folder-2-distroless/models \
+    PYTHONPATH=/testing-folder-2-distroless/packages \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /testing-folder-2-distroless
+
+COPY --from=builder-image-2 /build-folder-2/models /testing-folder-2-distroless/models
+
+COPY --from=builder-image-2 /usr/local/lib/python3.11/site-packages/numpy* /testing-folder-2-distroless/packages/
+
+COPY src/model-testing.py .
+
+
+# Shell is gone, so we use pure absolute paths in the Exec form array
+
+CMD ["python3", "/testing-folder-2-distroless/model-testing.py"]
+
+
+EOF
+
+echo "4) Distroless Dockerfile created"
+
+
+
+
+
+# copying Alpine Dockerfile variant into the project folder and verifing it has been copied...
+
+cat <<'EOF' > "${segment_7_folder}/Dockerfile.alpine"
+# ===================================== DOCKERFILE: ALPINE VARIANT =====================================
+
+
+# ===================================== BUILDER STAGE =====================================
+
+FROM python:3.11-slim AS builder-image-3
+
+LABEL current-stage="builder-stage" image-description="Alpine builder stage with training dependencies"
+
+WORKDIR /build-folder-3
+
+ENV MODEL_PATH=/build-folder-3/models
+
+RUN --mount=type=cache,target=/root/.cache/pip,id=docker-python-cache \
+    pip install scikit-learn==1.3.0 \
+    numpy==1.24.0 && \
+    mkdir -p ${MODEL_PATH}
+
+COPY src/model-building.py .
+
+RUN python model-building.py
+
+
+
+
+
+# ===================================== RUNTIME STAGE =====================================
+
+FROM python:3.11-slim AS test-image-2
+
+
+LABEL current-stage="Test Stage" \
+    image-description="Test stage for model validation" \
+      image-creator="Nwachukwu Jesse Chijioke" \
+      creator-email="workemailaddress73@gmail.com"
+
+
+ENV MODEL_PATH=/test-folder-2/models/ \
+    PYTHONPATH=/test-folder-2/packages
+    
+WORKDIR /test-folder-2
+
+COPY --from=builder-image-3 /usr/local/lib/python3.11/site-packages/ /test-folder-2/packages/
+COPY --from=builder-image-3 /usr/local/bin /usr/local/bin
+COPY --from=builder-image-3 /build-folder-3/models /test-folder-2/models
+
+
+COPY src/model-testing.py .
+
+RUN python model-testing.py
+
+
+
+
+
+
+
+# ===================================== ALPINE STAGE =====================================
+FROM python:3.11-alpine AS runtime-image-2
+
+LABEL description="Production ultra-light Alpine runtime with trained model"
+
+ENV PYTHONUNBUFFERED=1 \
+    MODEL_PATH=/runtime-folder-2/models/
+
+
+WORKDIR /runtime-folder-2
+
+
+RUN apk add --no-cache \
+    py3-numpy
+
+
+COPY --from=builder-image-3 /build-folder-3/models /runtime-folder-2/models
+
+
+COPY src/model-testing.py .
+
+
+CMD ["python", "model-testing.py"]
+
+
+EOF
+
+
+echo "5) Alpine Dockerfile created"
+
+
+
+
+
+
+# copying Alpine Dockerfile variant into the project folder and verifing it has been copied...
+
+cat <<'EOF' > "${segment_7_folder}/Dockerfile.debian"
+# ===================================== DOCKERFILE: DEBIAN VARIANT =====================================
+
+# ===================================== STAGE 1: BUILDER =====================================
+
+FROM python:3.11-slim AS builder-image-4
+
+LABEL current-stage="builder-stage" image-description="Debian builder stage with training dependencies"
+
+
+WORKDIR /build-folder-4
+
+ENV MODEL_PATH=/build-folder-4/models
+
+
+RUN --mount=type=cache,target=/root/.cache/pip,id=docker-python-cache \
+    pip install scikit-learn==1.3.0 \
+    numpy==1.24.0 && \
+    mkdir -p ${MODEL_PATH}
+
+
+COPY src/model-building.py .
+
+RUN python model-building.py
+
+
+# ===================================== STAGE 2: TEST =====================================
+
+FROM python:3.11-slim AS test-image-3
+
+LABEL current-stage="Test Stage" \
+    image-description="Test stage for model validation" \
+    image-creator="Nwachukwu Jesse Chijioke" \
+    creator-email="workemailaddress73@gmail.com"
+
+
+
+ENV MODEL_PATH=/test-folder-3/models/ \
+    PYTHONPATH=/test-folder-3/packages
+
+
+WORKDIR /test-folder-3
+
+
+COPY --from=builder-image-4 /usr/local/lib/python3.11/site-packages/ /test-folder-3/packages/
+COPY --from=builder-image-4 /usr/local/bin /usr/local/bin
+COPY --from=builder-image-4 /build-folder-4/models /test-folder-3/models
+
+
+COPY src/model-testing.py .
+
+RUN python model-testing.py
+
+
+# ===================================== STAGE 3: RUNTIME =====================================
+
+FROM python:3.11-slim AS runtime-image-3
+
+LABEL description="Production Debian slim runtime with trained model"
+
+ENV PYTHONUNBUFFERED=1 \
+    MODEL_PATH=/runtime-folder-4/models/ \
+    PYTHONPATH=/runtime-folder-4/packages/
+
+
+WORKDIR /runtime-folder-4
+
+
+COPY --from=test-image-3 /test-folder-3/packages/ /runtime-folder-4/packages/
+COPY --from=test-image-3 /usr/local/bin /usr/local/bin
+COPY --from=test-image-3 /test-folder-3/models /runtime-folder-4/models
+
+
+COPY src/model-testing.py .
+
+CMD ["python", "model-testing.py"]
+
+
+EOF
+
+echo "6) Debian slim Dockerfile created"
+
+
+
+
+
+
+
+
+# copying docker-compose.yaml into the project folder and verifing it has been copied...
+
+
+cat <<'EOF' > "${segment_7_folder}/docker-compose.yaml"
+# ===================================== DOCKER-COMPOSE.YML =====================================
+
+
+
+# ===================================== Standard Variant (Standard Python Slim Build) =====================================
+
+services:
+  segment_7_standard:
+    
+    build:
+      
+      context: .
+      
+      dockerfile: Dockerfile
+
+    container_name: segment_7_standard_container
+
+    environment:
+      
+      PYTHONUNBUFFERED: "1"
+
+    volumes:
+      - shared_model_folder:/runtime-folder/models
+
+    
+
+
+
+
+# ===================================== Distroless Variant (Shell-free, Secure Runtime) =====================================
+
+  segment_7_distroless:
+    
+    build:
+      context: .
+
+      dockerfile: Dockerfile.distroless
+
+    container_name: segment_7_distroless_container
+
+    environment:
+
+      PYTHONUNBUFFERED: "1"
+
+    volumes:
+      - shared_model_folder:/testing-folder-2-distroless/models
+
+
+
+
+# ===================================== Alpine Variant (Ultra-Lightweight Musl Linux Runtime) =====================================
+
+  segment_7_alpine:
+    
+    build:
+      
+      context: .
+
+      dockerfile: Dockerfile.alpine
+
+
+    container_name: segment_7_alpine_container
+
+    environment:
+      
+      PYTHONUNBUFFERED: "1"
+
+    
+    volumes:
+      - shared_model_folder:/runtime-folder-2/models/
+
+
+# ===================================== Debian Variant (Robust GLIBC Compatible Runtime Architecture) =====================================
+
+  segment_7_debian:
+    
+    build:
+      
+      context: .
+
+      dockerfile: Dockerfile.debian
+
+
+    container_name: segment_7_debian_container
+
+
+    environment:
+      PYTHONUNBUFFERED: "1"
+
+
+    volumes:
+      - shared_model_folder:/runtime-folder-4/models/
+
+
+
+
+# ===================================== Storage Definition (Named Volumes Layout) =====================================
+
+volumes:
+
+  shared_model_folder:
+
+
+
+EOF
+
+
+echo "7) docker-compose.yaml created with multi-variant builds"
+
+
+
+
+# copying .dockerignore into the project folder and verifing it has been copied...
+
+cat <<'EOF' > "${segment_7_folder}/.dockerignore"
+tests
+EOF
+
+
+echo "8) .dockerignore created to hide the 'tests' folder"
+
+
+
+
+
+cache_variable="docker-python-cache"
+
+
+tree -a
+
+
+
+
+if false; then
+    
+    echo "Building standard (python:3.11-slim) variant..." && sleep 2
+    
+    DOCKER_BUILDKIT=1 docker build -t segment_7_ml_project:standard .
+
+    clear
+    sleep 1.5
+
+
+    echo "Building distroless variant..." && sleep 2
+
+    DOCKER_BUILDKIT=1 docker build -f \
+        Dockerfile.distroless \
+        --build-arg cache_ID=${cache_variable} -t \
+        segment_7_ml_project:distroless .
+
+    clear
+    sleep 1.5
+
+    echo "Building Alpine Variant..." && sleep 2
+
+    DOCKER_BUILDKIT=1 docker build -f Dockerfile.alpine -t segment_7_ml_project:alpine .
+
+    clear
+    sleep 1.5
+
+    echo "Building Debian-slim Variant..." && sleep 2
+
+    DOCKER_BUILDKIT=1 docker build -f Dockerfile.debian -t segment_7_ml_project:debian .
+
+    docker build -f Dockerfile \
+        --target builder-image -t \
+        segment_7_ml_project_dockerfile:builder-only .
+
+    
+    docker build -f Dockerfile.alpine \
+    --target test-image-2 -t \
+    segment_7_ml_project_dockerfile_alpine:test-only .
+
+
+fi
+
+
+sleep 2
+
+
+clear
+
+
+docker compose up --build
 
 
 

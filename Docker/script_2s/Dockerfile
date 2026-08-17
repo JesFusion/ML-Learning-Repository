@@ -720,3 +720,493 @@ CMD []
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ===================================== DOCKERFILE: MULTI-STAGE BUILDS =====================================
+
+# ===================================== STAGE 1: BUILDER =====================================
+
+
+FROM python:3.11-slim AS builder-image
+
+
+LABEL current-stage="builder-stage" image-description="Builder stage with training dependencies"
+
+WORKDIR /build-folder
+
+ENV MODEL_PATH=/build-folder/models
+
+RUN --mount=type=cache,target=/root/.cache/pip,id=docker-python-cache \
+    pip install scikit-learn==1.3.0 \
+    numpy==1.24.0 && \
+    mkdir -p ${MODEL_PATH}
+
+
+COPY src/model-building.py .
+
+RUN python model-building.py
+
+
+
+
+
+# ===================================== STAGE 2: TEST =====================================
+
+FROM python:3.11-slim AS test-image
+LABEL current-stage="test" \
+      image-description="Test stage for model validation" \
+      image-creator="Nwachukwu Jesse Chijioke" \
+      creator-email="workemailaddress73@gmail.com"
+
+      
+ENV MODEL_PATH=/test-folder/models/ \
+    PYTHONPATH=/test-folder/packages
+
+    
+WORKDIR /test-folder
+
+
+# copy numpy installation from builder-image
+COPY --from=builder-image /usr/local/lib/python3.11/site-packages/numpy* /test-folder/packages/
+
+# Copy standard binary wrappers if necessary (usually not required for pure numpy scripts)
+COPY --from=builder-image /usr/local/bin /usr/local/bin
+
+
+COPY --from=builder-image /build-folder/models /test-folder/models
+
+
+# RUN --mount=type=cache,target=/root/.cache/pip,id=docker-python-cache \
+#     pip install numpy==1.24.0
+
+COPY src/model-testing.py .
+
+RUN python model-testing.py
+
+
+
+
+
+
+
+# ===================================== STAGE 3: RUNTIME =====================================
+
+
+FROM python:3.11-slim AS runtime-image
+
+LABEL description="Production runtime with trained model"
+
+ENV PYTHONUNBUFFERED=1 \
+    MODEL_PATH=/runtime-folder/models/ \
+    PYTHONPATH=/runtime-folder/packages
+
+COPY --from=builder-image /usr/local/lib/python3.11/site-packages/numpy* /runtime-folder/packages/
+
+COPY --from=builder-image /usr/local/bin /usr/local/bin
+
+WORKDIR /runtime-folder
+
+COPY --from=builder-image /build-folder/models /runtime-folder/models
+
+COPY src/model-testing.py .
+
+CMD ["python", "/runtime-folder/model-testing.py"]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ===================================== DOCKERFILE: DISTROLESS VARIANT =====================================
+
+
+# ===================================== BUILDER STAGE =====================================
+
+FROM python:3.11-slim AS builder-image-2
+
+ARG cache_ID=docker-python-cache
+
+ENV MODEL_PATH=/build-folder-2/models
+
+WORKDIR /build-folder-2
+
+RUN --mount=type=cache,target=/root/.cache/pip,id=${cache_ID} \
+    pip install scikit-learn==1.3.0 \
+    numpy==1.24.0 && \
+    mkdir -p ${MODEL_PATH}
+
+COPY src/model-building.py .
+
+RUN ["python", "model-building.py"]
+
+
+
+
+# ===================================== RUNTIME STAGE =====================================
+
+FROM gcr.io/distroless/python3-debian12:nonroot
+
+LABEL image-description="Minimal distroless image with trained model"
+
+ENV MODEL_PATH=/testing-folder-2-distroless/models \
+    PYTHONPATH=/testing-folder-2-distroless/packages \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /testing-folder-2-distroless
+
+COPY --from=builder-image-2 /build-folder-2/models /testing-folder-2-distroless/models
+
+COPY --from=builder-image-2 /usr/local/lib/python3.11/site-packages/numpy* /testing-folder-2-distroless/packages/
+
+COPY src/model-testing.py .
+
+
+# Shell is gone, so we use pure absolute paths in the Exec form array
+
+CMD ["python3", "/testing-folder-2-distroless/model-testing.py"]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ===================================== DOCKERFILE: ALPINE VARIANT =====================================
+
+
+# ===================================== BUILDER STAGE =====================================
+
+FROM python:3.11-slim AS builder-image-3
+
+LABEL current-stage="builder-stage" image-description="Alpine builder stage with training dependencies"
+
+WORKDIR /build-folder-3
+
+ENV MODEL_PATH=/build-folder-3/models
+
+RUN --mount=type=cache,target=/root/.cache/pip,id=docker-python-cache \
+    pip install scikit-learn==1.3.0 \
+    numpy==1.24.0 && \
+    mkdir -p ${MODEL_PATH}
+
+COPY src/model-building.py .
+
+RUN python model-building.py
+
+
+
+
+
+# ===================================== RUNTIME STAGE =====================================
+
+FROM python:3.11-slim AS test-image-2
+
+
+LABEL current-stage="Test Stage" \
+    image-description="Test stage for model validation" \
+      image-creator="Nwachukwu Jesse Chijioke" \
+      creator-email="workemailaddress73@gmail.com"
+
+
+ENV MODEL_PATH=/test-folder-2/models/ \
+    PYTHONPATH=/test-folder-2/packages
+    
+WORKDIR /test-folder-2
+
+COPY --from=builder-image-3 /usr/local/lib/python3.11/site-packages/ /test-folder-2/packages/
+COPY --from=builder-image-3 /usr/local/bin /usr/local/bin
+COPY --from=builder-image-3 /build-folder-3/models /test-folder-2/models
+
+
+COPY src/model-testing.py .
+
+RUN python model-testing.py
+
+
+
+
+
+
+
+# ===================================== ALPINE STAGE =====================================
+FROM python:3.11-alpine AS runtime-image-2
+
+LABEL description="Production ultra-light Alpine runtime with trained model"
+
+ENV PYTHONUNBUFFERED=1 \
+    MODEL_PATH=/runtime-folder-2/models/
+
+
+WORKDIR /runtime-folder-2
+
+
+RUN apk add --no-cache \
+    py3-numpy
+
+
+COPY --from=builder-image-3 /build-folder-3/models /runtime-folder-2/models
+
+
+COPY src/model-testing.py .
+
+
+CMD ["python", "model-testing.py"]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ===================================== DOCKERFILE: DEBIAN VARIANT =====================================
+
+# ===================================== STAGE 1: BUILDER =====================================
+
+FROM python:3.11-slim AS builder-image-4
+
+LABEL current-stage="builder-stage" image-description="Debian builder stage with training dependencies"
+
+
+WORKDIR /build-folder-4
+
+ENV MODEL_PATH=/build-folder-4/models
+
+
+RUN --mount=type=cache,target=/root/.cache/pip,id=docker-python-cache \
+    pip install scikit-learn==1.3.0 \
+    numpy==1.24.0 && \
+    mkdir -p ${MODEL_PATH}
+
+
+COPY src/model-building.py .
+
+RUN python model-building.py
+
+
+# ===================================== STAGE 2: TEST =====================================
+
+FROM python:3.11-slim AS test-image-3
+
+LABEL current-stage="Test Stage" \
+    image-description="Test stage for model validation" \
+    image-creator="Nwachukwu Jesse Chijioke" \
+    creator-email="workemailaddress73@gmail.com"
+
+
+
+ENV MODEL_PATH=/test-folder-3/models/ \
+    PYTHONPATH=/test-folder-3/packages
+
+
+WORKDIR /test-folder-3
+
+
+COPY --from=builder-image-4 /usr/local/lib/python3.11/site-packages/ /test-folder-3/packages/
+COPY --from=builder-image-4 /usr/local/bin /usr/local/bin
+COPY --from=builder-image-4 /build-folder-4/models /test-folder-3/models
+
+
+COPY src/model-testing.py .
+
+RUN python model-testing.py
+
+
+# ===================================== STAGE 3: RUNTIME =====================================
+
+FROM python:3.11-slim AS runtime-image-3
+
+LABEL description="Production Debian slim runtime with trained model"
+
+ENV PYTHONUNBUFFERED=1 \
+    MODEL_PATH=/runtime-folder-4/models/ \
+    PYTHONPATH=/runtime-folder-4/packages/
+
+
+WORKDIR /runtime-folder-4
+
+
+COPY --from=test-image-3 /test-folder-3/packages/ /runtime-folder-4/packages/
+COPY --from=test-image-3 /usr/local/bin /usr/local/bin
+COPY --from=test-image-3 /test-folder-3/models /runtime-folder-4/models
+
+
+COPY src/model-testing.py .
+
+CMD ["python", "model-testing.py"]
+
+
+
+
+
+
+
