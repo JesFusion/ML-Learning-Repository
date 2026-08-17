@@ -50,4 +50,85 @@
 
         1) /root/.cache/pip
             This is the default directory where pip stores downloaded '.whl' (wheel) files and source tarballs before installing them
+},
+
+{
+    List of popular package managers, their default cache locations inside containers (assuming you are running as root), and the exact RUN syntax to optimize them:    
+
+    1. Python (pip):    
+        -> Default Cache Path: /root/.cache/pip
+        -> Dockerfile Implementation:
+            RUN --mount=type=cache,target=/root/.cache/pip \
+                pip install -r requirements.txt
+    
+
+    2. Node.js (npm, yarn, pnpm):
+        -> Default Cache Paths: npm: /root/.npm
+        -> yarn (Classic v1): /usr/local/share/.cache/yarn
+        -> pnpm: /root/.local/share/pnpm/store
+        -> Dockerfile Implementation:
+            i. For NPM:
+                RUN --mount=type=cache,target=/root/.npm \
+                    npm ci
+
+            ii. For PNPM:
+                RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+                    pnpm install --frozen-lockfile
+    
+
+    3. Linux OS Packages (apt - Debian/Ubuntu):
+    
+        Apt needs a small tweak because standard Docker base images are pre-configured to automatically wipe the cache after an install step to save space.
+
+        -> Default Cache Paths: /var/cache/apt and /var/lib/apt
+        -> Dockerfile Implementation:
+            RUN rm -f /etc/apt/apt.conf.d/docker-clean && \
+                echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/keep-cache
+
+            RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+                --mount=type=cache,target=/var/lib/apt,sharing=locked \
+                apt-get update && apt-get install -y --no-install-recommends \
+                build-essential git
+        
+        Tip: Use sharing=locked for OS package managers so concurrent builds don't corrupt the database lock file.
+
+
+    4. Rust (cargo):
+        -> Default Cache Paths: /usr/local/cargo/registry and /usr/local/cargo/git
+        -> Dockerfile Implementation:
+            RUN --mount=type=cache,target=/usr/local/cargo/registry \
+                --mount=type=cache,target=/usr/local/cargo/git \
+                cargo build --release
+    
+
+    5. Go (go build / go modules):
+    
+        Go utilizes two different locations: one for third-party downloaded dependencies, and another for the compiled package caches
+
+        -> Default Cache Paths: -> Downloaded modules: /go/pkg/mod
+        -> Compiler build cache: /root/.cache/go-build
+        -> Dockerfile Implementation:
+            RUN --mount=type=cache,target=/go/pkg/mod \
+                --mount=type=cache,target=/root/.cache/go-build \
+                go build -o myapp ./cmd/
+    
+
+    6. Java (maven / gradle):
+        -> Default Cache Paths: -> Maven: /root/.m2/repository
+        -> Gradle: /root/.gradle/caches
+        -> Dockerfile Implementation:
+        i. For Maven:
+            RUN --mount=type=cache,target=/root/.m2/repository \
+                mvn package
+
+        ii. For Gradle:
+            RUN --mount=type=cache,target=/root/.gradle/caches \
+                ./gradlew build
+     
+
+    Note:
+    If your base image uses a non-root user (like USER node in Node images or USER app in Python images), /root/ will not be the correct path. You can replace /root/ with /home/node/ or use the relative shorthand format if the package manager supports it (e.g., target=.npm)
 }
+
+
+
