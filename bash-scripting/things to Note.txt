@@ -109,6 +109,7 @@
     -gt: Greater than (>)
     
     -ge: Greater than or equal (>=)
+<<<<<<< crazy-branch
 
     -z:  String is zero-length (empty)
     
@@ -179,6 +180,8 @@
     4. -a = Array (indexed); declares a zero-based integer-keyed array.
     
     5. -A = Associative array; string-keyed hash map. Requires Bash 4+.
+=======
+>>>>>>> main
 }
 
 
