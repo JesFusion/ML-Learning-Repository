@@ -62,4 +62,38 @@
     - default_factory: A function to generate the default (useful for timestamps)
     - alias: Allow the field to accept a different name in the JSON (e.g., firstName becomes first_name)
     
+},
+
+{
+    Request/Response Object Internals
+
+    The `Request` object gives you access to everything about the incoming HTTP request:
+
+    - `.method` (GET, POST, etc.)
+
+    - `.url` (the full URL object with scheme, host, path, query params)
+
+    - `.headers` (case-insensitive dict-like object)
+
+    - `.cookies`
+
+    - `.body()` (async method returning raw bytes)
+
+    - `.json()` (async method parsing JSON)
+
+
+
+
+
+    HTTP Method Semantics (Critical for RESTful APIs):
+    
+    - GET: Retrieve data, must be idempotent (calling it 100 times has the same effect as calling it once), no request body
+
+    - POST: Create new resources, not idempotent
+    
+    - PUT: Replace an entire resource, idempotent
+
+    - PATCH: Partially update a resource, may or may not be idempotent
+    
+    - DELETE: Remove a resource, idempotent
 }

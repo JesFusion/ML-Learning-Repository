@@ -1,0 +1,55 @@
+Jesse Chijioke
+
+jesfusionprox@gmail.com | +2349133982877 | https://github.com/JesFusion
+
+
+June 2, 2026
+
+
+
+Hiring Manager
+CloudScale Inc.
+San Francisco, CA 94102
+
+
+
+
+Dear Hiring Manager,
+
+When I inherited a Kubernetes platform at my previous company serving 3M API requests daily, the deployment pipeline was a bottleneck: it took 45 minutes, required manual approval steps, and failed silently 15% of the time. Our on-call engineers were spending 20+ hours per week triaging failed deployments instead of writing infrastructure. In six months, I redesigned the CI/CD pipeline using GitLab CI and Helm, reducing deployment time to 8 minutes and automating 90% of the approval workflow.
+
+The result: Deployments went from twice-weekly to 12+ per day, on-call incidents dropped 60%, and our infrastructure team capacity freed up for strategic work instead of firefighting.
+
+
+Your situation at CloudScale mirrors that challenge exactly. You're hitting the throughput: wall—scaling merchants requires faster feature delivery, but 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

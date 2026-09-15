@@ -1,0 +1,181 @@
+{
+    - You start Pytest by typing 'pytest' in your terminal
+
+    - When Pytest runs, it looks for files starting with 'test_' or ending in '_test.py'
+
+    - Pytest scans for functions starting with 'test_'. If you miss the prefix, the test is invisible
+
+    - You can group tests in classes. The Class MUST start with 'Test' (capital T). The class must NOT have an __init__ method.
+},
+
+{
+
+    PYTEST FLAGS:
+
+
+    1. Output & Verbosity:
+
+    -v / --verbose: Increases output detail.
+    -vv: Even higher verbosity; essential for seeing full differences in large NumPy array mismatches.
+    -q / --quiet: Decreases output detail to show only essential results.
+    -s / --capture=no: Disables output capture, allowing print() statements and debugger prompts to appear in real-time.
+    -r<chars>: Shows a short summary info for specific results (e.g., -rP for passed tests with output, -rf for failures). 
+
+
+    2. Test Selection & Filtering:
+
+    -k <expression>: Runs only tests with names matching the given keyword or substring (e.g., pytest -k "linear_regression").
+    -m <marker>: Runs tests marked with a specific decorator (e.g., @pytest.mark.slow).
+    --lf / --last-failed: Re-runs only the tests that failed in the previous run.
+    --ff / --failed-first: Runs all tests, but prioritizes the ones that failed last time. 
+
+    
+    3. Execution Control
+
+    -x / --exitfirst: Stops the entire test session immediately after the first failure.
+    --maxfail=<num>: Stops the test session after a specific number of failures.
+    --sw / --stepwise: Stops at the first failure and resumes from that exact spot in the next run.
+    --collect-only: Lists all tests that would be run without actually executing them. 
+
+    
+    4. Debugging & Profiling
+
+    --pdb: Starts the Python Debugger (PDB) automatically at the exact point of a test failure.
+    -l / --showlocals: Shows the values of local variables in the traceback for failed tests.
+    --tb=<style>: Customizes traceback style (long, short, line, native, or no).
+    --durations=<N>: Identifies bottlenecks by listing the N slowest tests. 
+
+    
+    5. ML-Specific Extensions (Required Plugins)
+
+    --cov: Measures code coverage to see which parts of your model code aren't being tested (requires pytest-cov).
+    -n <num>: Runs tests in parallel across multiple CPU cores (requires pytest-xdist). 
+},
+
+{
+    CONFTEST.PY ARCHITECTURE:
+
+
+    Pytest searches for conftest.py files starting from the test file's directory and moving up. If you define the same fixture in multiple conftest.py files, the closest one wins.
+
+    In a real project, this entire file would be split:
+
+    tests/
+    ├── conftest.py              ← Session-scoped fixtures (DB, API clients)
+    ├── unit/
+    │   ├── conftest.py          ← Unit-test-specific fixtures (mocks)
+    │   └── test_math.py
+    └── integration/
+        ├── conftest.py          ← Integration-specific fixtures (real DB)
+        └── test_api.py
+
+    
+
+    Rules:
+    - Never import conftest.py manually. Pytest does it automatically.
+    - Don't put test functions in conftest.py. Only fixtures and hooks.
+    - Use nested conftest.py files to scope fixtures to specific subdirectories (e.g., integration tests need a real DB, unit tests use mocks).
+},
+
+{
+    Pytest's fixture scope system gives you precise control over fixture lifetime:
+
+    ==> "function" scope (the default) — the fixture runs fresh for every single test. Complete isolation, maximum cost.
+
+    ==> "class" scope — the fixture runs once per test class, shared among all methods in that class.
+
+    ==> "module" scope — the fixture runs once per file, shared among all tests in that module.
+    
+    ==> "session" scope — the fixture runs exactly once for the entire test suite run, regardless of how many tests use it.
+},
+
+{
+    Pytest includes several built-in markers that go beyond simple categorization. Unlike custom markers, these have pre-defined functional roles in how tests are executed. 
+
+    To see a complete list of all markers available in your specific project (including those from plugins), run the command `pytest --markers` in your terminal
+},
+
+{
+    In pytest, custom markers are user-defined tags used to categorize and filter tests. While you can create any marker name that fits your workflow, the following are common industry standards for organizing test suites: 
+
+    Supported operators: `and`, `or`, `not`, and parentheses
+
+    Common Custom Markers are:
+
+    - slow: Used for computationally expensive tests or those with long wait times.
+
+    - integration: Marks tests that require external services like APIs or databases.
+
+    - smoke: Identifies a small subset of critical "sanity" tests to run after a new build.
+
+    - regression: Tags tests specifically aimed at catching bugs in previously working features.
+
+    - unit: Explicitly labels fast, isolated tests that do not require external dependencies.
+
+    - database: Specifically for tests that interact with a database connection.
+
+    - api: Used for testing individual API endpoints.
+
+    - nightly: For extensive tests meant to run only during scheduled nightly builds.
+    
+    - flaky: Highlights tests known to fail inconsistently, often used with plugins like pytest-rerunfailures.
+},
+
+{
+    A Mock comes out of the box with "Tracking Attributes" and "Assertion Methods." These are built-in tools used to inspect what happened during the test.
+
+    Tracking Attributes:
+        .called: Boolean (True/False)
+
+        .call_count: Integer
+
+        .call_args: The arguments used in the last call
+
+        .call_args_list: A list of arguments from every call made
+
+
+    Assertion Methods:
+        .assert_called()
+
+        .assert_called_with(...)
+
+        .assert_called_once_with(...)
+
+
+    Configuration Attributes:
+        .return_value: What the mock returns when called as a function.
+
+        .side_effect: Used to raise errors or return different values in a sequence.
+
+    
+
+
+
+    Because of a feature called recursive mocking, a Mock will automatically create new Mock objects whenever you access an attribute or method that doesn't exist yet.
+
+    - Attributes: If you type `outlet.status`, the mock sees status doesn't exist and creates a new Mock for it on the fly.
+
+    - Methods: If you type outlet.post(), it creates a new Mock for post.
+
+    - Nested objects: You can go as deep as you want: outlet.service.api.v1.connect(). Every single step in that chain is a new Mock created automatically.
+},
+
+{
+    In addition to all the tracking attributes of a standard Mock (.called, .call_count, etc.), MagicMock has pre-created mock objects for almost every "dunder" method in Python.
+
+    Iteration: __iter__ is defined, so you can loop over it.
+
+    Length: __len__ is defined (it defaults to 0).
+
+    Context Managers: __enter__ and __exit__ are defined, so you can use it in a with statement.
+
+    Container behavior: __getitem__ (for obj[key]) and __setitem__ are ready to go.
+    
+    String representation: __str__ and __repr__ are ready.
+}
+
+
+
+
+
+

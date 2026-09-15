@@ -1,48 +1,96 @@
 {
-    Python has a vast hierarchy of errors, but they are generally grouped into categories. Below is a list of the most important built-in exceptions categorized by their role, with a one-sentence explanation for each as seen in the [Python Documentation](https://docs.python.org/3/library/exceptions.html). [1, 2] 
-    ## Foundational & System Errors
+    Python has a vast hierarchy of errors, but they are generally grouped into categories. Below is a list of the most important built-in exceptions categorized by their role, with a one-sentence explanation for each as seen in the Python Documentation.
 
-    * BaseException: The root class from which all other exceptions inherit.
-    * Exception: The base class for all non-system-exiting exceptions (the one you should usually catch).
-    * ArithmeticError: The base class for math-related errors like division by zero or overflows.
-    * LookupError: The base class for errors that occur when a key or index is missing.
-    * OSError: Raised when a system-related operation (like file or network I/O) fails.
-    * SystemExit: Raised by the sys.exit() function to request a program shutdown.
-    * KeyboardInterrupt: Raised when the user hits an interrupt key, typically Ctrl+C. [3, 4, 5] 
+    
+    Foundational & System Errors
 
-    ## Data & Type Errors
+    - BaseException: The root class from which all other exceptions inherit.
+    - Exception: The base class for all non-system-exiting exceptions (the one you should usually catch).
+    - ArithmeticError: The base class for math-related errors like division by zero or overflows.
+    - LookupError: The base class for errors that occur when a key or index is missing.
+    - OSError: Raised when a system-related operation (like file or network I/O) fails.
+    - SystemExit: Raised by the sys.exit() function to request a program shutdown.
+    - KeyboardInterrupt: Raised when the user hits an interrupt key, typically Ctrl+C. 
 
-    * TypeError: Raised when an operation is performed on an object of the wrong data type.
-    * ValueError: Raised when a function gets an argument of the right type but with an invalid value.
-    * AttributeError: Raised when you try to access a method or attribute that an object doesn't have.
-    * NameError: Raised when a variable name is not found in the local or global scope.
-    * IndexError: Raised when you try to access a sequence (like a list) with an out-of-range index.
-    * KeyError: Raised when a dictionary key is not found. [6, 7, 8, 9] 
+    Data & Type Errors
 
-    ## Code Structure & Logic Errors
+    - TypeError: Raised when an operation is performed on an object of the wrong data type.
+    - ValueError: Raised when a function gets an argument of the right type but with an invalid value.
+    - AttributeError: Raised when you try to access a method or attribute that an object doesn't have.
+    - NameError: Raised when a variable name is not found in the local or global scope.
+    - IndexError: Raised when you try to access a sequence (like a list) with an out-of-range index.
+    - KeyError: Raised when a dictionary key is not found. 
 
-    * SyntaxError: Raised by the parser when it encounters invalid Python code.
-    * IndentationError: A subclass of SyntaxError specifically for incorrect whitespace.
-    * TabError: Raised when indentation contains an inconsistent mix of tabs and spaces.
-    * AssertionError: Raised when an assert statement fails.
-    * RecursionError: Raised when the maximum recursion depth is exceeded.
-    * NotImplementedError: Raised when an abstract method requires a subclass to override it but hasn't. [3, 4, 5, 10, 11, 12] 
+    Code Structure & Logic Errors
 
-    ## I/O & Environment Errors
+    - SyntaxError: Raised by the parser when it encounters invalid Python code.
+    - IndentationError: A subclass of SyntaxError specifically for incorrect whitespace.
+    - TabError: Raised when indentation contains an inconsistent mix of tabs and spaces.
+    - AssertionError: Raised when an assert statement fails.
+    - RecursionError: Raised when the maximum recursion depth is exceeded.
+    - NotImplementedError: Raised when an abstract method requires a subclass to override it but hasn't. 
 
-    * ImportError: Raised when an import statement fails to load a module.
-    * ModuleNotFoundError: A specific type of ImportError when the module simply cannot be located.
-    * FileNotFoundError: A common OSError raised when a file path doesn't exist.
-    * PermissionError: Raised when trying to access a file or resource without sufficient privileges.
-    * EOFError: Raised when the input() function hits an end-of-file condition without reading data.
-    * ZeroDivisionError: Raised when the second operand of a division or modulo is zero. [4, 5, 6, 8, 11] 
+    I/O & Environment Errors
 
-    ## Memory & Resource Errors
+    - ImportError: Raised when an import statement fails to load a module.
+    - ModuleNotFoundError: A specific type of ImportError when the module simply cannot be located.
+    - FileNotFoundError: A common OSError raised when a file path doesn't exist.
+    - PermissionError: Raised when trying to access a file or resource without sufficient privileges.
+    - EOFError: Raised when the input() function hits an end-of-file condition without reading data.
+    - ZeroDivisionError: Raised when the second operand of a division or modulo is zero.
 
-    * MemoryError: Raised when an operation runs out of available memory.
-    * OverflowError: Raised when the result of an arithmetic operation is too large to be represented.
-    * StopIteration: Raised by next() to signal that an iterator has no more items.
-    * GeneratorExit: Raised when a generator or coroutine is closed. [4, 5, 6, 12, 13] 
+    Memory & Resource Errors
 
+    - MemoryError: Raised when an operation runs out of available memory.
+    - OverflowError: Raised when the result of an arithmetic operation is too large to be represented.
+    - StopIteration: Raised by next() to signal that an iterator has no more items.
+    - GeneratorExit: Raised when a generator or coroutine is closed.
+
+
+},
+
+{
+    Keyboard shortcuts for Markdown All in One:
+
+
+    1. Text Formatting
+
+    - Ctrl + B: Bold selected text (adds **).
+    - Ctrl + I: Italicize selected text (adds *).
+    - Alt + S: Strikethrough selected text (adds ~~).
+    - Ctrl + Shift + V: Open Markdown Preview side-by-side (VS Code built-in).
+
+
+
+    2. Lists and Editing
+
+    - Enter: Smart Continue. Automatically creates the next list item (like *, -, 1., or - [ ]).
+    - Shift + Enter: Soft Line Break. Moves to the next line without creating a new list bullet.
+    - Tab: Indent list. Indents your current bullet point by one level.
+    - Shift + Tab: Outdent list. Moves your indented bullet point back one level.
+    - Alt + C: Toggle checkbox. Instantly checks or unchecks a list item (switches between [ ] and [x]).
+
+
+
+    3. Navigation & Headers
+
+    - Ctrl + Shift + ]: Move to the next heading in the document.
+    - Ctrl + Shift + [: Move to the previous heading in the document.
+    - Ctrl + M: Toggle math environment (for writing mathematical formulas).
+
+
+
+
+
+
+    Useful Command Palette Tools (No Shortcut Needed)
+
+    Press Ctrl + Shift + P (or Cmd + Shift + P on Mac) and type "Markdown All in One" to access these automated features:
+
+    - Create Table of Contents: Automatically generates a clickable list of links based on your headers.
+
+    - Update Table of Contents: Instantly updates the list if you changed your headers.
+
+    - Print current document to HTML: Instantly converts your file into a webpage format.
 
 }

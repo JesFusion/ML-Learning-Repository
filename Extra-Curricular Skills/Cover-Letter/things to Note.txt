@@ -1,0 +1,18 @@
+{
+    The person reviewing your application has 30 seconds maximum. In that window, they must answer one question: "Is this person solving problems that matter to us?"
+},
+
+{
+    Identify pain points in the job description and show how you've handled it in a project or a previous job
+},
+
+{
+    The Impact Equation is your tactical framework:
+
+    [Action] + [Tool/Method] + [Measurable Outcome] = Interview Gold
+}
+
+
+
+
+
