@@ -3088,3 +3088,238 @@ echo "MODEL_REGISTRY_BUCKET:  $MODEL_REGISTRY_BUCKET"
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ===================================== Segment 10.2: Sed (Stream Editor) =====================================
+
+# Exit immediately if a command exits with a non-zero status (-e)
+# Treat unset variables as an error and exit immediately (-u)
+set -eu
+
+# Create a secure, temporary directory for safe experimentation
+learning_folder=$(mktemp -d)
+
+# Ensure the temporary directory is automatically deleted when the script finishes or exits
+trap 'rm -rf "$learning_folder"' EXIT
+
+
+# Change directory into the isolated training folder
+cd "$learning_folder"
+
+# Define filenames as variables for easy reuse
+config_file="web_server_config.yml"
+dataset="customer-info-dataset.csv"
+
+# Create a mock YAML configuration file using a Heredoc
+cat << 'EOF' > "$config_file"
+server_name: jesse-server
+log_path: /home/jesfusion/devOps/ML/Learning/Repository/Linux/access.log
+db_host: localhost
+EOF
+
+# Create a mock CSV dataset with empty spacing to practice line cleanup
+cat << 'EOF' > "$dataset"
+id,name,role
+1,Mike,Architect
+
+2,Jesse,Engineer
+
+3,Root,God
+
+4,Hospital,Sick
+
+
+
+
+5,Kettle,Hot Water
+EOF
+
+# Create a mock system log to practice precision pattern filtering
+cat << 'EOF' > system-status.log
+# [INFO] System booted normal.
+# [ERROR] Database connection timed out.
+# [INFO] User logged in.
+# [FATAL] Out of memory. Kernel panic.
+EOF
+
+# Create a mock SSH configuration file to practice safely mutating configs
+cat << 'EOF' > SSH_config
+#Port 22
+PermitRootLogin yes
+PasswordAuthentication yes
+EOF
+
+
+# ===================================== BASIC USAGE (SUBSTITUTION) =====================================
+
+echo "swapping localhost for production DB in $config_file...\n"
+
+echo "
+Original:
+$(cat "$config_file")
+
+Using forward slashes (Standard delimiter):
+$(sed 's/localhost/database.production.internal/g' "$config_file")
+
+Using pipes (Alternative delimiter to avoid escaping forward slashes):
+$(sed 's|localhost|database.production.internal|g' "$config_file")
+
+Pipes are good at handling file paths (prevents 'leaning toothpick syndrome' like \/home\/):
+$(sed 's|/home/jesfusion/devOps/ML/|/one/two/three/|g' "$config_file")
+"
+
+text_file="file2.txt"
+
+# Create a matrix text file to test precision string substitution matching
+cat << 'EOF' > "$text_file"
+0123456789:::0123456789:::0123456789
+9876543210:::9876543210:::9876543210
+0123456789:::0123456789:::0123456789
+9876543210:::9876543210:::9876543210
+0123456789:::0123456789:::0123456789
+9876543210:::9876543210:::9876543210
+0123456789:::0123456789:::0123456789
+EOF
+
+echo "
+Replacing first match of 1 on each line with ++ (Default behavior):
+$(sed 's/1/++/' "$text_file")
+
+Replacing second match of 5 on each line with ++ (Using instance flag '2'):
+$(sed 's/5/++/2' "$text_file")
+
+Replacing third match of 9 on each line with ++ (Using instance flag '3'):
+$(sed 's/9/++/3' "$text_file")
+
+Replacing all matches of 7 on each line with ++ (Using global flag 'g'):
+$(sed 's/7/++/g' "$text_file")
+"
+
+
+# ===================================== POWER USAGE (DELETION & CLEANUP) =====================================
+
+echo "
+Removing the header from CSV file (1d = target line 1 and delete)...
+$(sed '1d' $dataset)
+
+Removing empty lines from CSV file (/^$/d = match empty start-to-end lines and delete)...
+$(sed '/^$/d' $dataset)
+
+Delete lines 9-11 from CSV file (Comma specifies a line number range)...
+$(sed '9,11d' $dataset)
+
+Delete line beginning with 5 (/^5/ matches lines starting with 5, then deletes)...
+$(sed '/^5/d' $dataset)
+
+Delete line beginning with 3 or empty line (Semicolon chains multiple commands sequentially)...
+$(sed '/^3/d; /^$/d' $dataset)
+"
+
+
+# ===================================== PRECISION USAGE (SUPPRESSION & CHAINING) =====================================
+
+# -n: Crucial flag. By default, sed prints every single line it reads. The -n flag suppresses this behavior.
+# /.../p: The search and print pattern. The p command explicitly tells sed to print the matched line.
+# -e: Allows you to chain multiple script expressions together in one pass.
+
+# Chaining expressions sequentially to extract ERROR and FATAL logs (Can print a single line twice if both words match)
+sed -n -e '/ERROR/p' -e '/FATAL/p' system-status.log
+
+# -E: Enables Extended Regular Expressions (ERE), allowing modern regex operators like '|' without backslashes.
+
+# Using Extended Regex Alternation to cleanly grab ERROR or FATAL logs (Evaluates once, never prints duplicates)
+sed -E -n '/(ERROR|FATAL)/p' system-status.log
+
+
+# ===================================== DEVOPS CONTEXT (THE DANGER ZONE) =====================================
+
+echo "original ssh config file"
+cat SSH_config
+
+# -i.bak: In-place edit. Modifies the file directly, but saves the original unedited file as SSH_config.bak
+sed -i.bak 's|gin yes|gin no|g' SSH_config 
+
+echo "config file after secure mutation"
+cat SSH_config
+
+# -i: Dangerous in-place edit with NO backup file created. Overwrites the file directly.
+sed -i 's|#Port 22|#Port 8090|g' SSH_config
+cat SSH_config
+
+# In-place change to replace Jesse with Caleb Nwachukwu in the dataset
+sed -i 's|Jesse|Caleb Nwachukwu|g' "$dataset"
+
+# In-place change to replace Architect with Philosopher while making a backup (.bak) of the CSV state
+sed -i.bak 's|Architect|Philosopher|g' "$dataset"
+
+# Clear terminal screen to show the final comparisons cleanly
+clear
+
+# Final Comparison Demonstrations:
+# 1. Multi-expression search (sequential match check)
+sed -n -e '/1/p' -e '/3/p' "$dataset"
+
+# 2. Extended regex alternation search (logical OR check)
+sed -E -n '/(1|3)/p' "$dataset"
+
+
+
+
+
+
+
+
+
+
+
+
+
